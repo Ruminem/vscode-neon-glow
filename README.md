@@ -54,8 +54,13 @@ system. From the command palette (`F1`):
 | Command | |
 |---------|--|
 | `Neon Glow: Toggle` | flip the glow on/off, instantly |
-| `Neon Glow: Enable` / `Neon Glow: Disable` | set it explicitly |
+| `Neon Glow: Enable` / `Neon Glow: Disable` | set it explicitly — only whichever one would actually change something is listed |
 | `Neon Glow: Show status` | current state, and whether the bundle is patched |
+
+The palette filters `Enable`/`Disable` through a `neonGlow.enabled` context key, so
+you never have to work out which of the two is the live one. Both remain bindable
+to a key; a `when` clause on `commandPalette` hides a command from the palette
+only, not from the keybinding system.
 
 **No default keybinding ships with this**, deliberately - that is what makes it
 impossible to collide with another extension. Bind whatever you like in
@@ -65,12 +70,24 @@ you itself if the chord is already taken.
 Toggling never touches a file in the install directory, so it needs no admin
 rights and no restart.
 
+A status bar item on the right shows `NEON:ON` / `NEON:OFF` and toggles on click.
+It is not decoration — see below.
+
 ### How the toggle reaches the editor
 
-Commands run in the extension host; the glow lives in the renderer. The extension
-writes `state.json` into its `globalStorage`, which is one of the roots the
-`vscode-file` protocol handler is willing to serve, so the injected script can
-poll it:
+Commands run in the extension host; the glow lives in the renderer. There is no
+API between the two, so the state crosses on two channels at once.
+
+**Fast: the status bar.** The extension's status bar item *is* the wire. Its label
+is the state, in plain text (a codicon would render as an element and break the
+match), and the renderer keeps a `MutationObserver` on `.statusbar`. A toggle
+lands in the frame the extension host paints it, roughly 16ms. The status bar
+mutates constantly — cursor position, language mode — so a burst of records is
+collapsed into one read per frame with `requestAnimationFrame`.
+
+**Slow: the state file.** The extension also writes `state.json` into its
+`globalStorage`, which is one of the roots the `vscode-file` protocol handler is
+willing to serve, so the injected script can poll it:
 
 ```js
 addValidFileRoot(e.appRoot)
@@ -78,16 +95,30 @@ addValidFileRoot(e.extensionsPath)
 addValidFileRoot(...globalStorageHome...)   // <- the state file lives here
 ```
 
-If that bridge is unavailable (patched from the CLI with no extension installed,
+The poll reconciles whatever the fast half misses: a hidden status bar, or a
+background window, where `requestAnimationFrame` does not tick. It runs at 800ms
+until the status bar half proves it works and then backs off to 1500ms, so
+hiding the status bar degrades latency instead of breaking the toggle.
+
+Neither half applies its *first* reading, only records it. Startup state comes
+from `localStorage`, so a stale file — or a status bar not yet written — cannot
+clobber the last known state, and there is no flash of the wrong state on boot.
+
+If both halves are unavailable (patched from the CLI with no extension installed,
 say), the script falls back to `Ctrl+Alt+N`, registered on the **bubble** phase so
 anything VS Code has already bound wins and the fallback simply never fires. It
-also stands down entirely once the bridge answers. Change `FALLBACK_KEY` in
+also stands down entirely once either half answers. Change `FALLBACK_KEY` in
 `neon-glow.js` to move it, or set it to `null` to drop it.
+
+Turning off flips the stylesheet's `disabled` flag rather than removing the
+element, so turning back on re-uses the parsed CSS instead of re-running the
+regex pass over the theme's token styles.
 
 You can also drive it from the DevTools console:
 
 ```js
-__neonGlow.toggle();    // .enable() / .disable() / .isEnabled() / .bridgeOk()
+__neonGlow.toggle();    // .enable() / .disable() / .isEnabled()
+__neonGlow.bridgeOk();  // is either half live?   .statusBarOk() for the fast one
 ```
 
 ## Install

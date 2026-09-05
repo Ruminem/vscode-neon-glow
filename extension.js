@@ -12,6 +12,7 @@ const RESTART_NOTE =
   'it replays the old bundle from cache.';
 
 let stateFile = null;
+let statusItem = null;
 
 function targetsOrWarn() {
   const targets = resolveTargets([]);
@@ -32,19 +33,46 @@ function reportFailure(e) {
   }
 }
 
-/** Toggling only writes the state file; the patched renderer picks it up. */
+/**
+ * Publish the state to everything that renders it.
+ *
+ * The status bar item is the fast half of the bridge. The renderer watches
+ * `.statusbar` for this exact text and reacts within a frame, which is why the
+ * label is plain: a codicon would render as an element and break the match.
+ *
+ * The context key drives the `commandPalette` `when` clauses, so the palette
+ * offers only the command that would change something. An unset key reads as
+ * false, which is why the extension activates on startup rather than on first
+ * command - otherwise the palette would claim the glow was off until you ran
+ * something.
+ */
+function reflect(enabled) {
+  vscode.commands.executeCommand('setContext', 'neonGlow.enabled', enabled);
+  if (!statusItem) return;
+  statusItem.text = 'NEON:' + (enabled ? 'ON' : 'OFF');
+  statusItem.tooltip = 'Neon Glow is ' + (enabled ? 'on' : 'off') + ' - click to toggle';
+}
+
+/** Toggling writes the state file and the status bar; the renderer follows both. */
 function setGlow(enabled) {
   try {
     writeState(stateFile, enabled);
-    vscode.window.setStatusBarMessage('Neon Glow: ' + (enabled ? 'ON' : 'OFF'), 1500);
   } catch (e) {
     vscode.window.showErrorMessage('Neon Glow: could not write state - ' + e.message);
+    return;
   }
+  reflect(enabled);
 }
 
 function activate(context) {
   stateFile = path.join(context.globalStorageUri.fsPath, 'state.json');
   ensureStateFile(stateFile);
+
+  statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 0);
+  statusItem.command = 'neonGlow.toggle';
+  context.subscriptions.push(statusItem);
+  reflect(readState(stateFile).enabled);
+  statusItem.show();
 
   const cmd = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 

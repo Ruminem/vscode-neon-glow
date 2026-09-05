@@ -95,27 +95,37 @@ try {
 
   var lastLen = -1;
 
-  function removeStyle() {
-    var el = document.getElementById(STYLE_ID);
-    if (el && el.parentNode) el.parentNode.removeChild(el);
-    lastLen = -1;
-  }
-
+  /**
+   * Turning off flips the stylesheet's `disabled` flag instead of removing the
+   * element, so turning back on costs nothing: the CSS stays parsed and the
+   * regex pass is not repeated. `lastLen` therefore survives an off/on cycle,
+   * and a theme swapped *while* off still rebuilds, because the token source
+   * length no longer matches.
+   */
   function render() {
-    if (!enabled) { removeStyle(); return true; }
+    var styleTag = document.getElementById(STYLE_ID);
+
+    if (!enabled) {
+      if (styleTag) styleTag.disabled = true;
+      return true;
+    }
 
     var tokensEl = document.querySelector('.vscode-tokens-styles');
     if (!tokensEl) return false;
     var source = tokensEl.textContent || '';
     if (source.replace(/\s/g, '') === '') return false;
-    if (source.length === lastLen && document.getElementById(STYLE_ID)) return true;
+
+    if (styleTag && source.length === lastLen) {
+      if (styleTag.disabled) styleTag.disabled = false;
+      return true;
+    }
     lastLen = source.length;
 
-    var styleTag = document.getElementById(STYLE_ID);
     if (!styleTag) {
       styleTag = document.createElement('style');
       styleTag.setAttribute('id', STYLE_ID);
     }
+    styleTag.disabled = false;
     styleTag.textContent = addGlow(source) + chromeStyles;
     (document.head || document.body).appendChild(styleTag);
     mark('applied', 'glow=' + glowCount + ' skip=' + skipCount);
@@ -155,30 +165,83 @@ try {
   }
 
   /* ------------------------------------------------------------------
-   * Bridge. The extension writes state.json into its globalStorage, which
-   * is one of the roots the vscode-file protocol handler serves, so the
-   * renderer can poll it. That keeps the commands inside the VS Code
-   * keybinding system - nothing here intercepts a key.
+   * Bridge, in two halves. Both carry the same state, so the commands stay
+   * inside the VS Code keybinding system and nothing here intercepts a key.
+   *
+   *   fast   The extension's status bar item reads "NEON:ON" / "NEON:OFF".
+   *          A MutationObserver on `.statusbar` sees the edit in the frame
+   *          the extension host paints it, so a toggle lands in ~16ms.
+   *   slow   state.json in the extension's globalStorage, polled over
+   *          vscode-file. It reconciles whatever the fast half missed - a
+   *          hidden status bar, or a background window with no rAF ticks.
+   *
+   * Neither half applies its first reading; it only records it. Startup state
+   * comes from localStorage, so a stale file, or a status bar not yet written,
+   * cannot clobber the last known state.
    * ------------------------------------------------------------------ */
   var bridgeOk = false;
   var lastSeq = null;
+
+  /* Polling backs off once the status bar half has proven it works. */
+  var POLL_FAST = 800, POLL_SLOW = 1500;
 
   function pollState() {
     fetch(STATE_URL, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (s) {
         if (!s || typeof s.enabled !== 'boolean') return;
-        if (!bridgeOk) { bridgeOk = true; mark('bridge-ok'); }
-        /* The first read only records the sequence. Startup state comes from
-           localStorage, so a stale file cannot clobber the last known state. */
+        if (!bridgeOk) { bridgeOk = true; mark('bridge-ok file'); }
         if (lastSeq === null) { lastSeq = s.seq; return; }
         if (s.seq !== lastSeq) { lastSeq = s.seq; setEnabled(s.enabled); }
       })
       .catch(function () {});
   }
 
+  /* ---- fast half: the status bar item ---- */
+  var STATUS_RE = /NEON:(ON|OFF)/;
+  var statusAttached = false;
+  var lastStatus = null;
+
+  function readStatusBar() {
+    var bar = document.querySelector('.statusbar');
+    if (!bar) return;
+    var m = STATUS_RE.exec(bar.textContent || '');
+    if (!m) return;
+    var v = (m[1] === 'ON');
+    if (!bridgeOk) { bridgeOk = true; mark('bridge-ok status-bar'); }
+    if (lastStatus === null) { lastStatus = v; return; }
+    if (v !== lastStatus) { lastStatus = v; setEnabled(v); }
+  }
+
+  /* The status bar mutates constantly (cursor position, language mode, and so
+     on), so collapse a burst of records into one read per frame. */
+  var statusQueued = false;
+  function onStatusMutation() {
+    if (statusQueued) return;
+    statusQueued = true;
+    requestAnimationFrame(function () {
+      statusQueued = false;
+      try { readStatusBar(); } catch (e) {}
+    });
+  }
+
+  function attachStatusBar() {
+    if (statusAttached) return;
+    var bar = document.querySelector('.statusbar');
+    if (!bar) return;
+    statusAttached = true;
+    new MutationObserver(onStatusMutation)
+      .observe(bar, { childList: true, characterData: true, subtree: true });
+    try { readStatusBar(); } catch (e) {}
+  }
+
   if (STATE_URL && STATE_URL.indexOf('vscode-file:') === 0) {
-    setInterval(pollState, 800);
+    (function schedulePoll() {
+      setTimeout(function () {
+        pollState();
+        schedulePoll();
+      }, (statusAttached && lastStatus !== null) ? POLL_SLOW : POLL_FAST);
+    })();
     pollState();
   }
 
@@ -200,7 +263,8 @@ try {
     enable: function () { setEnabled(true); },
     disable: function () { setEnabled(false); },
     isEnabled: function () { return enabled; },
-    bridgeOk: function () { return bridgeOk; }
+    bridgeOk: function () { return bridgeOk; },
+    statusBarOk: function () { return statusAttached && lastStatus !== null; }
   };
 
   var attached = false;
@@ -216,12 +280,13 @@ try {
   var ticks = 0;
   var timer = setInterval(function () {
     ticks++;
+    try { attachStatusBar(); } catch (e) {}
     try { if (render()) startObservers(); }
     catch (e) { mark('error', String(e && e.message || e)); clearInterval(timer); return; }
     if (ticks > 600) clearInterval(timer);
   }, 300);
 
-  try { render(); startObservers(); } catch (e) {}
+  try { attachStatusBar(); render(); startObservers(); } catch (e) {}
 })();
 } catch (e) {
   try { console.error('[NEON] fatal', e); } catch (_) {}

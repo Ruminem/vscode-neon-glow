@@ -14,6 +14,7 @@
   },
   "categories": ["Themes", "Other"],
   "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
   "contributes": {
     "commands": [
       { "command": "neonGlow.toggle",  "title": "Neon Glow: Toggle" },
@@ -22,6 +23,12 @@
       { "command": "neonGlow.install", "title": "Neon Glow: Install (patch workbench)" },
       { "command": "neonGlow.remove",  "title": "Neon Glow: Remove (restore workbench)" },
       { "command": "neonGlow.status",  "title": "Neon Glow: Show status" }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "neonGlow.enable",  "when": "!neonGlow.enabled" },
+        { "command": "neonGlow.disable", "when": "neonGlow.enabled" }
+      ]
+    }
   }
 }
