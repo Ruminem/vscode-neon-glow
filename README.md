@@ -130,18 +130,26 @@ administrator on Windows, or with `sudo` on macOS/Linux.
 
 ### From a release (recommended)
 
-Download the `.vsix` from
-[Releases](https://github.com/Ruminem/vscode-neon-glow/releases) and install it:
+On Windows, download `neon-glow-<version>-windows.zip` from
+[Releases](https://github.com/Ruminem/vscode-neon-glow/releases), unzip it, and
+double-click `install.cmd`. It finds VS Code, installs the extension and patches
+the bundle in one pass. Nothing else has to be on the machine: VS Code is
+Electron, so `Code.exe` doubles as the Node that runs the patcher.
+
+Anywhere else, or if you would rather drive it yourself, install the `.vsix`
+from the same release:
 
 ```sh
-code --install-extension neon-glow-0.3.0.vsix
+code --install-extension neon-glow-0.4.0.vsix
 ```
 
-Or from inside VS Code: Extensions view → the `...` menu → *Install from VSIX…*.
+Or inside VS Code: Extensions view → the `...` menu → *Install from VSIX…*.
 
-Then run `Neon Glow: Install (patch workbench)` from the palette. Install and
-Remove rewrite a file on disk, so they need write access and a **full restart**.
-Everyday on/off needs neither.
+Installing the extension does not by itself make anything glow — the payload
+lives in `workbench.js`, and only a patch puts it there. The extension notices
+an unpatched bundle when it activates and offers to fix it; you can also run
+`Neon Glow: Install (patch workbench)` from the palette. Either route needs
+write access and a **full restart**. Everyday on/off needs neither.
 
 This is not on the Marketplace, and will not be: an extension that rewrites
 `workbench.js` cannot honestly pass review.
@@ -211,10 +219,15 @@ Dismiss the notification with *Don't Show Again*. You could rewrite the checksum
 `product.json` to silence it permanently, but that disables tamper detection for **all**
 future modifications, not just this one — not worth it for a notification.
 
-**VS Code updates wipe the patch.** The updater replaces `workbench.js`. Run
-`Neon Glow: Install (patch workbench)` again after an update, or `node install.js`
-if you patched from the CLI. Reinstalling is safe: it always rebuilds from the
-pristine `.pre-neon.bak`, never from an already-patched file.
+**VS Code updates wipe the patch.** The updater replaces `workbench.js`. This is
+the same state as a fresh extension install — an unpatched bundle — so the
+extension offers to re-patch on the next launch. You can also run
+`Neon Glow: Install (patch workbench)`, or `node install.js` if you went the CLI
+route. Reinstalling is safe: it always rebuilds from the pristine
+`.pre-neon.bak`, never from an already-patched file.
+
+Removing the patch on purpose suppresses that offer, so `Neon Glow: Remove` does
+not turn into a prompt you have to dismiss on every launch.
 
 ## Status
 

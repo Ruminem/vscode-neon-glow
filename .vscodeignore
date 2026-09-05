@@ -1,8 +1,13 @@
 .git/**
 .github/**
+.gitattributes
 .gitignore
 .vscodeignore
 *.vsix
+
+# install.cmd wraps the VSIX for the release zip; inside the VSIX it would be
+# a script that installs the thing it is already inside.
+install.cmd
 
 # install.js and uninstall.js are deliberately kept in the package: after a VS
 # Code update wipes the patch, or after editing the knobs in neon-glow.js, they

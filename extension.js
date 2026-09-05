@@ -11,6 +11,9 @@ const RESTART_NOTE =
   'Quit VS Code completely and start it again. "Reload Window" is not enough - ' +
   'it replays the old bundle from cache.';
 
+/** Set when the user removes the patch, or asks not to be prompted about it. */
+const SUPPRESS_PROMPT = 'neonGlow.suppressPatchPrompt';
+
 let stateFile = null;
 let statusItem = null;
 
@@ -64,6 +67,48 @@ function setGlow(enabled) {
   reflect(enabled);
 }
 
+/** A bundle rewrite only takes effect on a cold start, so offer to do one. */
+async function noteRestart(what) {
+  const quit = 'Quit VS Code';
+  const answer = await vscode.window.showInformationMessage(what + ' ' + RESTART_NOTE, quit);
+  if (answer === quit) vscode.commands.executeCommand('workbench.action.quit');
+}
+
+function installPatch(context) {
+  const targets = targetsOrWarn();
+  if (!targets) return;
+  try {
+    ensureStateFile(stateFile);
+    targets.forEach(f => applyPatch(f, payloadPath(), stateFile));
+    context.globalState.update(SUPPRESS_PROMPT, false);
+    noteRestart('Neon Glow installed.');
+  } catch (e) { reportFailure(e); }
+}
+
+/**
+ * Installing the extension does not by itself make anything glow: the payload
+ * lives in workbench.js, which only this side can write. A VS Code update also
+ * silently restores the pristine bundle. Both end up looking the same from
+ * here - an unpatched target - so one prompt on activation covers them.
+ *
+ * Removing the patch on purpose sets SUPPRESS_PROMPT, so the prompt does not
+ * turn into a nag for someone who wanted it off.
+ */
+async function offerToPatch(context) {
+  if (context.globalState.get(SUPPRESS_PROMPT)) return;
+
+  const targets = resolveTargets([]);
+  if (!targets.length || targets.every(isPatched)) return;
+
+  const yes = 'Patch now', never = "Don't ask again";
+  const answer = await vscode.window.showInformationMessage(
+    'Neon Glow: the workbench bundle is not patched, so nothing glows yet.',
+    yes, 'Later', never);
+
+  if (answer === never) { context.globalState.update(SUPPRESS_PROMPT, true); return; }
+  if (answer === yes) installPatch(context);
+}
+
 function activate(context) {
   stateFile = path.join(context.globalStorageUri.fsPath, 'state.json');
   ensureStateFile(stateFile);
@@ -80,15 +125,7 @@ function activate(context) {
   cmd('neonGlow.enable',  () => setGlow(true));
   cmd('neonGlow.disable', () => setGlow(false));
 
-  cmd('neonGlow.install', () => {
-    const targets = targetsOrWarn();
-    if (!targets) return;
-    try {
-      ensureStateFile(stateFile);
-      targets.forEach(f => applyPatch(f, payloadPath(), stateFile));
-      vscode.window.showInformationMessage('Neon Glow installed. ' + RESTART_NOTE);
-    } catch (e) { reportFailure(e); }
-  });
+  cmd('neonGlow.install', () => installPatch(context));
 
   cmd('neonGlow.remove', () => {
     const targets = targetsOrWarn();
@@ -99,7 +136,9 @@ function activate(context) {
         vscode.window.showInformationMessage('Neon Glow: nothing to remove (no backup found).');
         return;
       }
-      vscode.window.showInformationMessage('Neon Glow removed. ' + RESTART_NOTE);
+      /* Removing is a decision, not an accident: stop offering to undo it. */
+      context.globalState.update(SUPPRESS_PROMPT, true);
+      noteRestart('Neon Glow removed.');
     } catch (e) { reportFailure(e); }
   });
 
@@ -110,6 +149,8 @@ function activate(context) {
     const on = readState(stateFile).enabled ? 'ON' : 'OFF';
     vscode.window.showInformationMessage('Neon Glow is ' + on + '. Bundle: ' + where);
   });
+
+  offerToPatch(context);
 }
 
 function deactivate() {}

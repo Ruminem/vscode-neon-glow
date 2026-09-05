@@ -119,16 +119,23 @@ VS Code 설치 디렉터리에 쓰기 권한이 필요하다. Windows에서는 �
 
 ### 릴리스에서 (권장)
 
-[Releases](https://github.com/Ruminem/vscode-neon-glow/releases)에서 `.vsix`를 받아 설치한다.
+Windows라면 [Releases](https://github.com/Ruminem/vscode-neon-glow/releases)에서
+`neon-glow-<version>-windows.zip`을 받아 풀고 `install.cmd`를 더블클릭한다. VS Code를 찾고,
+확장을 설치하고, 번들을 패치하는 것까지 한 번에 한다. 따로 깔아둘 것은 없다. VS Code가
+Electron이라 `Code.exe`가 패치 스크립트를 돌릴 Node 노릇까지 겸한다.
+
+그 외 환경이거나 직접 하고 싶으면 같은 릴리스의 `.vsix`를 설치한다.
 
 ```sh
-code --install-extension neon-glow-0.3.0.vsix
+code --install-extension neon-glow-0.4.0.vsix
 ```
 
 또는 VS Code 안에서: 확장 뷰 → `...` 메뉴 → *VSIX에서 설치…*.
 
-그다음 팔레트에서 `Neon Glow: Install (patch workbench)`를 실행한다. Install과 Remove는 디스크의
-파일을 다시 쓰므로 쓰기 권한과 **완전 재시작**이 필요하다. 일상적인 켜고 끄기는 둘 다 필요 없다.
+확장을 설치하는 것만으로는 아무것도 빛나지 않는다. 페이로드는 `workbench.js`에 살고, 거기 넣는
+것은 패치뿐이다. 확장은 활성화될 때 패치되지 않은 번들을 알아채고 고칠지 물어본다. 팔레트에서
+`Neon Glow: Install (patch workbench)`를 직접 실행해도 된다. 어느 쪽이든 쓰기 권한과
+**완전 재시작**이 필요하다. 일상적인 켜고 끄기는 둘 다 필요 없다.
 
 마켓플레이스에는 없고, 앞으로도 올리지 않는다. `workbench.js`를 다시 쓰는 확장이 심사를 정직하게
 통과할 수는 없다.
@@ -194,10 +201,14 @@ SHA-256(base64, 패딩 제거)을 들고 있는데, 패치하면 그 값이 안 
 으로 닫으면 된다. `product.json`의 체크섬을 다시 써서 영구히 침묵시킬 수도 있지만, 그러면 이번
 것만이 아니라 **앞으로의 모든** 변조 탐지가 꺼진다 — 알림 하나 때문에 치를 값은 아니다.
 
-**VS Code 업데이트는 패치를 지운다.** 업데이터가 `workbench.js`를 갈아끼운다. 업데이트 후
-`Neon Glow: Install (patch workbench)`를 다시 실행하거나, CLI로 패치했다면 `node install.js`를
-다시 돌린다. 재설치는 안전하다. 언제나 원본 `.pre-neon.bak`에서 다시 만들지, 이미 패치된 파일
-위에 덧붙이지 않는다.
+**VS Code 업데이트는 패치를 지운다.** 업데이터가 `workbench.js`를 갈아끼운다. 이건 확장을 갓
+설치한 상태와 똑같은 상태 — 패치되지 않은 번들 — 이라서, 다음 실행 때 확장이 다시 패치할지
+물어본다. `Neon Glow: Install (patch workbench)`를 직접 실행하거나, CLI로 갔다면
+`node install.js`를 다시 돌려도 된다. 재설치는 안전하다. 언제나 원본 `.pre-neon.bak`에서 다시
+만들지, 이미 패치된 파일 위에 덧붙이지 않는다.
+
+일부러 패치를 제거하면 그 제안도 함께 꺼진다. `Neon Glow: Remove`가 매번 닫아야 하는 알림으로
+변하지 않도록.
 
 ## 상태
 

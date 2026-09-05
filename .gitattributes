@@ -1,0 +1,4 @@
+# The release zip is built on a Linux runner, where nothing would otherwise
+# convert line endings. A .cmd with bare LF can misparse labels and goto, so
+# pin it to CRLF in the repository itself.
+*.cmd text eol=crlf
