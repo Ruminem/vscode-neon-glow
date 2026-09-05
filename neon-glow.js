@@ -12,8 +12,17 @@ try {
   var FLOOR         = 0.40;  /* strength for a colour that just passes MIN_CHROMA  */
   var MIN_LIGHTNESS = 0.25;  /* darker than this -> no glow                        */
 
-  /* ---- toggle shortcut: change here if it clashes with another extension ---- */
-  var TOGGLE = { ctrl: true, alt: true, shift: false, key: 'n' };
+  /**
+   * Fallback shortcut, used only when the extension bridge is unavailable.
+   * Registered on the BUBBLE phase on purpose: the VS Code keybinding service
+   * runs first and calls stopPropagation() for chords it has bound, so an
+   * existing binding (Code Runner on ctrl+alt+n, say) always wins and this
+   * never fires. Set to null to disable it outright.
+   */
+  var FALLBACK_KEY = { ctrl: true, alt: true, shift: false, key: 'n' };
+
+  /* Filled in by the installer; stays empty when patched with no extension. */
+  var STATE_URL = '__NEON_STATE_URL__';
 
   var STYLE_ID = 'neon-glow-styles';
   var STORE_KEY = 'neonGlow.enabled';
@@ -136,30 +145,62 @@ try {
     } catch (e) {}
   }
 
-  function toggle() {
-    enabled = !enabled;
+  function setEnabled(v) {
+    if (enabled === v) return;
+    enabled = v;
     persist();
     render();
     toast('Neon Glow: ' + (enabled ? 'ON' : 'OFF'));
     mark(enabled ? 'enabled' : 'disabled');
   }
 
-  window.addEventListener('keydown', function (ev) {
-    if (!!ev.ctrlKey !== !!TOGGLE.ctrl) return;
-    if (!!ev.altKey !== !!TOGGLE.alt) return;
-    if (!!ev.shiftKey !== !!TOGGLE.shift) return;
-    if (!ev.key || ev.key.toLowerCase() !== TOGGLE.key) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    toggle();
-  }, true);
+  /* ------------------------------------------------------------------
+   * Bridge. The extension writes state.json into its globalStorage, which
+   * is one of the roots the vscode-file protocol handler serves, so the
+   * renderer can poll it. That keeps the commands inside the VS Code
+   * keybinding system - nothing here intercepts a key.
+   * ------------------------------------------------------------------ */
+  var bridgeOk = false;
+  var lastSeq = null;
 
-  /* expose for the command palette extension / manual use in DevTools */
+  function pollState() {
+    fetch(STATE_URL, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        if (!s || typeof s.enabled !== 'boolean') return;
+        if (!bridgeOk) { bridgeOk = true; mark('bridge-ok'); }
+        /* The first read only records the sequence. Startup state comes from
+           localStorage, so a stale file cannot clobber the last known state. */
+        if (lastSeq === null) { lastSeq = s.seq; return; }
+        if (s.seq !== lastSeq) { lastSeq = s.seq; setEnabled(s.enabled); }
+      })
+      .catch(function () {});
+  }
+
+  if (STATE_URL && STATE_URL.indexOf('vscode-file:') === 0) {
+    setInterval(pollState, 800);
+    pollState();
+  }
+
+  /* Fallback only, and on the bubble phase: whatever VS Code has bound wins. */
+  if (FALLBACK_KEY) {
+    window.addEventListener('keydown', function (ev) {
+      if (bridgeOk) return;                        /* commands work; stay out of the way */
+      if (!!ev.ctrlKey  !== !!FALLBACK_KEY.ctrl)  return;
+      if (!!ev.altKey   !== !!FALLBACK_KEY.alt)   return;
+      if (!!ev.shiftKey !== !!FALLBACK_KEY.shift) return;
+      if (!ev.key || ev.key.toLowerCase() !== FALLBACK_KEY.key) return;
+      setEnabled(!enabled);
+    }, false);
+  }
+
+  /* exposed for the DevTools console */
   window.__neonGlow = {
-    toggle: toggle,
-    enable: function () { enabled = true; persist(); render(); toast('Neon Glow: ON'); },
-    disable: function () { enabled = false; persist(); render(); toast('Neon Glow: OFF'); },
-    isEnabled: function () { return enabled; }
+    toggle: function () { setEnabled(!enabled); },
+    enable: function () { setEnabled(true); },
+    disable: function () { setEnabled(false); },
+    isEnabled: function () { return enabled; },
+    bridgeOk: function () { return bridgeOk; }
   };
 
   var attached = false;

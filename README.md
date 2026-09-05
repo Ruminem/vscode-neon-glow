@@ -48,24 +48,54 @@ Dracula, …) work well.
 
 ## Turning it on and off
 
-Once installed, the glow toggles instantly with **`Ctrl+Alt+N`** — no restart, no admin
-rights. The state is remembered across restarts.
+The toggle is a real VS Code command, so it lives inside the normal keybinding
+system. From the command palette (`F1`):
 
-If that shortcut clashes with another extension (Code Runner uses it), change `TOGGLE`
-at the top of `neon-glow.js` and re-run the install.
+| Command | |
+|---------|--|
+| `Neon Glow: Toggle` | flip the glow on/off, instantly |
+| `Neon Glow: Enable` / `Neon Glow: Disable` | set it explicitly |
+| `Neon Glow: Show status` | current state, and whether the bundle is patched |
+
+**No default keybinding ships with this**, deliberately - that is what makes it
+impossible to collide with another extension. Bind whatever you like in
+*Keyboard Shortcuts* (`Ctrl+K Ctrl+S`), search `Neon Glow`, and VS Code will warn
+you itself if the chord is already taken.
+
+Toggling never touches a file in the install directory, so it needs no admin
+rights and no restart.
+
+### How the toggle reaches the editor
+
+Commands run in the extension host; the glow lives in the renderer. The extension
+writes `state.json` into its `globalStorage`, which is one of the roots the
+`vscode-file` protocol handler is willing to serve, so the injected script can
+poll it:
+
+```js
+addValidFileRoot(e.appRoot)
+addValidFileRoot(e.extensionsPath)
+addValidFileRoot(...globalStorageHome...)   // <- the state file lives here
+```
+
+If that bridge is unavailable (patched from the CLI with no extension installed,
+say), the script falls back to `Ctrl+Alt+N`, registered on the **bubble** phase so
+anything VS Code has already bound wins and the fallback simply never fires. It
+also stands down entirely once the bridge answers. Change `FALLBACK_KEY` in
+`neon-glow.js` to move it, or set it to `null` to drop it.
 
 You can also drive it from the DevTools console:
 
 ```js
-__neonGlow.toggle();    // or .enable() / .disable() / .isEnabled()
+__neonGlow.toggle();    // .enable() / .disable() / .isEnabled() / .bridgeOk()
 ```
 
 ## Install
 
-Requires write access to the VS Code install directory — run the terminal as
+Requires write access to the VS Code install directory - run the terminal as
 administrator on Windows, or with `sudo` on macOS/Linux.
 
-### As a command-palette extension (recommended)
+### As an extension (recommended)
 
 Clone straight into your extensions folder, then reload:
 
@@ -76,17 +106,9 @@ git clone https://github.com/Ruminem/vscode-neon-glow "%USERPROFILE%\.vscode\ext
 git clone https://github.com/Ruminem/vscode-neon-glow ~/.vscode/extensions/vscode-neon-glow
 ```
 
-Then from the command palette (`F1`):
-
-| Command | What it does |
-|---------|--------------|
-| `Neon Glow: Install (patch workbench)` | Patches `workbench.js`, keeping a backup |
-| `Neon Glow: Remove (restore workbench)` | Restores the original from that backup |
-| `Neon Glow: Show status` | Reports whether the bundle is currently patched |
-
-Install and Remove rewrite a file on disk, so they need VS Code running with write
-access to its own install directory, and a **full restart** to take effect. Everyday
-on/off is `Ctrl+Alt+N` and needs neither.
+Then run `Neon Glow: Install (patch workbench)` from the palette. Install and
+Remove rewrite a file on disk, so they need write access and a **full restart**.
+Everyday on/off needs neither.
 
 ### From the command line
 

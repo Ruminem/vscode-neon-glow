@@ -2,7 +2,7 @@
   "name": "vscode-neon-glow",
   "displayName": "Neon Glow",
   "description": "Neon glow for syntax highlighting, derived from whatever colour theme is active.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "Ruminem",
   "license": "MIT",
   "repository": {
@@ -14,13 +14,11 @@
   },
   "categories": ["Themes", "Other"],
   "main": "./extension.js",
-  "activationEvents": [
-    "onCommand:neonGlow.install",
-    "onCommand:neonGlow.remove",
-    "onCommand:neonGlow.status"
-  ],
   "contributes": {
     "commands": [
+      { "command": "neonGlow.toggle",  "title": "Neon Glow: Toggle" },
+      { "command": "neonGlow.enable",  "title": "Neon Glow: Enable" },
+      { "command": "neonGlow.disable", "title": "Neon Glow: Disable" },
       { "command": "neonGlow.install", "title": "Neon Glow: Install (patch workbench)" },
       { "command": "neonGlow.remove",  "title": "Neon Glow: Remove (restore workbench)" },
       { "command": "neonGlow.status",  "title": "Neon Glow: Show status" }
