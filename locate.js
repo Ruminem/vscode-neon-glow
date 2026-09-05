@@ -10,8 +10,8 @@ function candidateAppRoots() {
     const bases = [
       path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Microsoft VS Code'),
       path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Microsoft VS Code Insiders'),
-      'C:\Program Files\Microsoft VS Code',
-      'C:\Program Files\Microsoft VS Code Insiders',
+      'C:\\Program Files\\Microsoft VS Code',
+      'C:\\Program Files\\Microsoft VS Code Insiders',
     ];
     for (const base of bases) {
       if (!base || !fs.existsSync(base)) continue;
