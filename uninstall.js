@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Restores the original workbench bundle from its .pre-neon.bak backup.
+ * Restore the original workbench bundle from its backup.
  *   node uninstall.js [--target <path to resources/app>]
  */
-const fs = require('fs');
 const { resolveTargets } = require('./locate');
+const { removePatch } = require('./patch');
 
 const targets = resolveTargets(process.argv);
 if (!targets.length) {
@@ -15,11 +15,8 @@ if (!targets.length) {
 
 let ok = 0;
 for (const file of targets) {
-  const backup = file + '.pre-neon.bak';
-  if (!fs.existsSync(backup)) { console.log('skip (no backup): ' + file); continue; }
   try {
-    fs.copyFileSync(backup, file);
-    fs.unlinkSync(backup);
+    if (!removePatch(file)) { console.log('skip (no backup): ' + file); continue; }
     console.log('restored: ' + file);
     ok++;
   } catch (e) {

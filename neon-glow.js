@@ -6,13 +6,28 @@ try {
   window.__NEON_INSTALLED = true;
 
   /* ---- tuning knobs ---- */
-  var BRIGHTNESS   = 1.0;   /* overall glow strength, 0.0 ~ 1.5 */
-  var MIN_CHROMA   = 0.30;  /* below this = not a vivid syntax colour -> no glow  */
-  var CHROMA_SPAN  = 0.50;  /* chroma range mapped onto the strength ramp          */
-  var FLOOR        = 0.40;  /* strength for a colour that just passes MIN_CHROMA   */
-  var MIN_LIGHTNESS = 0.25; /* darker than this -> no glow                         */
+  var BRIGHTNESS    = 1.0;   /* overall strength, 0.0 ~ 1.5                        */
+  var MIN_CHROMA    = 0.30;  /* below this = not a vivid syntax colour -> no glow  */
+  var CHROMA_SPAN   = 0.50;  /* chroma range mapped onto the strength ramp         */
+  var FLOOR         = 0.40;  /* strength for a colour that just passes MIN_CHROMA  */
+  var MIN_LIGHTNESS = 0.25;  /* darker than this -> no glow                        */
+
+  /* ---- toggle shortcut: change here if it clashes with another extension ---- */
+  var TOGGLE = { ctrl: true, alt: true, shift: false, key: 'n' };
 
   var STYLE_ID = 'neon-glow-styles';
+  var STORE_KEY = 'neonGlow.enabled';
+
+  /* localStorage may be unavailable in this renderer; keep an in-memory fallback */
+  var enabled = true;
+  try {
+    var stored = localStorage.getItem(STORE_KEY);
+    if (stored !== null) enabled = (stored === '1');
+  } catch (e) {}
+
+  function persist() {
+    try { localStorage.setItem(STORE_KEY, enabled ? '1' : '0'); } catch (e) {}
+  }
 
   function mark(stage, extra) {
     try { document.documentElement.setAttribute('data-neon', stage + (extra ? ' ' + extra : '')); } catch (e) {}
@@ -26,11 +41,12 @@ try {
     return hex.length === 6 ? hex : null;
   }
   function alpha(x) {
-    var v = Math.round(Math.max(0,Math.min(1,x))*255).toString(16);
-    return v.length < 2 ? '0'+v : v;
+    var v = Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16);
+    return v.length < 2 ? '0' + v : v;
   }
 
   var glowCount = 0, skipCount = 0;
+
   function glowFor(rawHex) {
     var hex = normalizeHex(rawHex);
     if (!hex) return null;
@@ -39,15 +55,15 @@ try {
         b = parseInt(hex.slice(4,6),16)/255;
     var max = Math.max(r,g,b), min = Math.min(r,g,b);
     var lightness = (max + min) / 2;
-    var chroma = max - min;              /* NOT hsl saturation: that inflates near-white */
+    var chroma = max - min;   /* NOT hsl saturation: that inflates near-white colours */
 
     if (lightness < MIN_LIGHTNESS) return null;
     if (chroma < MIN_CHROMA) return null;
 
     var t = Math.max(0, Math.min(1, (chroma - MIN_CHROMA) / CHROMA_SPAN));
     var k = (FLOOR + (1 - FLOOR) * t) * BRIGHTNESS;
-
     var near = Math.round(2 + 3*k), mid = Math.round(6 + 10*k), far = Math.round(14 + 22*k);
+
     return 'color: #'+hex+' !important; text-shadow:'
       + ' 0 0 '+near+'px #'+hex+alpha(0.90*k)+','
       + ' 0 0 '+mid+'px #'+hex+alpha(0.65*k)+','
@@ -69,13 +85,23 @@ try {
     + '.monaco-editor .cursor { box-shadow: 0 0 8px var(--vscode-editorCursor-foreground, transparent); }\n';
 
   var lastLen = -1;
-  function apply() {
+
+  function removeStyle() {
+    var el = document.getElementById(STYLE_ID);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    lastLen = -1;
+  }
+
+  function render() {
+    if (!enabled) { removeStyle(); return true; }
+
     var tokensEl = document.querySelector('.vscode-tokens-styles');
     if (!tokensEl) return false;
     var source = tokensEl.textContent || '';
     if (source.replace(/\s/g, '') === '') return false;
-    if (source.length === lastLen) return true;
+    if (source.length === lastLen && document.getElementById(STYLE_ID)) return true;
     lastLen = source.length;
+
     var styleTag = document.getElementById(STYLE_ID);
     if (!styleTag) {
       styleTag = document.createElement('style');
@@ -87,12 +113,61 @@ try {
     return true;
   }
 
+  /* ---- transient feedback on toggle ---- */
+  function toast(text) {
+    try {
+      if (!document.body) return;
+      var id = 'neon-glow-toast';
+      var el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement('div');
+        el.setAttribute('id', id);
+        el.style.cssText = 'position:fixed;bottom:38px;right:18px;z-index:2147483647;'
+          + 'padding:7px 14px;border-radius:5px;pointer-events:none;'
+          + 'font:600 12px ui-monospace,monospace;transition:opacity .25s;'
+          + 'background:rgba(20,20,26,.94);border:1px solid rgba(255,255,255,.16);';
+        document.body.appendChild(el);
+      }
+      el.textContent = text;
+      el.style.color = enabled ? '#4ade80' : '#94a3b8';
+      el.style.opacity = '1';
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.style.opacity = '0'; }, 1300);
+    } catch (e) {}
+  }
+
+  function toggle() {
+    enabled = !enabled;
+    persist();
+    render();
+    toast('Neon Glow: ' + (enabled ? 'ON' : 'OFF'));
+    mark(enabled ? 'enabled' : 'disabled');
+  }
+
+  window.addEventListener('keydown', function (ev) {
+    if (!!ev.ctrlKey !== !!TOGGLE.ctrl) return;
+    if (!!ev.altKey !== !!TOGGLE.alt) return;
+    if (!!ev.shiftKey !== !!TOGGLE.shift) return;
+    if (!ev.key || ev.key.toLowerCase() !== TOGGLE.key) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    toggle();
+  }, true);
+
+  /* expose for the command palette extension / manual use in DevTools */
+  window.__neonGlow = {
+    toggle: toggle,
+    enable: function () { enabled = true; persist(); render(); toast('Neon Glow: ON'); },
+    disable: function () { enabled = false; persist(); render(); toast('Neon Glow: OFF'); },
+    isEnabled: function () { return enabled; }
+  };
+
   var attached = false;
   function startObservers() {
     var el = document.querySelector('.vscode-tokens-styles');
     if (el && !attached) {
       attached = true;
-      new MutationObserver(function () { try { apply(); } catch (e) {} })
+      new MutationObserver(function () { try { render(); } catch (e) {} })
         .observe(el, { childList: true, characterData: true, subtree: true });
     }
   }
@@ -100,12 +175,12 @@ try {
   var ticks = 0;
   var timer = setInterval(function () {
     ticks++;
-    try { if (apply()) startObservers(); }
+    try { if (render()) startObservers(); }
     catch (e) { mark('error', String(e && e.message || e)); clearInterval(timer); return; }
     if (ticks > 600) clearInterval(timer);
   }, 300);
 
-  try { apply(); startObservers(); } catch (e) {}
+  try { render(); startObservers(); } catch (e) {}
 })();
 } catch (e) {
   try { console.error('[NEON] fatal', e); } catch (_) {}

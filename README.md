@@ -46,32 +46,59 @@ Because it infers role from colour, themes that reuse one colour across differen
 can't be told apart. Themes with distinct per-role colours (Monokai, Tokyo Night,
 Dracula, …) work well.
 
+## Turning it on and off
+
+Once installed, the glow toggles instantly with **`Ctrl+Alt+N`** — no restart, no admin
+rights. The state is remembered across restarts.
+
+If that shortcut clashes with another extension (Code Runner uses it), change `TOGGLE`
+at the top of `neon-glow.js` and re-run the install.
+
+You can also drive it from the DevTools console:
+
+```js
+__neonGlow.toggle();    // or .enable() / .disable() / .isEnabled()
+```
+
 ## Install
 
 Requires write access to the VS Code install directory — run the terminal as
 administrator on Windows, or with `sudo` on macOS/Linux.
 
+### As a command-palette extension (recommended)
+
+Clone straight into your extensions folder, then reload:
+
+```sh
+# Windows
+git clone https://github.com/Ruminem/vscode-neon-glow "%USERPROFILE%\.vscode\extensions\vscode-neon-glow"
+# macOS / Linux
+git clone https://github.com/Ruminem/vscode-neon-glow ~/.vscode/extensions/vscode-neon-glow
+```
+
+Then from the command palette (`F1`):
+
+| Command | What it does |
+|---------|--------------|
+| `Neon Glow: Install (patch workbench)` | Patches `workbench.js`, keeping a backup |
+| `Neon Glow: Remove (restore workbench)` | Restores the original from that backup |
+| `Neon Glow: Show status` | Reports whether the bundle is currently patched |
+
+Install and Remove rewrite a file on disk, so they need VS Code running with write
+access to its own install directory, and a **full restart** to take effect. Everyday
+on/off is `Ctrl+Alt+N` and needs neither.
+
+### From the command line
+
 ```sh
 git clone https://github.com/Ruminem/vscode-neon-glow
 cd vscode-neon-glow
-node install.js
+node install.js          # node uninstall.js  to revert
 ```
 
-Then **quit VS Code completely and start it again**.
+Point at a specific install with `--target "<path to resources/app>"`.
 
-To point at a specific install:
-
-```sh
-node install.js --target "/path/to/resources/app"
-```
-
-## Uninstall
-
-```sh
-node uninstall.js
-```
-
-Restores `workbench.js` from the `.pre-neon.bak` backup that `install.js` created.
+After either route: **quit VS Code completely and start it again.**
 
 ## Tuning
 
