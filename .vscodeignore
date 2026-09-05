@@ -1,0 +1,9 @@
+.git/**
+.github/**
+.gitignore
+.vscodeignore
+*.vsix
+
+# install.js and uninstall.js are deliberately kept in the package: after a VS
+# Code update wipes the patch, or after editing the knobs in neon-glow.js, they
+# let you re-patch from the installed extension directory without a clone.

@@ -1,5 +1,7 @@
 # vscode-neon-glow
 
+**English** · [한국어](README.ko.md)
+
 Neon glow for VS Code syntax highlighting — **for any colour theme**.
 
 Inspired by [SynthWave '84](https://github.com/robb0wen/synthwave-vscode), but it does not
@@ -126,7 +128,25 @@ __neonGlow.bridgeOk();  // is either half live?   .statusBarOk() for the fast on
 Requires write access to the VS Code install directory - run the terminal as
 administrator on Windows, or with `sudo` on macOS/Linux.
 
-### As an extension (recommended)
+### From a release (recommended)
+
+Download the `.vsix` from
+[Releases](https://github.com/Ruminem/vscode-neon-glow/releases) and install it:
+
+```sh
+code --install-extension neon-glow-0.3.0.vsix
+```
+
+Or from inside VS Code: Extensions view → the `...` menu → *Install from VSIX…*.
+
+Then run `Neon Glow: Install (patch workbench)` from the palette. Install and
+Remove rewrite a file on disk, so they need write access and a **full restart**.
+Everyday on/off needs neither.
+
+This is not on the Marketplace, and will not be: an extension that rewrites
+`workbench.js` cannot honestly pass review.
+
+### From a clone
 
 Clone straight into your extensions folder, then reload:
 
@@ -137,11 +157,11 @@ git clone https://github.com/Ruminem/vscode-neon-glow "%USERPROFILE%\.vscode\ext
 git clone https://github.com/Ruminem/vscode-neon-glow ~/.vscode/extensions/vscode-neon-glow
 ```
 
-Then run `Neon Glow: Install (patch workbench)` from the palette. Install and
-Remove rewrite a file on disk, so they need write access and a **full restart**.
-Everyday on/off needs neither.
+Then run the same `Neon Glow: Install (patch workbench)` command.
 
 ### From the command line
+
+No extension at all — patch the bundle directly:
 
 ```sh
 git clone https://github.com/Ruminem/vscode-neon-glow
@@ -149,13 +169,25 @@ cd vscode-neon-glow
 node install.js          # node uninstall.js  to revert
 ```
 
-Point at a specific install with `--target "<path to resources/app>"`.
+Point at a specific install with `--target "<path to resources/app>"`. Without
+the extension there are no commands, so the toggle falls back to `Ctrl+Alt+N`.
 
-After either route: **quit VS Code completely and start it again.**
+After any of these routes: **quit VS Code completely and start it again.**
+
+### Building the VSIX yourself
+
+```sh
+npm run package          # -> neon-glow-<version>.vsix
+```
+
+Tagging a commit `v<version>` builds it in CI and attaches it to a GitHub
+release; the tag must match the `version` in `package.json` or the job fails.
 
 ## Tuning
 
-The knobs are at the top of `neon-glow.js`. Edit, re-run `node install.js`, restart.
+The knobs are at the top of `neon-glow.js` — in the installed extension's folder
+if you used the VSIX. Edit it, run `Neon Glow: Install (patch workbench)` again
+(or `node install.js`), and restart.
 
 ```js
 var BRIGHTNESS    = 1.0;   // overall strength
@@ -179,8 +211,9 @@ Dismiss the notification with *Don't Show Again*. You could rewrite the checksum
 `product.json` to silence it permanently, but that disables tamper detection for **all**
 future modifications, not just this one — not worth it for a notification.
 
-**VS Code updates wipe the patch.** The updater replaces `workbench.js`. Re-run
-`node install.js` after an update. Reinstalling is safe: it always rebuilds from the
+**VS Code updates wipe the patch.** The updater replaces `workbench.js`. Run
+`Neon Glow: Install (patch workbench)` again after an update, or `node install.js`
+if you patched from the CLI. Reinstalling is safe: it always rebuilds from the
 pristine `.pre-neon.bak`, never from an already-patched file.
 
 ## Status
