@@ -17,6 +17,19 @@ const SUPPRESS_PROMPT = 'neonGlow.suppressPatchPrompt';
 let stateFile = null;
 let statusItem = null;
 
+/**
+ * Whether the bundle actually carries the payload. Cached on purpose: isPatched
+ * reads the whole multi-megabyte workbench.js, and the answer can only change
+ * through the install/remove commands or a VS Code update, which needs a
+ * restart anyway.
+ */
+let patched = false;
+
+function refreshPatched() {
+  const targets = resolveTargets([]);
+  patched = targets.length > 0 && targets.every(isPatched);
+}
+
 function targetsOrWarn() {
   const targets = resolveTargets([]);
   if (!targets.length) {
@@ -52,8 +65,22 @@ function reportFailure(e) {
 function reflect(enabled) {
   vscode.commands.executeCommand('setContext', 'neonGlow.enabled', enabled);
   if (!statusItem) return;
+
+  /* The label is the wire - the renderer matches /NEON:(ON|OFF)/ against it -
+     so an unpatched bundle is reported through colour and tooltip instead.
+     Otherwise the item would keep claiming ON with nothing there to glow. */
   statusItem.text = 'NEON:' + (enabled ? 'ON' : 'OFF');
-  statusItem.tooltip = 'Neon Glow is ' + (enabled ? 'on' : 'off') + ' - click to toggle';
+
+  if (patched) {
+    statusItem.tooltip = 'Neon Glow is ' + (enabled ? 'on' : 'off') + ' - click to toggle';
+    statusItem.command = 'neonGlow.toggle';
+    statusItem.backgroundColor = undefined;
+  } else {
+    statusItem.tooltip =
+      'Neon Glow: the workbench bundle is not patched, so nothing glows. Click to patch.';
+    statusItem.command = 'neonGlow.install';
+    statusItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+  }
 }
 
 /** Toggling writes the state file and the status bar; the renderer follows both. */
@@ -81,6 +108,8 @@ function installPatch(context) {
     ensureStateFile(stateFile);
     targets.forEach(f => applyPatch(f, payloadPath(), stateFile));
     context.globalState.update(SUPPRESS_PROMPT, false);
+    refreshPatched();
+    reflect(readState(stateFile).enabled);
     noteRestart('Neon Glow installed.');
   } catch (e) { reportFailure(e); }
 }
@@ -96,9 +125,7 @@ function installPatch(context) {
  */
 async function offerToPatch(context) {
   if (context.globalState.get(SUPPRESS_PROMPT)) return;
-
-  const targets = resolveTargets([]);
-  if (!targets.length || targets.every(isPatched)) return;
+  if (patched || !resolveTargets([]).length) return;
 
   const yes = 'Patch now', never = "Don't ask again";
   const answer = await vscode.window.showInformationMessage(
@@ -114,8 +141,8 @@ function activate(context) {
   ensureStateFile(stateFile);
 
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 0);
-  statusItem.command = 'neonGlow.toggle';
   context.subscriptions.push(statusItem);
+  refreshPatched();
   reflect(readState(stateFile).enabled);
   statusItem.show();
 
@@ -138,6 +165,8 @@ function activate(context) {
       }
       /* Removing is a decision, not an accident: stop offering to undo it. */
       context.globalState.update(SUPPRESS_PROMPT, true);
+      refreshPatched();
+      reflect(readState(stateFile).enabled);
       noteRestart('Neon Glow removed.');
     } catch (e) { reportFailure(e); }
   });
