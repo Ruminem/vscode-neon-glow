@@ -4,9 +4,11 @@ const path = require('path');
 const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
 const {
-  applyPatch, removePatch, isPatched, payloadPath,
+  applyPatch, removePatch, isPatched, patchedVersion, payloadPath,
   ensureStateFile, writeState, readState,
 } = require('./patch');
+
+const VERSION = require('./package.json').version;
 
 const RESTART_NOTE =
   'Quit VS Code completely and start it again. "Reload Window" is not enough - ' +
@@ -27,12 +29,21 @@ let statusItem = null;
 let patched = false;
 let bundleMtime = 0;
 
+/**
+ * The bundle is patched, but with a payload from a different release. Updating
+ * the extension does not touch workbench.js, so a payload change would
+ * otherwise sit there looking healthy while the renderer ran last version's
+ * code - which is exactly how a new setting can appear and do nothing.
+ */
+let payloadOutdated = false;
+
 /** Extension host start. A bundle written after this is not what is running. */
 const HOST_START = Date.now() - process.uptime() * 1000;
 
 function refreshPatched() {
   const targets = resolveTargets([]);
   patched = targets.length > 0 && targets.every(isPatched);
+  payloadOutdated = patched && targets.some(f => patchedVersion(f) !== VERSION);
   bundleMtime = 0;
   for (const f of targets) {
     try { bundleMtime = Math.max(bundleMtime, fs.statSync(f).mtimeMs); } catch (e) { /* gone */ }
@@ -100,6 +111,12 @@ function reflect(enabled) {
       'Neon Glow: the workbench bundle is not patched, so nothing glows. Click to patch.';
     statusItem.command = 'neonGlow.install';
     statusItem.backgroundColor = warn;
+  } else if (payloadOutdated) {
+    statusItem.tooltip =
+      'Neon Glow ' + VERSION + ': the bundle carries an older payload, so anything ' +
+      'added since is inert. Click to patch it again.';
+    statusItem.command = 'neonGlow.install';
+    statusItem.backgroundColor = warn;
   } else if (restartPending()) {
     statusItem.tooltip =
       'Neon Glow: patched, but this window is still running the bundle it started ' +
@@ -156,7 +173,7 @@ function installPatch(context) {
   if (!targets) return;
   try {
     ensureStateFile(stateFile);
-    targets.forEach(f => applyPatch(f, payloadPath(), stateFile));
+    targets.forEach(f => applyPatch(f, payloadPath(), stateFile, VERSION));
     context.globalState.update(SUPPRESS_PROMPT, false);
     refreshPatched();
     reflect(readState(stateFile).enabled);
@@ -175,11 +192,15 @@ function installPatch(context) {
  */
 async function offerToPatch(context) {
   if (context.globalState.get(SUPPRESS_PROMPT)) return;
-  if (patched || !resolveTargets([]).length) return;
+  if (!resolveTargets([]).length) return;
+  if (patched && !payloadOutdated) return;
 
   const yes = 'Patch now', never = "Don't ask again";
   const answer = await vscode.window.showInformationMessage(
-    'Neon Glow: the workbench bundle is not patched, so nothing glows yet.',
+    payloadOutdated
+      ? 'Neon Glow ' + VERSION + ' is installed, but the workbench bundle still ' +
+        'carries the payload from an earlier version.'
+      : 'Neon Glow: the workbench bundle is not patched, so nothing glows yet.',
     yes, 'Later', never);
 
   if (answer === never) { context.globalState.update(SUPPRESS_PROMPT, true); return; }
@@ -247,9 +268,15 @@ function activate(context) {
     refreshPatched();
     reflect(readState(stateFile).enabled);
 
-    const where = targets.map(f => (isPatched(f) ? 'patched' : 'clean') + ' - ' + f).join(' | ');
+    const where = targets.map(f => {
+      const v = patchedVersion(f);
+      return (isPatched(f) ? 'patched with ' + (v || 'an unversioned payload') : 'clean')
+        + ' - ' + f;
+    }).join(' | ');
     const on = readState(stateFile).enabled ? 'ON' : 'OFF';
-    const action = patched ? 'Restore the original bundle' : 'Patch it now';
+    const action = (patched && !payloadOutdated)
+      ? 'Restore the original bundle'
+      : 'Patch it now';
 
     const answer = await vscode.window.showInformationMessage(
       'Neon Glow is ' + on + '. Bundle: ' + where, action);

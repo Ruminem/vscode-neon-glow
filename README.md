@@ -82,11 +82,12 @@ rights and no restart.
 A status bar item on the right shows `NEON:ON` / `NEON:OFF` and toggles on click.
 It is not decoration — see below.
 
-It also carries the two states in which the switch is real but nothing can glow,
-because both look identical from the editor: a **warning background** means
-either the bundle is not patched, or it was patched after this window started
-and the renderer is still on the one it booted with. The tooltip says which, and
-clicking does the thing that fixes it. The second check is one-sided on purpose:
+It also carries the three states in which the switch is real but nothing can
+glow, because they all look identical from the editor. A **warning background**
+means the bundle is not patched, or it carries the payload from an older release
+of the extension, or it was patched after this window started and the renderer
+is still on the one it booted with. The tooltip says which, and clicking does
+the thing that fixes it. The last check is one-sided on purpose:
 "Reload Window" restarts the extension host but leaves the renderer on its
 cached bundle, so a window reloaded after a patch looks healthy from the
 extension side and stays quiet rather than guessing.
@@ -252,6 +253,13 @@ a SHA-256 (base64, padding stripped) of `workbench.js`, and patching it breaks t
 Dismiss the notification with *Don't Show Again*. You could rewrite the checksum in
 `product.json` to silence it permanently, but that disables tamper detection for **all**
 future modifications, not just this one — not worth it for a notification.
+
+**Updating the extension does not update the patch.** The payload lives in
+`workbench.js`, and installing a new VSIX never touches it, so anything the new
+release added to the renderer sits there inert — a setting can appear and do
+nothing. The injected banner carries the version it was written from, so the
+extension notices the mismatch and offers to patch again. Accepting it needs a
+full restart like any other patch.
 
 **VS Code updates wipe the patch.** The updater replaces `workbench.js`. This is
 the same state as a fresh extension install — an unpatched bundle — so the

@@ -6,8 +6,40 @@ const { MARKER } = require('./locate');
 
 const backupOf = file => file + '.pre-neon.bak';
 
+/**
+ * The payload is appended, so the marker and its version are always in the
+ * tail. Reading 64KB beats pulling a multi-megabyte bundle through a string
+ * every time someone asks whether it is patched.
+ */
+function readTail(file, bytes) {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const size = fs.fstatSync(fd).size;
+    const len = Math.min(bytes, size);
+    const buf = Buffer.alloc(len);
+    fs.readSync(fd, buf, 0, len, size - len);
+    return buf.toString('utf8');
+  } finally { fs.closeSync(fd); }
+}
+
+const TAIL = 65536;
+
 function isPatched(file) {
-  try { return fs.readFileSync(file, 'utf8').includes(MARKER); } catch (e) { return false; }
+  try { return readTail(file, TAIL).includes(MARKER); } catch (e) { return false; }
+}
+
+/**
+ * Which version of the payload the bundle carries, or null if it is unpatched
+ * or was patched before the marker gained a version. Both mean the same thing
+ * to a caller: not what this copy of the extension would write.
+ */
+function patchedVersion(file) {
+  try {
+    /* Anchored on a digit so the banner's own "====" is not read as a version. */
+    const m = new RegExp(MARKER.replace(/[()]/g, '\\$&') + '\\s+(\\d[\\w.-]*)')
+      .exec(readTail(file, TAIL));
+    return m ? m[1] : null;
+  } catch (e) { return null; }
 }
 
 /** Absolute fs path -> the vscode-file URL the renderer can fetch. */
@@ -57,10 +89,11 @@ function readState(stateFile) {
  * Append the payload to `file`, keeping a pristine backup.
  * Re-installing always rebuilds from the backup, never from a patched file.
  */
-function applyPatch(file, payloadPath, stateFile) {
+function applyPatch(file, payloadPath, stateFile, version) {
   let payload = fs.readFileSync(payloadPath, 'utf8');
   const url = stateFile ? toVscodeFileUrl(stateFile) : '';
   payload = payload.split('__NEON_STATE_URL__').join(url);
+  payload = payload.split('__NEON_VERSION__').join(version || '0');
 
   const backup = backupOf(file);
   let base;
@@ -88,6 +121,6 @@ function removePatch(file) {
 const payloadPath = () => path.join(__dirname, 'neon-glow.js');
 
 module.exports = {
-  applyPatch, removePatch, isPatched, backupOf, payloadPath,
+  applyPatch, removePatch, isPatched, patchedVersion, backupOf, payloadPath,
   toVscodeFileUrl, defaultStateFile, ensureStateFile, writeState, readState,
 };
