@@ -53,6 +53,10 @@ jobs:
       - name: Write the release notes
         run: |
           cat > notes.md <<'EOF'
+          Neon glow for VS Code syntax highlighting, for any colour theme.
+
+          Docs: [English](https://github.com/REPOSLUG/blob/TAGNAME/README.md) · [한국어](https://github.com/REPOSLUG/blob/TAGNAME/README.ko.md)
+
           ## Install
 
           ### Windows, double-click
@@ -81,8 +85,40 @@ jobs:
           enough. Chromium serves the bundle from cache, so a window never picks up a
           rewrite it did not start with. The `NEON:ON` status bar item stays amber
           while that is still pending.
+
+          <details>
+          <summary><b>한국어 설치 안내</b></summary>
+
+          ### Windows, 더블클릭
+
+          아래 `neon-glow-VERSION-windows.zip`을 받아 풀고 `install.cmd`를 실행한다.
+          VS Code를 찾고, 확장을 설치하고, 워크벤치를 패치하는 것까지 한 번에 한다.
+          따로 깔아둘 것은 없다.
+
+          ### 그 외 환경
+
+          아래 `neon-glow-VERSION.vsix`를 받아, 확장 뷰에서 `...` → **VSIX에서 설치**를
+          누르거나 명령줄로:
+
+          ```sh
+          code --install-extension neon-glow-VERSION.vsix
+          ```
+
+          확장을 설치하는 것만으로는 아무것도 빛나지 않는다. 페이로드가 `workbench.js`에
+          들어가야 한다. 확장이 처음 활성화될 때 물어보고, 명령 팔레트에서
+          **Neon Glow: Install (patch workbench)**를 직접 실행해도 된다. VS Code 설치
+          디렉터리에 쓰기 권한이 필요하다.
+
+          ### 그다음 재시작
+
+          **VS Code를 완전히 종료했다가 다시 켠다.** "창 다시 로드"로는 부족하다.
+          Chromium이 번들을 캐시에서 내주기 때문에, 창은 자기가 뜰 때 읽은 번들을 끝까지
+          돌린다. 그게 밀려 있는 동안에는 `NEON:ON` 상태 표시줄 항목이 앰버색으로 남는다.
+
+          </details>
           EOF
           sed -i "s/VERSION/${GITHUB_REF_NAME#v}/g" notes.md
+          sed -i "s|REPOSLUG|$GITHUB_REPOSITORY|g; s|TAGNAME|$GITHUB_REF_NAME|g" notes.md
 
       - name: Publish the release
         env:
