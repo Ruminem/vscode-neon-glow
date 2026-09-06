@@ -75,6 +75,15 @@ rights and no restart.
 A status bar item on the right shows `NEON:ON` / `NEON:OFF` and toggles on click.
 It is not decoration — see below.
 
+It also carries the two states in which the switch is real but nothing can glow,
+because both look identical from the editor: a **warning background** means
+either the bundle is not patched, or it was patched after this window started
+and the renderer is still on the one it booted with. The tooltip says which, and
+clicking does the thing that fixes it. The second check is one-sided on purpose:
+"Reload Window" restarts the extension host but leaves the renderer on its
+cached bundle, so a window reloaded after a patch looks healthy from the
+extension side and stays quiet rather than guessing.
+
 ### How the toggle reaches the editor
 
 Commands run in the extension host; the glow lives in the renderer. There is no

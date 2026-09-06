@@ -1,4 +1,5 @@
 'use strict';
+const fs = require('fs');
 const path = require('path');
 const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
@@ -24,10 +25,31 @@ let statusItem = null;
  * restart anyway.
  */
 let patched = false;
+let bundleMtime = 0;
+
+/** Extension host start. A bundle written after this is not what is running. */
+const HOST_START = Date.now() - process.uptime() * 1000;
 
 function refreshPatched() {
   const targets = resolveTargets([]);
   patched = targets.length > 0 && targets.every(isPatched);
+  bundleMtime = 0;
+  for (const f of targets) {
+    try { bundleMtime = Math.max(bundleMtime, fs.statSync(f).mtimeMs); } catch (e) { /* gone */ }
+  }
+}
+
+/**
+ * True when the bundle was written after this window came up, so the renderer
+ * is still running the one it started with and nothing will glow yet.
+ *
+ * Deliberately one-sided. A window reloaded after a patch is indistinguishable
+ * from a healthy one here - "Reload Window" restarts the extension host but
+ * leaves the renderer on its cached bundle - so this stays quiet rather than
+ * guess. A missed warning is survivable; a wrong one is not.
+ */
+function restartPending() {
+  return patched && bundleMtime > HOST_START;
 }
 
 function targetsOrWarn() {
@@ -71,15 +93,23 @@ function reflect(enabled) {
      Otherwise the item would keep claiming ON with nothing there to glow. */
   statusItem.text = 'NEON:' + (enabled ? 'ON' : 'OFF');
 
-  if (patched) {
-    statusItem.tooltip = 'Neon Glow is ' + (enabled ? 'on' : 'off') + ' - click to toggle';
-    statusItem.command = 'neonGlow.toggle';
-    statusItem.backgroundColor = undefined;
-  } else {
+  const warn = new vscode.ThemeColor('statusBarItem.warningBackground');
+
+  if (!patched) {
     statusItem.tooltip =
       'Neon Glow: the workbench bundle is not patched, so nothing glows. Click to patch.';
     statusItem.command = 'neonGlow.install';
-    statusItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    statusItem.backgroundColor = warn;
+  } else if (restartPending()) {
+    statusItem.tooltip =
+      'Neon Glow: patched, but this window is still running the bundle it started ' +
+      'with. Click to finish.';
+    statusItem.command = 'neonGlow.restartHint';
+    statusItem.backgroundColor = warn;
+  } else {
+    statusItem.tooltip = 'Neon Glow is ' + (enabled ? 'on' : 'off') + ' - click to toggle';
+    statusItem.command = 'neonGlow.toggle';
+    statusItem.backgroundColor = undefined;
   }
 }
 
@@ -153,6 +183,11 @@ function activate(context) {
   cmd('neonGlow.disable', () => setGlow(false));
 
   cmd('neonGlow.install', () => installPatch(context));
+
+  /* Not in contributes.commands, so it stays out of the palette: it exists
+     only as the click target of the status bar item while a restart is due. */
+  cmd('neonGlow.restartHint',
+      () => noteRestart('Neon Glow is patched, but this window predates the patch.'));
 
   cmd('neonGlow.remove', () => {
     const targets = targetsOrWarn();
