@@ -86,7 +86,13 @@ try {
     var k = (KNOBS.floor + (1 - KNOBS.floor) * t) * KNOBS.brightness;
     var near = Math.round(2 + 3*k), mid = Math.round(6 + 10*k), far = Math.round(14 + 22*k);
 
-    return 'color: #'+hex+' !important; text-shadow:'
+    /* No !important on the colour. The token stylesheet is made of single-class
+       .mtkN rules, but bracket pair colourisation paints
+       ".monaco-editor .bracket-highlighting-N", which is two classes and wins on
+       specificity - unless an !important here overrides it and collapses every
+       bracket level onto one token colour. The copied rule already comes later
+       in the document than the original, so it wins without forcing anything. */
+    return 'color: #'+hex+'; text-shadow:'
       + ' 0 0 '+near+'px #'+hex+alpha(0.90*k)+','
       + ' 0 0 '+mid+'px #'+hex+alpha(0.65*k)+','
       + ' 0 0 '+far+'px #'+hex+alpha(0.40*k)+' !important;'
@@ -103,8 +109,28 @@ try {
     });
   }
 
-  var chromeStyles = '\n.monaco-editor .margin, .monaco-editor .inputarea.ime-input { background: transparent; }\n'
-    + '.monaco-editor .cursor { box-shadow: 0 0 8px var(--vscode-editorCursor-foreground, transparent); }\n';
+  /**
+   * Brackets are left to VS Code's own colouring and given their glow back in
+   * `currentColor`, so each nesting level glows in the colour it is actually
+   * painted rather than in the token colour underneath it. Two classes beats
+   * the single-class .mtkN rules, so this wins even though both are !important.
+   *
+   * At zero brightness the rule is dropped rather than emitted: currentColor
+   * carries no alpha to fade, so the only way for it to go dark is to not exist.
+   */
+  function chromeStyles() {
+    var css = '\n.monaco-editor .margin, .monaco-editor .inputarea.ime-input { background: transparent; }\n'
+      + '.monaco-editor .cursor { box-shadow: 0 0 8px var(--vscode-editorCursor-foreground, transparent); }\n';
+
+    var k = KNOBS.brightness;
+    if (k > 0) {
+      var near = Math.round(2 + 3 * k), mid = Math.round(6 + 10 * k);
+      css += '.monaco-editor [class*="bracket-highlighting-"] { text-shadow:'
+        + ' 0 0 ' + near + 'px currentColor,'
+        + ' 0 0 ' + mid + 'px currentColor !important; }\n';
+    }
+    return css;
+  }
 
   var lastLen = -1;
 
@@ -139,7 +165,7 @@ try {
       styleTag.setAttribute('id', STYLE_ID);
     }
     styleTag.disabled = false;
-    styleTag.textContent = addGlow(source) + chromeStyles;
+    styleTag.textContent = addGlow(source) + chromeStyles();
     (document.head || document.body).appendChild(styleTag);
     mark('applied', 'glow=' + glowCount + ' skip=' + skipCount);
     return true;

@@ -48,6 +48,13 @@ Because it infers role from colour, themes that reuse one colour across differen
 can't be told apart. Themes with distinct per-role colours (Monokai, Tokyo Night,
 Dracula, …) work well.
 
+Bracket pair colouring is left to VS Code. It paints
+`.monaco-editor .bracket-highlighting-N`, two classes against the single-class
+`.mtkN` rules the token stylesheet is made of, so an `!important` on the glow's
+colour would beat it on force alone and collapse every nesting level onto one
+colour. The glow sets colour without `!important`, and gives brackets a rule of
+their own in `currentColor`, so each level glows in the colour it is painted.
+
 ## Turning it on and off
 
 The toggle is a real VS Code command, so it lives inside the normal keybinding
@@ -248,6 +255,13 @@ token colours. So the bundle only ever has to be written once.
 The same values are also the defaults at the top of `neon-glow.js`, which is
 what a CLI-only install uses — there is no extension there to send anything.
 Editing those means re-running `node install.js` and restarting.
+
+**Flatter themes need different numbers.** The defaults are calibrated on
+Monokai, which is unusually saturated. Abyss, for instance, tops out around half
+of it: its class-name colour `#ffeebb` has a chroma of `0.27` and never reaches
+the `0.30` threshold at all, while its comment colour `#384887` clears it at
+`0.31` — so the roles that glow are close to inverted. Dropping `minChroma` to
+about `0.25` and raising `brightness` past `1` gets it back.
 
 ## Things that will bite you
 
