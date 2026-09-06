@@ -16,7 +16,7 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 | `locate.js` | VS Code 설치 경로 탐색 |
 | `install.js` / `uninstall.js` | CLI 경로. 확장 없이도 패치·복원 가능 |
 | `install.cmd` / `install.sh` | 릴리스 아카이브에 동봉되는 설치 스크립트. VSIX에는 안 들어감 |
-| `tools/` | `make-icon.js`(아이콘 생성), `package.js`(VSIX 빌드). VSIX에는 안 들어감 |
+| `tools/` | `make-icon.js`(아이콘 생성), `package.js`(VSIX 빌드), `release.js`(태그 생성). VSIX에는 안 들어감 |
 | `NEXT.md` | 세션 인수인계 노트. VSIX에는 안 들어감 |
 
 명령: `neonGlow.toggle` `enable` `disable` `install` `remove` `status`
@@ -45,3 +45,6 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 - 취미 프로젝트임. 주말 단위로 굴러가는 범위를 넘기지 않음.
 - Windows에서만 검증됨. macOS/Linux는 코드로만 있고 아무도 안 돌려봤음 — 그렇게 말해야 함.
 - 성능을 논할 때 단일 측정은 못 믿음. 캐시가 데워지며 드리프트가 생기므로 쌍대로 잴 것.
+- 릴리스 태그는 손으로 치지 않음. `node tools/release.js --push`가 `package.json`에서
+  버전을 읽어 태그를 만듦. 버전을 먼저 올리고 커밋한 뒤에 돌릴 것 — 워크플로가 태그와
+  `package.json`이 어긋나면 빌드를 거부함.

@@ -18,6 +18,7 @@
   "activationEvents": ["onStartupFinished"],
   "scripts": {
     "package": "node tools/package.js",
+    "release": "node tools/release.js",
     "vscode:uninstall": "node ./uninstall.js"
   },
   "contributes": {
