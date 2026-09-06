@@ -2,3 +2,6 @@
 # convert line endings. A .cmd with bare LF can misparse labels and goto, so
 # pin it to CRLF in the repository itself.
 *.cmd text eol=crlf
+
+# install.sh is run by sh on macOS and Linux; CRLF would break the shebang.
+*.sh text eol=lf

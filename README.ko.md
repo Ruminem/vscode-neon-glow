@@ -161,6 +161,11 @@ Windows라면 [Releases](https://github.com/Ruminem/vscode-neon-glow/releases)�
 확장을 설치하고, 번들을 패치하는 것까지 한 번에 함. 따로 깔아둘 것은 없음. VS Code가
 Electron이라 `Code.exe`가 패치 스크립트를 돌릴 Node 노릇까지 겸함.
 
+macOS와 Linux는 `neon-glow-<version>-macos-linux.tar.gz`를 받아 풀고 `./install.sh`를 실행함.
+하는 일은 같고, 설치 디렉터리가 root 소유면 무엇을 해야 하는지 알려줌. snap이나 flatpak으로
+설치한 VS Code는 **패치 자체가 불가능함** — 읽기 전용으로 마운트되기 때문임. `.deb`, `.rpm`,
+타르볼을 쓰면 됨.
+
 그 외 환경이거나 직접 하고 싶으면 같은 릴리스의 `.vsix`를 설치함.
 
 ```sh
@@ -336,8 +341,21 @@ SynthWave는 자기 테마가 활성일 때만 동작하므로 실제로 다투�
 ## 상태
 
 **Windows 11의 VS Code 1.136.1**에서 개발하고 검증했음. 적용된 `text-shadow` 값을 Chrome DevTools
-Protocol로 살아있는 렌더러에서 다시 읽어내 확인했음. macOS와 Linux 설치 경로는 구현돼 있지만
-검증되지 않았음 — 오작동하면 이슈를 열어주면 좋겠음.
+Protocol로 살아있는 렌더러에서 다시 읽어내 확인했고, 위의 래스터 측정도 같은 방식으로 했음.
+
+| | 동작 | 검증 | |
+|---|---|---|--|
+| **Windows** | 됨 | 됨 | 사용자/시스템 설치 모두, 커밋 해시 resources 디렉터리 포함 |
+| **macOS** | 될 것 | 안 됨 | 패치가 서명된 `.app` 내부 파일을 고치므로 **코드 서명이 깨짐**. 실제로는 계속 실행되지만 그게 거래 조건임 |
+| **Linux**, `.deb` / `.rpm` / 타르볼 | 될 것 | 안 됨 | `/usr/share/code`는 root 소유라 팔레트 명령으로는 불가. `sudo node install.js` 또는 `sudo ./install.sh` |
+| **Linux**, snap · flatpak | **안 됨** | — | 읽기 전용으로 마운트되어 무엇으로도 패치 불가. 확장이 그렇다고 알려줌 |
+
+확장은 경로를 추측하지 않고 실행 중인 에디터에게 물어봄(`vscode.env.appRoot`). 그래서 포터블
+빌드나 특이한 접두사도 모든 플랫폼에서 정확히 찾음. 추측이 필요한 것은 CLI뿐이고, 그때
+`locate.js`의 목록을 씀.
+
+macOS와 Linux는 동작하도록 작성했을 뿐 아무도 실행해보지 않았음 — 오작동하면 이슈를 열어주면
+좋겠음.
 
 ## 출처
 

@@ -79,6 +79,29 @@ function rivalGlow(workbenchJs) {
   return null;
 }
 
+/**
+ * Why a target cannot be written, in terms someone can act on.
+ *
+ * The distinction that matters is between a permission problem, which
+ * elevation fixes, and a read-only filesystem, which it does not. Snap and
+ * flatpak mount their payload read-only, so a VS Code installed that way can
+ * never be patched by anything - and saying so is much better than letting
+ * someone try sudo and watch it fail the same way.
+ */
+function writeBlocker(file) {
+  const p = file.split('\\').join('/');
+  if (/^\/snap\//.test(p)) return 'readonly-snap';
+  if (/\/flatpak\/app\//.test(p)) return 'readonly-flatpak';
+  try {
+    fs.accessSync(file, fs.constants.W_OK);
+    return null;
+  } catch (e) {
+    if (e.code === 'EROFS') return 'readonly';
+    if (e.code === 'EACCES' || e.code === 'EPERM') return 'permission';
+    return e.code || 'unknown';
+  }
+}
+
 /** Absolute fs path -> the vscode-file URL the renderer can fetch. */
 function toVscodeFileUrl(fsPath) {
   let p = String(fsPath).split('\\').join('/');
@@ -158,6 +181,7 @@ function removePatch(file) {
 const payloadPath = () => path.join(__dirname, 'neon-glow.js');
 
 module.exports = {
-  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, backupOf, payloadPath,
+  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
+  backupOf, payloadPath,
   toVscodeFileUrl, defaultStateFile, ensureStateFile, writeState, readState,
 };

@@ -181,6 +181,12 @@ double-click `install.cmd`. It finds VS Code, installs the extension and patches
 the bundle in one pass. Nothing else has to be on the machine: VS Code is
 Electron, so `Code.exe` doubles as the Node that runs the patcher.
 
+On macOS and Linux, download `neon-glow-<version>-macos-linux.tar.gz`, unpack
+it, and run `./install.sh`. It does the same three things, and says what to do
+if the install directory belongs to root. A VS Code installed as a **snap or a
+flatpak cannot be patched at all** — those are mounted read-only; use the
+`.deb`, the `.rpm` or the tarball.
+
 Anywhere else, or if you would rather drive it yourself, install the `.vsix`
 from the same release:
 
@@ -381,8 +387,22 @@ without touching a file, so switching between the two costs nothing.
 
 Developed and verified against **VS Code 1.136.1 on Windows 11**, with the applied
 `text-shadow` values read back out of the live renderer over the Chrome DevTools
-Protocol. The macOS and Linux install paths are implemented but untested — please open
-an issue if they misfire.
+Protocol, and the raster measurements above taken the same way.
+
+| | Works | Verified | |
+|---|---|---|--|
+| **Windows** | yes | yes | user and system installs, including the commit-hash resources directory |
+| **macOS** | should | no | patching edits a file inside the signed `.app`, which invalidates its code signature — it keeps running in practice, but that is the trade |
+| **Linux**, `.deb` / `.rpm` / tarball | should | no | `/usr/share/code` belongs to root, so the palette command cannot do it; use `sudo node install.js` or `sudo ./install.sh` |
+| **Linux**, snap or flatpak | **no** | — | mounted read-only, so nothing can patch them. The extension says so rather than failing obscurely |
+
+The extension asks the running editor where it lives (`vscode.env.appRoot`)
+rather than guessing, so portable builds and unusual prefixes are found
+correctly on every platform. Only the CLI has to guess, from the list in
+`locate.js`.
+
+macOS and Linux are written to work and have not been run by anyone — please
+open an issue if they misfire.
 
 ## Credit
 

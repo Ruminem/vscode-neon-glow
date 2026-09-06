@@ -4,7 +4,8 @@ const path = require('path');
 const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
 const {
-  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, payloadPath,
+  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
+  payloadPath,
   ensureStateFile, writeState, readState,
 } = require('./patch');
 
@@ -44,8 +45,20 @@ let payloadOutdated = false;
 /** Extension host start. A bundle written after this is not what is running. */
 const HOST_START = Date.now() - process.uptime() * 1000;
 
+/**
+ * Where this editor was actually loaded from.
+ *
+ * `vscode.env.appRoot` is the resources/app directory of the running instance,
+ * so it is correct by construction on every platform and every packaging -
+ * portable builds, a tarball unpacked anywhere, a distro that moved the prefix.
+ * The guessed list in locate.js exists for the CLI, which has no editor to ask.
+ */
+function appTargets() {
+  return resolveTargets([], vscode.env.appRoot);
+}
+
 function refreshPatched() {
-  const targets = resolveTargets([]);
+  const targets = appTargets();
   patched = targets.length > 0 && targets.every(isPatched);
   const want = payloadStamp(payloadPath());
   payloadOutdated = patched && targets.some(f => patchedStamp(f) !== want);
@@ -69,7 +82,7 @@ function restartPending() {
 }
 
 function targetsOrWarn() {
-  const targets = resolveTargets([]);
+  const targets = appTargets();
   if (!targets.length) {
     vscode.window.showErrorMessage('Neon Glow: could not locate the VS Code installation.');
     return null;
@@ -77,11 +90,46 @@ function targetsOrWarn() {
   return targets;
 }
 
+/**
+ * What to tell someone whose install cannot be written to.
+ *
+ * The distinction worth making is whether elevation would help. On a snap or a
+ * flatpak it never will - the payload is mounted read-only - and sending
+ * someone off to try sudo for a thing that cannot work either way is worse than
+ * saying so.
+ */
+const BLOCKED = {
+  'readonly-snap':
+    'this VS Code is a snap, and snaps are mounted read-only, so the workbench ' +
+    'bundle cannot be patched by anything. Install VS Code from the .deb or the ' +
+    'tarball to use this.',
+  'readonly-flatpak':
+    'this VS Code is a flatpak, whose files are read-only, so the workbench ' +
+    'bundle cannot be patched. Install VS Code from the .deb or the tarball to use this.',
+  readonly:
+    'the VS Code install directory is on a read-only filesystem, so the workbench ' +
+    'bundle cannot be patched.',
+  permission: process.platform === 'win32'
+    ? 'no write access to the VS Code install directory. Restart VS Code as ' +
+      'administrator and run this again.'
+    : 'no write access to the VS Code install directory. The extension host runs ' +
+      'as you rather than as root, so this command cannot elevate - clone the ' +
+      'repository and run "sudo node install.js" instead.',
+};
+
+/** Refuse before writing anything, with the reason, rather than failing part way. */
+function blockedReason(targets) {
+  for (const f of targets) {
+    const kind = writeBlocker(f);
+    if (kind) return BLOCKED[kind] || ('cannot write ' + f + ' (' + kind + ').');
+  }
+  return null;
+}
+
 function reportFailure(e) {
-  if (/EACCES|EPERM/.test(e.code || '')) {
-    vscode.window.showErrorMessage(
-      'Neon Glow: no write access to the VS Code install directory. ' +
-      'Restart VS Code as administrator (sudo on macOS/Linux) and run the command again.');
+  if (/EACCES|EPERM|EROFS/.test(e.code || '')) {
+    vscode.window.showErrorMessage('Neon Glow: ' +
+      BLOCKED[e.code === 'EROFS' ? 'readonly' : 'permission']);
   } else {
     vscode.window.showErrorMessage('Neon Glow: ' + e.message);
   }
@@ -182,13 +230,23 @@ async function noteRestart(what) {
 function installPatch(context) {
   const targets = targetsOrWarn();
   if (!targets) return;
+
+  const blocked = blockedReason(targets);
+  if (blocked) { vscode.window.showErrorMessage('Neon Glow: ' + blocked); return; }
+
   try {
     ensureStateFile(stateFile);
     targets.forEach(f => applyPatch(f, payloadPath(), stateFile));
     context.globalState.update(SUPPRESS_PROMPT, false);
     refreshPatched();
     reflect(readState(stateFile).enabled);
-    noteRestart('Neon Glow installed.');
+
+    /* Editing anything inside a signed .app invalidates its signature. It keeps
+       running in practice, but it is not something to spring on someone. */
+    noteRestart('Neon Glow installed.' + (process.platform === 'darwin'
+      ? ' Note that this edits a file inside the signed VS Code app bundle, which' +
+        ' invalidates its code signature.'
+      : ''));
   } catch (e) { reportFailure(e); }
 }
 
@@ -203,7 +261,7 @@ function installPatch(context) {
  */
 async function offerToPatch(context) {
   if (context.globalState.get(SUPPRESS_PROMPT)) return;
-  if (!resolveTargets([]).length) return;
+  if (!appTargets().length) return;
   if (patched && !payloadOutdated) return;
 
   const yes = 'Patch now', never = "Don't ask again";
@@ -254,6 +312,8 @@ function activate(context) {
     const targets = targetsOrWarn();
     if (!targets) return;
     try {
+      const blocked = blockedReason(targets);
+      if (blocked) { vscode.window.showErrorMessage('Neon Glow: ' + blocked); return; }
       const undone = targets.filter(f => removePatch(f));
       if (!undone.length) {
         vscode.window.showInformationMessage('Neon Glow: nothing to remove (no backup found).');

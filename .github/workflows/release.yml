@@ -34,18 +34,28 @@ jobs:
       - name: Package
         run: npx --yes @vscode/vsce@latest package --out "neon-glow-${GITHUB_REF_NAME#v}.vsix"
 
-      # install.cmd is checked out on Linux, so .gitattributes is the only thing
-      # keeping its CRLF line endings. A .cmd with bare LF misparses goto.
-      - name: Build the double-click bundle
+      # Both are checked out on Linux, so .gitattributes is the only thing keeping
+      # their line endings apart: a .cmd with bare LF misparses goto, and a .sh
+      # with CRLF fails on its own shebang.
+      - name: Build the double-click bundles
         run: |
           ver="${GITHUB_REF_NAME#v}"
           if ! grep -q $'\r' install.cmd; then
             echo "install.cmd lost its CRLF line endings" >&2
             exit 1
           fi
-          mkdir -p "bundle/neon-glow-$ver"
-          cp "neon-glow-$ver.vsix" install.cmd "bundle/neon-glow-$ver/"
-          cd bundle && zip -r "../neon-glow-$ver-windows.zip" "neon-glow-$ver"
+          if grep -q $'\r' install.sh; then
+            echo "install.sh picked up CRLF line endings" >&2
+            exit 1
+          fi
+
+          mkdir -p "win/neon-glow-$ver" "nix/neon-glow-$ver"
+          cp "neon-glow-$ver.vsix" install.cmd "win/neon-glow-$ver/"
+          cp "neon-glow-$ver.vsix" install.sh  "nix/neon-glow-$ver/"
+          chmod +x "nix/neon-glow-$ver/install.sh"
+
+          (cd win && zip -r "../neon-glow-$ver-windows.zip" "neon-glow-$ver")
+          (cd nix && tar czf "../neon-glow-$ver-macos-linux.tar.gz" "neon-glow-$ver")
 
       # Written with a quoted heredoc so the backticks stay literal, then the
       # version is substituted in. --notes-file is prepended to the notes
@@ -64,6 +74,16 @@ jobs:
           Download `neon-glow-VERSION-windows.zip` below, unzip it, and run
           `install.cmd`. It finds VS Code, installs the extension and patches the
           workbench in one pass. Nothing else has to be on the machine.
+
+          ### macOS and Linux, one script
+
+          Download `neon-glow-VERSION-macos-linux.tar.gz`, unpack it, and run
+          `./install.sh`. Same idea: it finds VS Code, installs the extension and
+          patches the workbench. If the install directory belongs to root it will
+          say so and tell you to re-run it with `sudo`.
+
+          A VS Code installed as a **snap or a flatpak cannot be patched at all** —
+          those are mounted read-only. Use the `.deb`, the `.rpm` or the tarball.
 
           ### Anywhere else
 
@@ -94,6 +114,15 @@ jobs:
           아래 `neon-glow-VERSION-windows.zip`을 받아 풀고 `install.cmd`를 실행한다.
           VS Code를 찾고, 확장을 설치하고, 워크벤치를 패치하는 것까지 한 번에 한다.
           따로 깔아둘 것은 없다.
+
+          ### macOS · Linux, 스크립트 하나
+
+          `neon-glow-VERSION-macos-linux.tar.gz`를 받아 풀고 `./install.sh`를 실행한다.
+          하는 일은 같다. VS Code를 찾고, 확장을 설치하고, 워크벤치를 패치한다. 설치
+          디렉터리가 root 소유면 그렇다고 알려주고 `sudo`로 다시 실행하라고 안내한다.
+
+          **snap이나 flatpak으로 설치한 VS Code는 패치 자체가 불가능하다.** 읽기 전용으로
+          마운트되기 때문이다. `.deb`, `.rpm`, 또는 타르볼을 쓰면 된다.
 
           ### 그 외 환경
 
@@ -130,4 +159,5 @@ jobs:
             --notes-file notes.md \
             --generate-notes \
             "neon-glow-$ver.vsix" \
-            "neon-glow-$ver-windows.zip"
+            "neon-glow-$ver-windows.zip" \
+            "neon-glow-$ver-macos-linux.tar.gz"
