@@ -191,6 +191,16 @@ npm run package          # -> neon-glow-<version>.vsix
 Tagging a commit `v<version>` builds it in CI and attaches it to a GitHub
 release; the tag must match the `version` in `package.json` or the job fails.
 
+The icon is generated rather than drawn, so it stays in step with the palette
+the README quotes:
+
+```sh
+node tools/make-icon.js          # -> icon.png   (also: bars, n)
+```
+
+No dependencies: the shapes are signed distance fields, the bloom is the same
+falloff the extension paints with, and the PNG is assembled on top of `zlib`.
+
 ## Tuning
 
 The knobs are at the top of `neon-glow.js` — in the installed extension's folder

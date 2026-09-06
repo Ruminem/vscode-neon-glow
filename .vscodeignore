@@ -9,6 +9,10 @@
 # a script that installs the thing it is already inside.
 install.cmd
 
+# tools/ regenerates icon.png, which is committed. The renderer is not needed
+# at runtime.
+tools/**
+
 # install.js and uninstall.js are deliberately kept in the package: after a VS
 # Code update wipes the patch, or after editing the knobs in neon-glow.js, they
 # let you re-patch from the installed extension directory without a clone.

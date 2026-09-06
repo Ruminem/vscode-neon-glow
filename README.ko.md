@@ -177,6 +177,15 @@ npm run package          # -> neon-glow-<version>.vsix
 커밋에 `v<version>` 태그를 달면 CI가 빌드해서 GitHub 릴리스에 붙인다. 태그와 `package.json`의
 `version`이 다르면 잡이 실패한다.
 
+아이콘은 그린 것이 아니라 생성한 것이다. 그래서 README가 인용하는 팔레트와 어긋나지 않는다.
+
+```sh
+node tools/make-icon.js          # -> icon.png   (다른 형태: bars, n)
+```
+
+의존성은 없다. 형태는 signed distance field이고, 블룸은 확장이 실제로 칠하는 것과 같은 감쇠이며,
+PNG는 `zlib` 위에 직접 조립한다.
+
 ## 조정
 
 손잡이는 `neon-glow.js` 맨 위에 있다. VSIX로 설치했다면 설치된 확장 폴더 안이다. 고친 뒤

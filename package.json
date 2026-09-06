@@ -13,6 +13,7 @@
     "vscode": "^1.70.0"
   },
   "categories": ["Themes", "Other"],
+  "icon": "icon.png",
   "main": "./extension.js",
   "activationEvents": ["onStartupFinished"],
   "scripts": {
