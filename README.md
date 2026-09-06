@@ -85,9 +85,13 @@ key, works throughout.
 Patching and restoring the bundle are **not** in the palette. Sitting next to
 VS Code's own Enable / Disable / Uninstall buttons, "Install" and "Remove" read
 as extension management and mean something else entirely, and everything that
-needs them already offers them at the moment it matters: the prompt on
-activation, the status bar item, `Show status`, and the Uninstall button, which
-restores the bundle on its way out. They stay bindable to a key.
+needs them already offers them at the moment it matters. Patching: the prompt on
+activation, the status bar item, and `Show status`. Restoring: the Uninstall
+button, which takes the bundle with it. Both stay bindable to a key.
+
+`Show status` offers to patch when the bundle needs it, and offers nothing when
+it does not. It is a readout, and a destructive action does not belong under the
+only button on one.
 
 **No default keybinding ships with this**, deliberately - that is what makes it
 impossible to collide with another extension. Bind whatever you like in
@@ -355,8 +359,7 @@ prompt you have to dismiss on every launch.
 is removed, so the Uninstall button in the Extensions view cleans up after
 itself. It is best effort: if the install directory is not writable — a
 system-wide install, no elevation — the hook fails and the bundle stays patched.
-Run `node uninstall.js` with the rights it needs, or `Neon Glow: Show status`
-before uninstalling. Note that *disabling* the extension is not uninstalling it:
+Run `node uninstall.js` with the rights it needs. Note that *disabling* the extension is not uninstalling it:
 the patch stays, and the glow keeps working off the last state it saw.
 
 **SynthWave '84 can sit alongside this, but only one of them should paint.** It

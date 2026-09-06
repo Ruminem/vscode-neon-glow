@@ -268,10 +268,9 @@ function activate(context) {
   });
 
   /**
-   * The only one of these three left in the palette, so it carries the other
-   * two as actions. Patching is otherwise reached from the status bar or the
-   * prompt on activation, and restoring from uninstalling the extension - but
-   * a status readout that cannot act on what it just reported is a dead end.
+   * The only one of these three left in the palette, so it offers to patch when
+   * the bundle needs it. It does not offer to restore: this is a readout, and a
+   * destructive action is not what belongs under a button on one.
    */
   cmd('neonGlow.status', async () => {
     const targets = targetsOrWarn();
@@ -285,9 +284,6 @@ function activate(context) {
         + ' - ' + f;
     }).join(' | ');
     const on = readState(stateFile).enabled ? 'ON' : 'OFF';
-    const action = (patched && !payloadOutdated)
-      ? 'Restore the original bundle'
-      : 'Patch it now';
 
     let msg = 'Neon Glow is ' + on + '. Bundle: ' + where;
 
@@ -302,10 +298,16 @@ function activate(context) {
         : 'but it only paints under its own theme, so nothing is competing right now.');
     }
 
-    const answer = await vscode.window.showInformationMessage(msg, action);
+    /* Only a constructive action gets a button. This is a readout - something
+       you open to look at - and hanging "Restore the original bundle" on it as
+       the single thing to click is a good way to undo the install by accident.
+       Restoring is what uninstalling the extension does, and the command is
+       still there to bind if someone wants it without uninstalling. */
+    const answer = (patched && !payloadOutdated)
+      ? await vscode.window.showInformationMessage(msg)
+      : await vscode.window.showInformationMessage(msg, 'Patch it now');
 
     if (answer === 'Patch it now') installPatch(context);
-    else if (answer) vscode.commands.executeCommand('neonGlow.remove');
   });
 
   offerToPatch(context);
