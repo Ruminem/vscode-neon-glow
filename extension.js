@@ -297,6 +297,24 @@ function activate(context) {
     }
   }));
 
+  /* One state file serves every window, because one workbench.js does. A toggle
+     anywhere is therefore a toggle everywhere, and every renderer follows it on
+     its next poll - but nothing tells the other windows' extension hosts, so
+     their status bar and palette would go on describing the state they last
+     wrote themselves. Watch the file, and the readout follows the glow. */
+  const stateWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(vscode.Uri.file(path.dirname(stateFile)), 'state.json'));
+  const follow = () => {
+    /* The file is written in place, so a watch event can land mid-write. A
+       failed parse comes back as the default - enabled, seq 0 - which would
+       flip the readout to ON on nothing. Only a real write carries a seq. */
+    const state = readState(stateFile);
+    if (state.seq) reflect(state.enabled);
+  };
+  context.subscriptions.push(stateWatcher,
+                             stateWatcher.onDidChange(follow),
+                             stateWatcher.onDidCreate(follow));
+
   const cmd = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
   cmd('neonGlow.toggle',  () => setGlow(!readState(stateFile).enabled));
