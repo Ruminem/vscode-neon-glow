@@ -97,7 +97,7 @@ Monokai에서 측정한 값:
 **빠른 쪽: 상태 표시줄.** 확장의 상태 표시줄 항목 자체가 전선임. 라벨이 곧 상태이며 평문임
 (코디콘을 넣으면 엘리먼트로 렌더돼서 매칭이 깨짐). 렌더러는 `.statusbar`에
 `MutationObserver`를 걸어둠. 확장 호스트가 그것을 그리는 바로 그 프레임에 토글이 도착하니
-대략 16ms다. 상태 표시줄은 커서 위치나 언어 모드 때문에 끊임없이 변하므로, 몰려오는 레코드는
+대략 16ms임. 상태 표시줄은 커서 위치나 언어 모드 때문에 끊임없이 변하므로, 몰려오는 레코드는
 `requestAnimationFrame`으로 프레임당 한 번의 읽기로 합쳐짐.
 
 **느린 쪽: 상태 파일.** 확장은 `state.json`을 자신의 `globalStorage`에도 씀. 이 위치는
@@ -106,7 +106,7 @@ Monokai에서 측정한 값:
 ```js
 addValidFileRoot(e.appRoot)
 addValidFileRoot(e.extensionsPath)
-addValidFileRoot(...globalStorageHome...)   // <- 상태 파일이 여기 산다
+addValidFileRoot(...globalStorageHome...)   // <- 상태 파일이 여기 있음
 ```
 
 폴링은 빠른 쪽이 놓친 것을 메움. 상태 표시줄을 숨겼거나, `requestAnimationFrame`이 돌지 않는
