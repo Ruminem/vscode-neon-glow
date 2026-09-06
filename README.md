@@ -59,10 +59,19 @@ system. From the command palette (`F1`):
 | `Neon Glow: Enable` / `Neon Glow: Disable` | set it explicitly — only whichever one would actually change something is listed |
 | `Neon Glow: Show status` | current state, and whether the bundle is patched |
 
-The palette filters `Enable`/`Disable` through a `neonGlow.enabled` context key, so
-you never have to work out which of the two is the live one. Both remain bindable
-to a key; a `when` clause on `commandPalette` hides a command from the palette
-only, not from the keybinding system.
+The palette filters `Enable`/`Disable` through context keys, so you never have to
+work out which of the two is the live one. Both remain bindable to a key; a
+`when` clause on `commandPalette` hides a command from the palette only, not from
+the keybinding system.
+
+There are two keys, `neonGlow.on` and `neonGlow.off`, and both are positive on
+purpose. A `when` clause cannot tell an unset key from a false one, so a single
+`enabled` key would make `!enabled` true in the window between a reload and the
+extension activating — the palette would offer `Enable` over an editor that is
+already glowing, because the renderer restores its own state from `localStorage`
+without waiting for anyone. With two keys that window reads as *not known yet*:
+neither is listed, and `Toggle`, which reads the state file rather than a context
+key, works throughout.
 
 Patching and restoring the bundle are **not** in the palette. Sitting next to
 VS Code's own Enable / Disable / Uninstall buttons, "Install" and "Remove" read
@@ -257,9 +266,13 @@ future modifications, not just this one — not worth it for a notification.
 **Updating the extension does not update the patch.** The payload lives in
 `workbench.js`, and installing a new VSIX never touches it, so anything the new
 release added to the renderer sits there inert — a setting can appear and do
-nothing. The injected banner carries the version it was written from, so the
-extension notices the mismatch and offers to patch again. Accepting it needs a
-full restart like any other patch.
+nothing. The injected banner carries a hash of the payload it was written from,
+so the extension notices the mismatch and offers to patch again. Accepting it
+needs a full restart like any other patch.
+
+It is a hash of the payload rather than the release number on purpose: most
+releases change only the extension, and a version stamp would demand a re-patch
+and a restart for a bundle that is already byte-for-byte correct.
 
 **VS Code updates wipe the patch.** The updater replaces `workbench.js`. This is
 the same state as a fresh extension install — an unpatched bundle — so the

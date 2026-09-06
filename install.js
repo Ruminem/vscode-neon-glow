@@ -6,7 +6,6 @@
  */
 const { resolveTargets } = require('./locate');
 const { applyPatch, backupOf, payloadPath, defaultStateFile, ensureStateFile } = require('./patch');
-const VERSION = require('./package.json').version;
 
 const targets = resolveTargets(process.argv);
 if (!targets.length) {
@@ -22,7 +21,7 @@ ensureStateFile(stateFile);
 let ok = 0;
 for (const file of targets) {
   try {
-    applyPatch(file, payloadPath(), stateFile, VERSION);
+    applyPatch(file, payloadPath(), stateFile);
     console.log('patched : ' + file);
     console.log('backup  : ' + backupOf(file));
     ok++;

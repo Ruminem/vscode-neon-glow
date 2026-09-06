@@ -1,5 +1,5 @@
 
-/* ============ NEON GLOW (injected) __NEON_VERSION__ ============ */
+/* ============ NEON GLOW (injected) [payload __NEON_STAMP__] ============ */
 try {
 (function () {
   if (typeof window === 'undefined' || window.__NEON_INSTALLED) { return; }

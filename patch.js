@@ -2,12 +2,13 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { MARKER } = require('./locate');
 
 const backupOf = file => file + '.pre-neon.bak';
 
 /**
- * The payload is appended, so the marker and its version are always in the
+ * The payload is appended, so the marker and its stamp are always in the
  * tail. Reading 64KB beats pulling a multi-megabyte bundle through a string
  * every time someone asks whether it is patched.
  */
@@ -29,15 +30,24 @@ function isPatched(file) {
 }
 
 /**
- * Which version of the payload the bundle carries, or null if it is unpatched
- * or was patched before the marker gained a version. Both mean the same thing
- * to a caller: not what this copy of the extension would write.
+ * Identity of the payload, from its own bytes rather than the release number.
+ * Most releases change only the extension, which never touches the bundle, and
+ * stamping those with a version would ask for a pointless re-patch every time.
  */
-function patchedVersion(file) {
+function payloadStamp(file) {
+  return crypto.createHash('sha256')
+    .update(fs.readFileSync(file || payloadPath(), 'utf8'))
+    .digest('hex').slice(0, 12);
+}
+
+/**
+ * The stamp the bundle was patched with, or null when it is unpatched or was
+ * patched before the banner carried one. Both mean the same thing to a caller:
+ * not the payload this copy would write.
+ */
+function patchedStamp(file) {
   try {
-    /* Anchored on a digit so the banner's own "====" is not read as a version. */
-    const m = new RegExp(MARKER.replace(/[()]/g, '\\$&') + '\\s+(\\d[\\w.-]*)')
-      .exec(readTail(file, TAIL));
+    const m = /\[payload ([0-9a-f]{6,})\]/.exec(readTail(file, TAIL));
     return m ? m[1] : null;
   } catch (e) { return null; }
 }
@@ -89,11 +99,11 @@ function readState(stateFile) {
  * Append the payload to `file`, keeping a pristine backup.
  * Re-installing always rebuilds from the backup, never from a patched file.
  */
-function applyPatch(file, payloadPath, stateFile, version) {
-  let payload = fs.readFileSync(payloadPath, 'utf8');
+function applyPatch(file, payload_path, stateFile) {
+  let payload = fs.readFileSync(payload_path, 'utf8');
   const url = stateFile ? toVscodeFileUrl(stateFile) : '';
   payload = payload.split('__NEON_STATE_URL__').join(url);
-  payload = payload.split('__NEON_VERSION__').join(version || '0');
+  payload = payload.split('__NEON_STAMP__').join(payloadStamp(payload_path));
 
   const backup = backupOf(file);
   let base;
@@ -121,6 +131,6 @@ function removePatch(file) {
 const payloadPath = () => path.join(__dirname, 'neon-glow.js');
 
 module.exports = {
-  applyPatch, removePatch, isPatched, patchedVersion, backupOf, payloadPath,
+  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, backupOf, payloadPath,
   toVscodeFileUrl, defaultStateFile, ensureStateFile, writeState, readState,
 };

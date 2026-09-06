@@ -4,7 +4,7 @@ const path = require('path');
 const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
 const {
-  applyPatch, removePatch, isPatched, patchedVersion, payloadPath,
+  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, payloadPath,
   ensureStateFile, writeState, readState,
 } = require('./patch');
 
@@ -30,10 +30,14 @@ let patched = false;
 let bundleMtime = 0;
 
 /**
- * The bundle is patched, but with a payload from a different release. Updating
- * the extension does not touch workbench.js, so a payload change would
- * otherwise sit there looking healthy while the renderer ran last version's
- * code - which is exactly how a new setting can appear and do nothing.
+ * The bundle is patched, but not with the payload this copy ships. Updating the
+ * extension never touches workbench.js, so a payload change would otherwise sit
+ * there looking healthy while the renderer ran the old code - which is exactly
+ * how a new setting can appear and do nothing.
+ *
+ * Compared by a hash of the payload, not the release number: most releases
+ * change only the extension, and versioning this would demand a re-patch and a
+ * restart for a bundle that is already byte-for-byte correct.
  */
 let payloadOutdated = false;
 
@@ -43,7 +47,8 @@ const HOST_START = Date.now() - process.uptime() * 1000;
 function refreshPatched() {
   const targets = resolveTargets([]);
   patched = targets.length > 0 && targets.every(isPatched);
-  payloadOutdated = patched && targets.some(f => patchedVersion(f) !== VERSION);
+  const want = payloadStamp(payloadPath());
+  payloadOutdated = patched && targets.some(f => patchedStamp(f) !== want);
   bundleMtime = 0;
   for (const f of targets) {
     try { bundleMtime = Math.max(bundleMtime, fs.statSync(f).mtimeMs); } catch (e) { /* gone */ }
@@ -89,14 +94,19 @@ function reportFailure(e) {
  * `.statusbar` for this exact text and reacts within a frame, which is why the
  * label is plain: a codicon would render as an element and break the match.
  *
- * The context key drives the `commandPalette` `when` clauses, so the palette
- * offers only the command that would change something. An unset key reads as
- * false, which is why the extension activates on startup rather than on first
- * command - otherwise the palette would claim the glow was off until you ran
- * something.
+ * The context keys drive the `commandPalette` `when` clauses, so the palette
+ * offers only the command that would change something.
+ *
+ * There are two of them, both positive, because a when clause cannot tell an
+ * unset key from a false one. With a single `enabled` key, `!enabled` is true
+ * before this ever runs, and the window between reload and activation shows
+ * Enable over an editor that is already glowing. Two keys make that window read
+ * as "not known yet": neither command is listed, and Toggle - which reads the
+ * state file rather than a context key - still works.
  */
 function reflect(enabled) {
-  vscode.commands.executeCommand('setContext', 'neonGlow.enabled', enabled);
+  vscode.commands.executeCommand('setContext', 'neonGlow.on', enabled);
+  vscode.commands.executeCommand('setContext', 'neonGlow.off', !enabled);
   if (!statusItem) return;
 
   /* The label is the wire - the renderer matches /NEON:(ON|OFF)/ against it -
@@ -113,8 +123,8 @@ function reflect(enabled) {
     statusItem.backgroundColor = warn;
   } else if (payloadOutdated) {
     statusItem.tooltip =
-      'Neon Glow ' + VERSION + ': the bundle carries an older payload, so anything ' +
-      'added since is inert. Click to patch it again.';
+      'Neon Glow ' + VERSION + ': the bundle carries a different payload, so anything ' +
+      'this version added to the renderer is inert. Click to patch it again.';
     statusItem.command = 'neonGlow.install';
     statusItem.backgroundColor = warn;
   } else if (restartPending()) {
@@ -173,7 +183,7 @@ function installPatch(context) {
   if (!targets) return;
   try {
     ensureStateFile(stateFile);
-    targets.forEach(f => applyPatch(f, payloadPath(), stateFile, VERSION));
+    targets.forEach(f => applyPatch(f, payloadPath(), stateFile));
     context.globalState.update(SUPPRESS_PROMPT, false);
     refreshPatched();
     reflect(readState(stateFile).enabled);
@@ -269,8 +279,8 @@ function activate(context) {
     reflect(readState(stateFile).enabled);
 
     const where = targets.map(f => {
-      const v = patchedVersion(f);
-      return (isPatched(f) ? 'patched with ' + (v || 'an unversioned payload') : 'clean')
+      const v = patchedStamp(f);
+      return (isPatched(f) ? 'patched with payload ' + (v || '(unstamped)') : 'clean')
         + ' - ' + f;
     }).join(' | ');
     const on = readState(stateFile).enabled ? 'ON' : 'OFF';
