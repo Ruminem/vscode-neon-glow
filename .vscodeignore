@@ -21,3 +21,8 @@ tools/**
 # Notes for working on this repository, not for people installing it.
 CLAUDE.md
 NEXT.md
+
+# README points at these on raw.githubusercontent.com, which is what the
+# Marketplace and the extension pane both fetch. Shipping them inside the VSIX
+# as well would double the download for files nothing reads from there.
+images/**

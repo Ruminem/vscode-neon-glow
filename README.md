@@ -10,6 +10,12 @@ along — no reload needed.
 
 ![requires VS Code 1.70 or newer](https://img.shields.io/badge/VS%20Code-1.70%2B-blue)
 
+The same file with the glow off, then on:
+
+![syntax highlighting as the theme paints it, with no glow](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-off.png)
+
+![the same lines with the glow on: keywords, strings and numbers lit in the colours the theme already gave them](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-on.png)
+
 [Which tokens glow](#which-tokens-glow) · [Turning it on and off](#turning-it-on-and-off) · [Install](#install) · [Tuning](#tuning) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
 
 ## Which tokens glow

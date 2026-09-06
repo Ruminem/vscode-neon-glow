@@ -9,6 +9,12 @@ VS Code 구문 강조에 네온 글로우를 입힘 — **테마를 가리지 �
 
 ![VS Code 1.70 이상 필요](https://img.shields.io/badge/VS%20Code-1.70%2B-blue)
 
+같은 파일을 글로우 끈 상태와 켠 상태로:
+
+![테마가 칠한 그대로의 구문 강조. 글로우 없음](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-off.png)
+
+![같은 줄에 글로우를 켠 모습. 키워드·문자열·숫자가 테마가 이미 준 색으로 빛남](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-on.png)
+
 [빛나는 토큰](#어떤-토큰이-빛나는가) · [켜고 끄기](#켜고-끄기) · [설치](#설치) · [조정](#조정) · [발목 잡는 것들](#발목-잡는-것들) · [상태](#상태)
 
 ## 어떤 토큰이 빛나는가
