@@ -47,6 +47,43 @@ jobs:
           cp "neon-glow-$ver.vsix" install.cmd "bundle/neon-glow-$ver/"
           cd bundle && zip -r "../neon-glow-$ver-windows.zip" "neon-glow-$ver"
 
+      # Written with a quoted heredoc so the backticks stay literal, then the
+      # version is substituted in. --notes-file is prepended to the notes
+      # --generate-notes produces, so the changelog still follows underneath.
+      - name: Write the release notes
+        run: |
+          cat > notes.md <<'EOF'
+          ## Install
+
+          ### Windows, double-click
+
+          Download `neon-glow-VERSION-windows.zip` below, unzip it, and run
+          `install.cmd`. It finds VS Code, installs the extension and patches the
+          workbench in one pass. Nothing else has to be on the machine.
+
+          ### Anywhere else
+
+          Download `neon-glow-VERSION.vsix` below, then either use `...` →
+          **Install from VSIX** in the Extensions view, or:
+
+          ```sh
+          code --install-extension neon-glow-VERSION.vsix
+          ```
+
+          Installing the extension does not by itself make anything glow: the payload
+          has to be written into `workbench.js`. The extension offers to do that the
+          first time it activates, or run **Neon Glow: Install (patch workbench)** from
+          the command palette. It needs write access to the VS Code install directory.
+
+          ### Then restart
+
+          **Quit VS Code completely and start it again** — "Reload Window" is not
+          enough. Chromium serves the bundle from cache, so a window never picks up a
+          rewrite it did not start with. The `NEON:ON` status bar item stays amber
+          while that is still pending.
+          EOF
+          sed -i "s/VERSION/${GITHUB_REF_NAME#v}/g" notes.md
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,6 +91,7 @@ jobs:
           ver="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
             --generate-notes \
             "neon-glow-$ver.vsix" \
             "neon-glow-$ver-windows.zip"
