@@ -117,10 +117,16 @@ API between the two, so the state crosses on two channels at once.
 
 **Fast: the status bar.** The extension's status bar item *is* the wire. Its label
 is the state, in plain text (a codicon would render as an element and break the
-match), and the renderer keeps a `MutationObserver` on `.statusbar`. A toggle
-lands in the frame the extension host paints it, roughly 16ms. The status bar
-mutates constantly — cursor position, language mode — so a burst of records is
-collapsed into one read per frame with `requestAnimationFrame`.
+match), and the renderer keeps a `MutationObserver` on that one item. A toggle
+lands in the frame the extension host paints it, roughly 16ms.
+
+On the item, not on the bar: the bar as a whole mutates on every cursor move, so
+watching its subtree meant waking once a frame for the whole time someone is
+typing, rebuilding the text of every item and running a regex over it, to learn
+nothing. The item itself changes only when the glow is toggled. Records are
+still coalesced into one read per frame with `requestAnimationFrame`, and if
+VS Code ever replaces the item the observer goes quiet with it — so the poll
+below re-seeks when the element is no longer connected.
 
 **Slow: the state file.** The extension also writes `state.json` into its
 `globalStorage`, which is one of the roots the `vscode-file` protocol handler is
@@ -257,6 +263,11 @@ token colours. So the bundle only ever has to be written once.
 The same values are also the defaults at the top of `neon-glow.js`, which is
 what a CLI-only install uses — there is no extension there to send anything.
 Editing those means re-running `node install.js` and restarting.
+
+`brightness` is also the performance dial, not just a fade. The blur radii are
+computed from it — `2+3k`, `6+10k`, `14+22k` — and a blur costs roughly the
+square of its radius, so halving it does far more than halve the paint work. If
+the editor ever feels heavy while scrolling a large file, that is the knob.
 
 **Flatter themes need different numbers.** The defaults are calibrated on
 Monokai, which is unusually saturated. Abyss, for instance, tops out around half

@@ -152,7 +152,7 @@ try {
     var tokensEl = document.querySelector('.vscode-tokens-styles');
     if (!tokensEl) return false;
     var source = tokensEl.textContent || '';
-    if (source.replace(/\s/g, '') === '') return false;
+    if (!/\S/.test(source)) return false;   /* cheaper than stripping a copy */
 
     if (styleTag && source.length === lastLen) {
       if (styleTag.disabled) styleTag.disabled = false;
@@ -262,13 +262,16 @@ try {
 
   /* ---- fast half: the status bar item ---- */
   var STATUS_RE = /NEON:(ON|OFF)/;
-  var statusAttached = false;
   var lastStatus = null;
+  var statusEl = null;        /* the one item that carries our label */
+  var statusObserver = null;
 
-  function readStatusBar() {
-    var bar = document.querySelector('.statusbar');
-    if (!bar) return;
-    var m = STATUS_RE.exec(bar.textContent || '');
+  function statusLive() {
+    return !!(statusEl && statusEl.isConnected);
+  }
+
+  function applyStatus(text) {
+    var m = STATUS_RE.exec(text || '');
     if (!m) return;
     var v = (m[1] === 'ON');
     if (!bridgeOk) { bridgeOk = true; mark('bridge-ok status-bar'); }
@@ -276,34 +279,60 @@ try {
     if (v !== lastStatus) { lastStatus = v; setEnabled(v); }
   }
 
-  /* The status bar mutates constantly (cursor position, language mode, and so
-     on), so collapse a burst of records into one read per frame. */
+  /* Coalesce a burst of records into one read per frame. */
   var statusQueued = false;
   function onStatusMutation() {
     if (statusQueued) return;
     statusQueued = true;
     requestAnimationFrame(function () {
       statusQueued = false;
-      try { readStatusBar(); } catch (e) {}
+      if (!statusLive()) { detachStatusBar(); return; }
+      try { applyStatus(statusEl.textContent); } catch (e) {}
     });
   }
 
+  function detachStatusBar() {
+    if (statusObserver) { statusObserver.disconnect(); statusObserver = null; }
+    statusEl = null;
+  }
+
+  /**
+   * Watch our own status bar item, not the status bar.
+   *
+   * The bar as a whole mutates on every cursor move, and observing its subtree
+   * meant waking on each of those to rebuild the text of every item and run a
+   * regex over it - once a frame, for the entire time someone is typing, to
+   * learn nothing. The item we put there changes only when the extension
+   * toggles.
+   *
+   * If VS Code ever replaces the item the observer goes quiet with it, so the
+   * reconcile poll re-seeks when the element is no longer connected: that path
+   * already exists to cover the fast half being unavailable.
+   */
   function attachStatusBar() {
-    if (statusAttached) return;
-    var bar = document.querySelector('.statusbar');
-    if (!bar) return;
-    statusAttached = true;
-    new MutationObserver(onStatusMutation)
-      .observe(bar, { childList: true, characterData: true, subtree: true });
-    try { readStatusBar(); } catch (e) {}
+    if (statusLive()) return;
+    detachStatusBar();
+
+    var items = document.querySelectorAll('.statusbar .statusbar-item');
+    for (var i = 0; i < items.length; i++) {
+      if (STATUS_RE.test(items[i].textContent || '')) { statusEl = items[i]; break; }
+    }
+    if (!statusEl) return;
+
+    statusObserver = new MutationObserver(onStatusMutation);
+    statusObserver.observe(statusEl, { childList: true, characterData: true, subtree: true });
+    try { applyStatus(statusEl.textContent); } catch (e) {}
   }
 
   if (STATE_URL && STATE_URL.indexOf('vscode-file:') === 0) {
     (function schedulePoll() {
       setTimeout(function () {
+        /* Also the retry loop that finds the item, and the recovery path if it
+           is ever replaced - which is why the interval tracks it being live. */
+        try { attachStatusBar(); } catch (e) {}
         pollState();
         schedulePoll();
-      }, (statusAttached && lastStatus !== null) ? POLL_SLOW : POLL_FAST);
+      }, (statusLive() && lastStatus !== null) ? POLL_SLOW : POLL_FAST);
     })();
     pollState();
   }
@@ -327,7 +356,7 @@ try {
     disable: function () { setEnabled(false); },
     isEnabled: function () { return enabled; },
     bridgeOk: function () { return bridgeOk; },
-    statusBarOk: function () { return statusAttached && lastStatus !== null; }
+    statusBarOk: function () { return statusLive() && lastStatus !== null; }
   };
 
   var attached = false;
@@ -340,16 +369,28 @@ try {
     }
   }
 
+  /**
+   * Startup only. Its whole job is to wait for `.vscode-tokens-styles` to
+   * exist, paint once, and hand over to the MutationObserver. It used to keep
+   * running for the full three minutes afterwards, re-reading the entire token
+   * stylesheet three times a second to reach the same conclusion; now it stops
+   * as soon as the observer is live. Finding the status bar item is left to the
+   * poll, which is already a retry loop.
+   */
   var ticks = 0;
   var timer = setInterval(function () {
     ticks++;
-    try { attachStatusBar(); } catch (e) {}
-    try { if (render()) startObservers(); }
+    var painted;
+    try { painted = render(); if (painted) startObservers(); }
     catch (e) { mark('error', String(e && e.message || e)); clearInterval(timer); return; }
-    if (ticks > 600) clearInterval(timer);
+    if ((painted && attached) || ticks > 600) clearInterval(timer);
   }, 300);
 
-  try { attachStatusBar(); render(); startObservers(); } catch (e) {}
+  /* Separate guards: these are independent, and one of them failing must not
+     take the paint down with it. */
+  try { render(); } catch (e) { mark('error', String(e && e.message || e)); }
+  try { startObservers(); } catch (e) {}
+  try { attachStatusBar(); } catch (e) {}
 })();
 } catch (e) {
   try { console.error('[NEON] fatal', e); } catch (_) {}
