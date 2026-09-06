@@ -5,7 +5,8 @@
  *   node install.js [--target <path to resources/app>]
  */
 const { resolveTargets } = require('./locate');
-const { applyPatch, backupOf, payloadPath, defaultStateFile, ensureStateFile } = require('./patch');
+const { applyPatch, backupOf, payloadPath, defaultStateFile, ensureStateFile,
+        rememberTargets } = require('./patch');
 
 const targets = resolveTargets(process.argv);
 if (!targets.length) {
@@ -30,6 +31,8 @@ for (const file of targets) {
     if (/EACCES|EPERM/.test(e.code || '')) console.error('  -> run again as administrator / with sudo');
   }
 }
+
+rememberTargets(stateFile, targets);
 
 if (!ok) process.exit(1);
 console.log('state   : ' + stateFile);

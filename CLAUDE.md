@@ -15,9 +15,15 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 | `patch.js` | 워크벤치 번들을 패치·복원. `.pre-neon.bak`으로 백업 |
 | `locate.js` | VS Code 설치 경로 탐색 |
 | `install.js` / `uninstall.js` | CLI 경로. 확장 없이도 패치·복원 가능 |
+| `install.cmd` / `install.sh` | 릴리스 아카이브에 동봉되는 설치 스크립트. VSIX에는 안 들어감 |
+| `tools/` | `make-icon.js`(아이콘 생성), `package.js`(VSIX 빌드). VSIX에는 안 들어감 |
+| `NEXT.md` | 세션 인수인계 노트. VSIX에는 안 들어감 |
 
 명령: `neonGlow.toggle` `enable` `disable` `install` `remove` `status`
-설정: `brightness` `minChroma` `chromaSpan` `floor` `minLightness`
+설정: `glowLayers` `maxBlur` `brightness` `minChroma` `chromaSpan` `floor` `minLightness`
+
+설정 값은 `state.json`을 타고 렌더러로 가므로 **재패치 없이 즉시** 반영됨. 반대로
+`neon-glow.js`를 고치면 페이로드 해시가 바뀌어 **재패치와 완전 재시작이 필요**함.
 
 ## 글쓰기 규칙
 
@@ -37,3 +43,5 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 - 커밋 메시지는 **무엇을 왜 바꿨는지 서술하는 영어 문장**. 접두사(`feat:`) 안 씀.
 - 커밋에 `Co-Authored-By` 트레일러를 붙이지 않음.
 - 취미 프로젝트임. 주말 단위로 굴러가는 범위를 넘기지 않음.
+- Windows에서만 검증됨. macOS/Linux는 코드로만 있고 아무도 안 돌려봤음 — 그렇게 말해야 함.
+- 성능을 논할 때 단일 측정은 못 믿음. 캐시가 데워지며 드리프트가 생기므로 쌍대로 잴 것.

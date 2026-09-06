@@ -9,7 +9,7 @@ ship a theme and is not tied to one. It reads whatever colours your current them
 produces and makes the vivid ones glow, so you can keep changing themes and the glow
 follows along.
 
-![what it does](https://img.shields.io/badge/VS%20Code-1.136%2B-blue)
+![requires VS Code 1.70 or newer](https://img.shields.io/badge/VS%20Code-1.70%2B-blue)
 
 [How it differs](#how-it-differs-from-synthwave-84) · [Which tokens glow](#which-tokens-glow) · [Turning it on and off](#turning-it-on-and-off) · [Install](#install) · [Tuning](#tuning) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
 

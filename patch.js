@@ -123,6 +123,36 @@ function defaultStateFile() {
   return path.join(base, 'ruminem.vscode-neon-glow', 'state.json');
 }
 
+/**
+ * What was patched, recorded beside the state file.
+ *
+ * The extension knows where the editor lives and never has to guess, but the
+ * uninstall hook is a bare node process with no editor to ask, so it would fall
+ * back to the candidate list - and miss a portable build or an unusual prefix,
+ * leaving the bundle patched with the extension gone. Writing the paths down at
+ * patch time closes that: undoing reads what installing wrote.
+ */
+const targetsFileOf = stateFile => path.join(path.dirname(stateFile), 'targets.json');
+
+function rememberTargets(stateFile, targets) {
+  try {
+    fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+    fs.writeFileSync(targetsFileOf(stateFile), JSON.stringify(targets), 'utf8');
+  } catch (e) { /* best effort: the guess still works for ordinary installs */ }
+}
+
+/** Paths recorded at patch time that still exist. Empty when there is no record. */
+function recallTargets(stateFile) {
+  try {
+    const v = JSON.parse(fs.readFileSync(targetsFileOf(stateFile), 'utf8'));
+    return Array.isArray(v) ? v.filter(f => fs.existsSync(f)) : [];
+  } catch (e) { return []; }
+}
+
+function forgetTargets(stateFile) {
+  try { fs.unlinkSync(targetsFileOf(stateFile)); } catch (e) { /* already gone */ }
+}
+
 /** Create the state file if absent so the very first poll gets a 200. */
 function ensureStateFile(stateFile) {
   try {
@@ -182,6 +212,7 @@ const payloadPath = () => path.join(__dirname, 'neon-glow.js');
 
 module.exports = {
   applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
+  rememberTargets, recallTargets, forgetTargets,
   backupOf, payloadPath,
   toVscodeFileUrl, defaultStateFile, ensureStateFile, writeState, readState,
 };

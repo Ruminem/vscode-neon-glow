@@ -5,9 +5,13 @@
  *   node uninstall.js [--target <path to resources/app>]
  */
 const { resolveTargets } = require('./locate');
-const { removePatch } = require('./patch');
+const { removePatch, recallTargets, forgetTargets, defaultStateFile } = require('./patch');
 
-const targets = resolveTargets(process.argv);
+/* Prefer what installing wrote down; the guess is for older installs that
+   were patched before there was a record. */
+const stateFile = defaultStateFile();
+const remembered = recallTargets(stateFile);
+const targets = remembered.length ? remembered : resolveTargets(process.argv);
 if (!targets.length) {
   console.error('No VS Code installation found.');
   process.exit(1);
@@ -31,4 +35,5 @@ for (const file of targets) {
    uninstall for a bundle that was already pristine. */
 if (failed) process.exit(1);
 if (!restored) { console.log('Nothing to restore; the bundle is already original.'); process.exit(0); }
+forgetTargets(stateFile);
 console.log('\nDone. Quit VS Code completely and start it again.');

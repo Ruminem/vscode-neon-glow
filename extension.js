@@ -5,6 +5,7 @@ const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
 const {
   applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
+  rememberTargets, forgetTargets,
   payloadPath,
   ensureStateFile, writeState, readState,
 } = require('./patch');
@@ -237,6 +238,7 @@ function installPatch(context) {
   try {
     ensureStateFile(stateFile);
     targets.forEach(f => applyPatch(f, payloadPath(), stateFile));
+    rememberTargets(stateFile, targets);
     context.globalState.update(SUPPRESS_PROMPT, false);
     refreshPatched();
     reflect(readState(stateFile).enabled);
@@ -319,6 +321,7 @@ function activate(context) {
         vscode.window.showInformationMessage('Neon Glow: nothing to remove (no backup found).');
         return;
       }
+      forgetTargets(stateFile);
       /* Removing is a decision, not an accident: stop offering to undo it. */
       context.globalState.update(SUPPRESS_PROMPT, true);
       refreshPatched();
