@@ -11,6 +11,8 @@ follows along.
 
 ![what it does](https://img.shields.io/badge/VS%20Code-1.136%2B-blue)
 
+[How it differs](#how-it-differs-from-synthwave-84) · [Which tokens glow](#which-tokens-glow) · [Turning it on and off](#turning-it-on-and-off) · [Install](#install) · [Tuning](#tuning) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
+
 ## How it differs from SynthWave '84
 
 SynthWave hardcodes five hex values and refuses to run unless its own theme is active:
