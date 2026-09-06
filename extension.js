@@ -90,9 +90,9 @@ function reportFailure(e) {
 /**
  * Publish the state to everything that renders it.
  *
- * The status bar item is the fast half of the bridge. The renderer watches
- * `.statusbar` for this exact text and reacts within a frame, which is why the
- * label is plain: a codicon would render as an element and break the match.
+ * The status bar item is the fast half of the bridge. The renderer watches this
+ * item for this exact text and reacts within a frame, which is why the label is
+ * plain: a codicon would render as an element and break the match.
  *
  * The context keys drive the `commandPalette` `when` clauses, so the palette
  * offers only the command that would change something.
@@ -146,7 +146,7 @@ function reflect(enabled) {
  * rewriting workbench.js or restarting - the renderer clamps and applies them
  * on its next poll.
  */
-const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness'];
+const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness', 'glowLayers'];
 
 function readKnobs() {
   const c = vscode.workspace.getConfiguration('neonGlow');

@@ -16,14 +16,29 @@ try {
     minChroma:    0.30,  /* below this = not a vivid syntax colour -> no glow  */
     chromaSpan:   0.50,  /* chroma range mapped onto the strength ramp         */
     floor:        0.40,  /* strength for a colour that just passes minChroma   */
-    minLightness: 0.25   /* darker than this -> no glow                        */
+    minLightness: 0.25,  /* darker than this -> no glow                        */
+    glowLayers:   3      /* shadow passes per token: 3 tight+mid+wide, 1 core  */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
   var KNOB_RANGE = {
     brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
-    floor: [0, 1], minLightness: [0, 1]
+    floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3]
   };
+
+  /**
+   * How many shadow passes to paint.
+   *
+   * This is the expensive knob, not brightness. A blur spreads about its radius
+   * in every direction, so the widest of the three passes covers roughly (w+72)
+   * by (h+72) around a token that is itself about 40 by 18 - two thirds of all
+   * the blurred area the glow paints. Dropping it costs the outer bloom and
+   * saves two thirds of the work; dropping to one pass saves about ninety
+   * percent and leaves a thin rim.
+   */
+  function layers() {
+    return Math.max(1, Math.min(3, Math.round(KNOBS.glowLayers)));
+  }
 
   /**
    * Fallback shortcut, used only when the extension bridge is unavailable.
@@ -92,10 +107,12 @@ try {
        specificity - unless an !important here overrides it and collapses every
        bracket level onto one token colour. The copied rule already comes later
        in the document than the original, so it wins without forcing anything. */
-    return 'color: #'+hex+'; text-shadow:'
-      + ' 0 0 '+near+'px #'+hex+alpha(0.90*k)+','
-      + ' 0 0 '+mid+'px #'+hex+alpha(0.65*k)+','
-      + ' 0 0 '+far+'px #'+hex+alpha(0.40*k)+' !important;'
+    var n = layers();
+    var shadow = ' 0 0 '+near+'px #'+hex+alpha(0.90*k);
+    if (n >= 2) shadow += ', 0 0 '+mid+'px #'+hex+alpha(0.65*k);
+    if (n >= 3) shadow += ', 0 0 '+far+'px #'+hex+alpha(0.40*k);
+
+    return 'color: #'+hex+'; text-shadow:' + shadow + ' !important;'
       + ' backface-visibility: hidden;';
   }
 
@@ -125,9 +142,10 @@ try {
     var k = KNOBS.brightness;
     if (k > 0) {
       var near = Math.round(2 + 3 * k), mid = Math.round(6 + 10 * k);
+      var shadow = ' 0 0 ' + near + 'px currentColor';
+      if (layers() >= 2) shadow += ', 0 0 ' + mid + 'px currentColor';
       css += '.monaco-editor [class*="bracket-highlighting-"] { text-shadow:'
-        + ' 0 0 ' + near + 'px currentColor,'
-        + ' 0 0 ' + mid + 'px currentColor !important; }\n';
+        + shadow + ' !important; }\n';
     }
     return css;
   }
@@ -231,7 +249,7 @@ try {
    * inside the VS Code keybinding system and nothing here intercepts a key.
    *
    *   fast   The extension's status bar item reads "NEON:ON" / "NEON:OFF".
-   *          A MutationObserver on `.statusbar` sees the edit in the frame
+   *          A MutationObserver on that one item sees the edit in the frame
    *          the extension host paints it, so a toggle lands in ~16ms.
    *   slow   state.json in the extension's globalStorage, polled over
    *          vscode-file. It reconciles whatever the fast half missed - a

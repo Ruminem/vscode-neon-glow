@@ -249,6 +249,7 @@ editor within a second or so — no re-patch, no restart.
 
 | Setting | Default | |
 |---------|---------|--|
+| `neonGlow.glowLayers` | `3` | shadow passes per token — the expensive one, see below |
 | `neonGlow.brightness` | `1.0` | overall strength; `0` leaves the colours alone and drops the glow |
 | `neonGlow.minChroma` | `0.30` | colours flatter than this never glow — this is what keeps body text out |
 | `neonGlow.chromaSpan` | `0.50` | how much chroma above the threshold reaches full strength |
@@ -264,10 +265,31 @@ The same values are also the defaults at the top of `neon-glow.js`, which is
 what a CLI-only install uses — there is no extension there to send anything.
 Editing those means re-running `node install.js` and restarting.
 
-`brightness` is also the performance dial, not just a fade. The blur radii are
-computed from it — `2+3k`, `6+10k`, `14+22k` — and a blur costs roughly the
-square of its radius, so halving it does far more than halve the paint work. If
-the editor ever feels heavy while scrolling a large file, that is the knob.
+### What it costs
+
+The editor virtualises, so a 10,000 line file is not 10,000 glowing spans — only
+the visible lines are ever in the DOM. The cost scales with the viewport and how
+token-dense the language is, not with file size.
+
+It is still real work. A `text-shadow` blur spreads about its radius in every
+direction, so around a token of roughly 40×18 the three passes cover:
+
+| Pass | Radius | Blurred area |
+|-------|--------|--------------|
+| core | `5px` | 1,400 px² |
+| halo | `16px` | 3,600 px² |
+| bloom | `36px` | **10,080 px²** |
+
+15,080 px² against a 720 px² glyph — 21× overdraw — and a dense C++ screen holds
+something like 275 glowing tokens, so a full repaint blurs about **two screens'
+worth of pixels**, on every scrolled frame.
+
+`glowLayers` is the lever, because the bloom alone is two thirds of that area.
+Dropping it costs the outer halo and two thirds of the work; core only saves
+about ninety percent. `brightness` shrinks the radii as well, but only by about
+a third at half strength — the two tight passes barely move — so it fades the
+glow far more than it speeds it up. On large files, set `glowLayers` to `2`
+before reaching for anything else.
 
 **Flatter themes need different numbers.** The defaults are calibrated on
 Monokai, which is unusually saturated. Abyss, for instance, tops out around half

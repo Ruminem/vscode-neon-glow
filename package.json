@@ -2,7 +2,7 @@
   "name": "vscode-neon-glow",
   "displayName": "Neon Glow",
   "description": "Neon glow for syntax highlighting, derived from whatever colour theme is active.",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "publisher": "Ruminem",
   "license": "MIT",
   "repository": {
@@ -40,6 +40,19 @@
     "configuration": {
       "title": "Neon Glow",
       "properties": {
+        "neonGlow.glowLayers": {
+          "type": "number",
+          "default": 3,
+          "enum": [3, 2, 1],
+          "enumDescriptions": [
+            "Tight core, mid halo and wide bloom. The look this was designed around.",
+            "Drops the wide bloom. About two thirds less blurred area, and the one to reach for on large, token-dense files.",
+            "Core only. About ninety percent less blurred area; the glow becomes a thin rim."
+          ],
+          "order": 0,
+          "scope": "application",
+          "markdownDescription": "How many shadow passes each token gets. **This is the expensive setting, not `#neonGlow.brightness#`** — a blur spreads about its radius in every direction, so the widest pass alone is roughly two thirds of all the blurred area painted. Applies without a restart."
+        },
         "neonGlow.brightness": {
           "type": "number",
           "default": 1.0,
