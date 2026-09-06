@@ -76,7 +76,7 @@ jobs:
 
           Installing the extension does not by itself make anything glow: the payload
           has to be written into `workbench.js`. The extension offers to do that the
-          first time it activates, or run **Neon Glow: Install (patch workbench)** from
+          first time it activates, or run **Neon Glow: Show status** from
           the command palette. It needs write access to the VS Code install directory.
 
           ### Then restart
@@ -106,7 +106,7 @@ jobs:
 
           확장을 설치하는 것만으로는 아무것도 빛나지 않는다. 페이로드가 `workbench.js`에
           들어가야 한다. 확장이 처음 활성화될 때 물어보고, 명령 팔레트에서
-          **Neon Glow: Install (patch workbench)**를 직접 실행해도 된다. VS Code 설치
+          **Neon Glow: Show status**를 직접 실행해도 된다. VS Code 설치
           디렉터리에 쓰기 권한이 필요하다.
 
           ### 그다음 재시작

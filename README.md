@@ -64,6 +64,13 @@ you never have to work out which of the two is the live one. Both remain bindabl
 to a key; a `when` clause on `commandPalette` hides a command from the palette
 only, not from the keybinding system.
 
+Patching and restoring the bundle are **not** in the palette. Sitting next to
+VS Code's own Enable / Disable / Uninstall buttons, "Install" and "Remove" read
+as extension management and mean something else entirely, and everything that
+needs them already offers them at the moment it matters: the prompt on
+activation, the status bar item, `Show status`, and the Uninstall button, which
+restores the bundle on its way out. They stay bindable to a key.
+
 **No default keybinding ships with this**, deliberately - that is what makes it
 impossible to collide with another extension. Bind whatever you like in
 *Keyboard Shortcuts* (`Ctrl+K Ctrl+S`), search `Neon Glow`, and VS Code will warn
@@ -149,7 +156,7 @@ Anywhere else, or if you would rather drive it yourself, install the `.vsix`
 from the same release:
 
 ```sh
-code --install-extension neon-glow-0.4.0.vsix
+code --install-extension neon-glow-<version>.vsix
 ```
 
 Or inside VS Code: Extensions view → the `...` menu → *Install from VSIX…*.
@@ -157,7 +164,7 @@ Or inside VS Code: Extensions view → the `...` menu → *Install from VSIX…*
 Installing the extension does not by itself make anything glow — the payload
 lives in `workbench.js`, and only a patch puts it there. The extension notices
 an unpatched bundle when it activates and offers to fix it; you can also run
-`Neon Glow: Install (patch workbench)` from the palette. Either route needs
+`Neon Glow: Show status` from the palette. Either route needs
 write access and a **full restart**. Everyday on/off needs neither.
 
 This is not on the Marketplace, and will not be: an extension that rewrites
@@ -174,7 +181,7 @@ git clone https://github.com/Ruminem/vscode-neon-glow "%USERPROFILE%\.vscode\ext
 git clone https://github.com/Ruminem/vscode-neon-glow ~/.vscode/extensions/vscode-neon-glow
 ```
 
-Then run the same `Neon Glow: Install (patch workbench)` command.
+Then run the same `Neon Glow: Show status` command.
 
 ### From the command line
 
@@ -213,7 +220,7 @@ falloff the extension paints with, and the PNG is assembled on top of `zlib`.
 ## Tuning
 
 The knobs are at the top of `neon-glow.js` — in the installed extension's folder
-if you used the VSIX. Edit it, run `Neon Glow: Install (patch workbench)` again
+if you used the VSIX. Edit it, run `Neon Glow: Show status` again
 (or `node install.js`), and restart.
 
 ```js
@@ -241,12 +248,21 @@ future modifications, not just this one — not worth it for a notification.
 **VS Code updates wipe the patch.** The updater replaces `workbench.js`. This is
 the same state as a fresh extension install — an unpatched bundle — so the
 extension offers to re-patch on the next launch. You can also run
-`Neon Glow: Install (patch workbench)`, or `node install.js` if you went the CLI
+`Neon Glow: Show status`, or `node install.js` if you went the CLI
 route. Reinstalling is safe: it always rebuilds from the pristine
 `.pre-neon.bak`, never from an already-patched file.
 
-Removing the patch on purpose suppresses that offer, so `Neon Glow: Remove` does
-not turn into a prompt you have to dismiss on every launch.
+Restoring the bundle on purpose suppresses that offer, so it does not turn into a
+prompt you have to dismiss on every launch.
+
+**Uninstalling the extension restores the bundle.** `package.json` declares a
+`vscode:uninstall` hook, which VS Code runs as a node script when the extension
+is removed, so the Uninstall button in the Extensions view cleans up after
+itself. It is best effort: if the install directory is not writable — a
+system-wide install, no elevation — the hook fails and the bundle stays patched.
+Run `node uninstall.js` with the rights it needs, or `Neon Glow: Show status`
+before uninstalling. Note that *disabling* the extension is not uninstalling it:
+the patch stays, and the glow keeps working off the last state it saw.
 
 ## Status
 

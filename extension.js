@@ -206,12 +206,27 @@ function activate(context) {
     } catch (e) { reportFailure(e); }
   });
 
-  cmd('neonGlow.status', () => {
+  /**
+   * The only one of these three left in the palette, so it carries the other
+   * two as actions. Patching is otherwise reached from the status bar or the
+   * prompt on activation, and restoring from uninstalling the extension - but
+   * a status readout that cannot act on what it just reported is a dead end.
+   */
+  cmd('neonGlow.status', async () => {
     const targets = targetsOrWarn();
     if (!targets) return;
+    refreshPatched();
+    reflect(readState(stateFile).enabled);
+
     const where = targets.map(f => (isPatched(f) ? 'patched' : 'clean') + ' - ' + f).join(' | ');
     const on = readState(stateFile).enabled ? 'ON' : 'OFF';
-    vscode.window.showInformationMessage('Neon Glow is ' + on + '. Bundle: ' + where);
+    const action = patched ? 'Restore the original bundle' : 'Patch it now';
+
+    const answer = await vscode.window.showInformationMessage(
+      'Neon Glow is ' + on + '. Bundle: ' + where, action);
+
+    if (answer === 'Patch it now') installPatch(context);
+    else if (answer) vscode.commands.executeCommand('neonGlow.remove');
   });
 
   offerToPatch(context);

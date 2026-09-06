@@ -2,7 +2,7 @@
   "name": "vscode-neon-glow",
   "displayName": "Neon Glow",
   "description": "Neon glow for syntax highlighting, derived from whatever colour theme is active.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "Ruminem",
   "license": "MIT",
   "repository": {
@@ -17,21 +17,24 @@
   "main": "./extension.js",
   "activationEvents": ["onStartupFinished"],
   "scripts": {
-    "package": "npx --yes @vscode/vsce package"
+    "package": "npx --yes @vscode/vsce package",
+    "vscode:uninstall": "node ./uninstall.js"
   },
   "contributes": {
     "commands": [
       { "command": "neonGlow.toggle",  "title": "Neon Glow: Toggle" },
       { "command": "neonGlow.enable",  "title": "Neon Glow: Enable" },
       { "command": "neonGlow.disable", "title": "Neon Glow: Disable" },
-      { "command": "neonGlow.install", "title": "Neon Glow: Install (patch workbench)" },
-      { "command": "neonGlow.remove",  "title": "Neon Glow: Remove (restore workbench)" },
+      { "command": "neonGlow.install", "title": "Neon Glow: Patch the workbench bundle" },
+      { "command": "neonGlow.remove",  "title": "Neon Glow: Restore the original bundle" },
       { "command": "neonGlow.status",  "title": "Neon Glow: Show status" }
     ],
     "menus": {
       "commandPalette": [
         { "command": "neonGlow.enable",  "when": "!neonGlow.enabled" },
-        { "command": "neonGlow.disable", "when": "neonGlow.enabled" }
+        { "command": "neonGlow.disable", "when": "neonGlow.enabled" },
+        { "command": "neonGlow.install", "when": "false" },
+        { "command": "neonGlow.remove",  "when": "false" }
       ]
     }
   }

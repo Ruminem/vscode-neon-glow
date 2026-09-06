@@ -13,17 +13,22 @@ if (!targets.length) {
   process.exit(1);
 }
 
-let ok = 0;
+let restored = 0, failed = 0;
 for (const file of targets) {
   try {
     if (!removePatch(file)) { console.log('skip (no backup): ' + file); continue; }
     console.log('restored: ' + file);
-    ok++;
+    restored++;
   } catch (e) {
+    failed++;
     console.error('failed  : ' + file + '  (' + e.message + ')');
     if (/EACCES|EPERM/.test(e.code || '')) console.error('  -> run again as administrator / with sudo');
   }
 }
 
-if (!ok) process.exit(1);
+/* Nothing to restore is the wanted end state, not an error. This also runs as
+   VS Code's vscode:uninstall hook, where a non-zero exit is logged as a failed
+   uninstall for a bundle that was already pristine. */
+if (failed) process.exit(1);
+if (!restored) { console.log('Nothing to restore; the bundle is already original.'); process.exit(0); }
 console.log('\nDone. Quit VS Code completely and start it again.');

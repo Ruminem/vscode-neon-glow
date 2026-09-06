@@ -60,6 +60,11 @@ Monokai에서 측정한 값:
 지금 유효한지 따질 필요가 없다. 키 할당은 양쪽 다 그대로 된다. `commandPalette`의 `when` 절은
 팔레트에서만 숨길 뿐 키바인딩 시스템에서 숨기지 않는다.
 
+번들을 패치하고 원상복구하는 것은 팔레트에 **없다**. VS Code 자신의 사용/사용 안 함/제거 버튼
+옆에 놓이면 "Install"과 "Remove"는 확장 관리로 읽히는데 실제 의미는 전혀 다르고, 그것이 필요한
+모든 경로가 이미 필요한 순간에 제안하기 때문이다 — 활성화 때의 프롬프트, 상태 표시줄 항목,
+`Show status`, 그리고 나가면서 번들을 되돌리는 제거 버튼. 키 할당은 그대로 된다.
+
 **기본 키바인딩은 일부러 넣지 않았다.** 다른 확장과 충돌하는 것이 원천적으로 불가능해지는
 지점이 바로 여기다. *바로 가기 키*(`Ctrl+K Ctrl+S`)에서 `Neon Glow`를 검색해 원하는 조합을
 직접 걸면 되고, 이미 점유된 조합이면 VS Code가 알아서 경고해준다.
@@ -134,14 +139,14 @@ Electron이라 `Code.exe`가 패치 스크립트를 돌릴 Node 노릇까지 겸
 그 외 환경이거나 직접 하고 싶으면 같은 릴리스의 `.vsix`를 설치한다.
 
 ```sh
-code --install-extension neon-glow-0.4.0.vsix
+code --install-extension neon-glow-<version>.vsix
 ```
 
 또는 VS Code 안에서: 확장 뷰 → `...` 메뉴 → *VSIX에서 설치…*.
 
 확장을 설치하는 것만으로는 아무것도 빛나지 않는다. 페이로드는 `workbench.js`에 살고, 거기 넣는
 것은 패치뿐이다. 확장은 활성화될 때 패치되지 않은 번들을 알아채고 고칠지 물어본다. 팔레트에서
-`Neon Glow: Install (patch workbench)`를 직접 실행해도 된다. 어느 쪽이든 쓰기 권한과
+`Neon Glow: Show status`를 직접 실행해도 된다. 어느 쪽이든 쓰기 권한과
 **완전 재시작**이 필요하다. 일상적인 켜고 끄기는 둘 다 필요 없다.
 
 마켓플레이스에는 없고, 앞으로도 올리지 않는다. `workbench.js`를 다시 쓰는 확장이 심사를 정직하게
@@ -158,7 +163,7 @@ git clone https://github.com/Ruminem/vscode-neon-glow "%USERPROFILE%\.vscode\ext
 git clone https://github.com/Ruminem/vscode-neon-glow ~/.vscode/extensions/vscode-neon-glow
 ```
 
-그다음 마찬가지로 `Neon Glow: Install (patch workbench)`를 실행한다.
+그다음 마찬가지로 `Neon Glow: Show status`를 실행한다.
 
 ### 명령줄에서
 
@@ -196,7 +201,7 @@ PNG는 `zlib` 위에 직접 조립한다.
 ## 조정
 
 손잡이는 `neon-glow.js` 맨 위에 있다. VSIX로 설치했다면 설치된 확장 폴더 안이다. 고친 뒤
-`Neon Glow: Install (patch workbench)`를 다시 실행하고(또는 `node install.js`) 재시작한다.
+`Neon Glow: Show status`를 다시 실행하고(또는 `node install.js`) 재시작한다.
 
 ```js
 var BRIGHTNESS    = 1.0;   // 전체 세기
@@ -219,12 +224,19 @@ SHA-256(base64, 패딩 제거)을 들고 있는데, 패치하면 그 값이 안 
 
 **VS Code 업데이트는 패치를 지운다.** 업데이터가 `workbench.js`를 갈아끼운다. 이건 확장을 갓
 설치한 상태와 똑같은 상태 — 패치되지 않은 번들 — 이라서, 다음 실행 때 확장이 다시 패치할지
-물어본다. `Neon Glow: Install (patch workbench)`를 직접 실행하거나, CLI로 갔다면
+물어본다. `Neon Glow: Show status`를 직접 실행하거나, CLI로 갔다면
 `node install.js`를 다시 돌려도 된다. 재설치는 안전하다. 언제나 원본 `.pre-neon.bak`에서 다시
 만들지, 이미 패치된 파일 위에 덧붙이지 않는다.
 
-일부러 패치를 제거하면 그 제안도 함께 꺼진다. `Neon Glow: Remove`가 매번 닫아야 하는 알림으로
-변하지 않도록.
+일부러 번들을 원상복구하면 그 제안도 함께 꺼진다. 매번 닫아야 하는 알림으로 변하지 않도록.
+
+**확장을 제거하면 번들도 원상복구된다.** `package.json`이 `vscode:uninstall` 훅을 선언하고,
+VS Code가 확장을 제거할 때 그것을 node 스크립트로 실행한다. 그래서 확장 뷰의 제거 버튼이
+뒷정리까지 한다. 다만 최선 노력이다. 설치 디렉터리에 쓸 수 없으면 — 시스템 전역 설치인데 권한
+상승이 없는 경우 — 훅이 실패하고 번들은 패치된 채로 남는다. 그때는 권한을 갖춘 상태로
+`node uninstall.js`를 돌리거나, 제거 전에 `Neon Glow: Show status`를 쓰면 된다. 확장을
+*사용 안 함*으로 두는 것은 제거가 아니다. 패치는 그대로 남고, 글로우는 마지막으로 본 상태로
+계속 동작한다.
 
 ## 상태
 
