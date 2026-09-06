@@ -17,27 +17,42 @@ try {
     chromaSpan:   0.50,  /* chroma range mapped onto the strength ramp         */
     floor:        0.40,  /* strength for a colour that just passes minChroma   */
     minLightness: 0.25,  /* darker than this -> no glow                        */
-    glowLayers:   3      /* shadow passes per token: 3 tight+mid+wide, 1 core  */
+    glowLayers:   3,     /* shadow passes per token: 3 tight+mid+wide, 1 core  */
+    maxBlur:      36     /* ceiling on any one radius; 36 = the widest we emit */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
   var KNOB_RANGE = {
     brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
-    floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3]
+    floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64]
   };
 
   /**
    * How many shadow passes to paint.
    *
-   * This is the expensive knob, not brightness. A blur spreads about its radius
-   * in every direction, so the widest of the three passes covers roughly (w+72)
-   * by (h+72) around a token that is itself about 40 by 18 - two thirds of all
-   * the blurred area the glow paints. Dropping it costs the outer bloom and
-   * saves two thirds of the work; dropping to one pass saves about ninety
-   * percent and leaves a thin rim.
+   * This is the expensive knob, not brightness. Measured over a real scroll on
+   * a dense C++ viewport - 390 token spans, 220 of them glowing - the widest
+   * pass is not two thirds of the cost as the area arithmetic suggests but
+   * nearly all of it: 12ms of raster with no glow, 16ms at two passes, 87ms at
+   * three. Blur time climbs far faster than radius, and at 36px the blurs of
+   * neighbouring tokens overlap heavily.
    */
   function layers() {
     return Math.max(1, Math.min(3, Math.round(KNOBS.glowLayers)));
+  }
+
+  /**
+   * Ceiling on a single blur radius.
+   *
+   * Raster time climbs steeply and smoothly with radius rather than with the
+   * area the arithmetic predicts. Measured on a dense C++ viewport, capping the
+   * widest pass costs nothing down to 34px and then falls away fast: 32px is
+   * about a tenth off, 30px a fifth, 28px a third, 26px nearly half. The
+   * default is the widest radius the formula can produce, so it changes
+   * nothing until someone lowers it.
+   */
+  function blur(px) {
+    return Math.max(1, Math.min(Math.round(KNOBS.maxBlur), px));
   }
 
   /**
@@ -99,7 +114,7 @@ try {
 
     var t = Math.max(0, Math.min(1, (chroma - KNOBS.minChroma) / KNOBS.chromaSpan));
     var k = (KNOBS.floor + (1 - KNOBS.floor) * t) * KNOBS.brightness;
-    var near = Math.round(2 + 3*k), mid = Math.round(6 + 10*k), far = Math.round(14 + 22*k);
+    var near = blur(Math.round(2 + 3*k)), mid = blur(Math.round(6 + 10*k)), far = blur(Math.round(14 + 22*k));
 
     /* No !important on the colour. The token stylesheet is made of single-class
        .mtkN rules, but bracket pair colourisation paints
@@ -141,7 +156,7 @@ try {
 
     var k = KNOBS.brightness;
     if (k > 0) {
-      var near = Math.round(2 + 3 * k), mid = Math.round(6 + 10 * k);
+      var near = blur(Math.round(2 + 3 * k)), mid = blur(Math.round(6 + 10 * k));
       var shadow = ' 0 0 ' + near + 'px currentColor';
       if (layers() >= 2) shadow += ', 0 0 ' + mid + 'px currentColor';
       css += '.monaco-editor [class*="bracket-highlighting-"] { text-shadow:'

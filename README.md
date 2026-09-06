@@ -250,6 +250,7 @@ editor within a second or so — no re-patch, no restart.
 | Setting | Default | |
 |---------|---------|--|
 | `neonGlow.glowLayers` | `3` | shadow passes per token — the expensive one, see below |
+| `neonGlow.maxBlur` | `36` | ceiling on any one blur radius; the default is already the widest emitted |
 | `neonGlow.brightness` | `1.0` | overall strength; `0` leaves the colours alone and drops the glow |
 | `neonGlow.minChroma` | `0.30` | colours flatter than this never glow — this is what keeps body text out |
 | `neonGlow.chromaSpan` | `0.50` | how much chroma above the threshold reaches full strength |
@@ -271,25 +272,41 @@ The editor virtualises, so a 10,000 line file is not 10,000 glowing spans — on
 the visible lines are ever in the DOM. The cost scales with the viewport and how
 token-dense the language is, not with file size.
 
-It is still real work. A `text-shadow` blur spreads about its radius in every
-direction, so around a token of roughly 40×18 the three passes cover:
+It is still real work. Measured over a driven scroll on 50 lines of
+`nlohmann/json`'s 27,000-line single header — 390 token spans, 220 of them
+glowing, 77 of them brackets — summing the compositor's `RasterTask` time:
 
-| Pass | Radius | Blurred area |
-|-------|--------|--------------|
-| core | `5px` | 1,400 px² |
-| halo | `16px` | 3,600 px² |
-| bloom | `36px` | **10,080 px²** |
+| | Raster |
+|---|--------|
+| glow off | 12 ms |
+| `glowLayers` 2 | 16 ms |
+| `glowLayers` 3 (default) | **87 ms** |
 
-15,080 px² against a 720 px² glyph — 21× overdraw — and a dense C++ screen holds
-something like 275 glowing tokens, so a full repaint blurs about **two screens'
-worth of pixels**, on every scrolled frame.
+The widest pass is not two thirds of the cost, which is what the area
+arithmetic predicts; it is very nearly all of it. Blur time climbs much faster
+than radius, and at `36px` the blurs of neighbouring tokens overlap heavily.
 
-`glowLayers` is the lever, because the bloom alone is two thirds of that area.
-Dropping it costs the outer halo and two thirds of the work; core only saves
-about ninety percent. `brightness` shrinks the radii as well, but only by about
-a third at half strength — the two tight passes barely move — so it fades the
-glow far more than it speeds it up. On large files, set `glowLayers` to `2`
-before reaching for anything else.
+`maxBlur` is the same lever with a finer grain — a ceiling on the radius rather
+than a pass removed outright. From a separate run, so comparable only within
+its own column:
+
+| Ceiling | Raster | |
+|---------|--------|--|
+| `36` (default) | 71 ms | unchanged |
+| `32` | 65 ms | −9% |
+| `30` | 58 ms | −18% |
+| `28` | 47 ms | −34% |
+| `26` | 39 ms | −45% |
+
+`brightness` shrinks the radii too, but only by about a third at half strength —
+the two tight passes barely move — so it fades the glow far more than it speeds
+it up.
+
+Nothing else measured. Dropping `backface-visibility: hidden`, a layer-promotion
+hack inherited from SynthWave, came out inside the noise on a current Chromium,
+so it stays; and the numbers above only separate from noise when the same
+variants are measured in adjacent pairs, because raster time drifts downwards as
+caches warm.
 
 **Flatter themes need different numbers.** The defaults are calibrated on
 Monokai, which is unusually saturated. Abyss, for instance, tops out around half

@@ -146,7 +146,8 @@ function reflect(enabled) {
  * rewriting workbench.js or restarting - the renderer clamps and applies them
  * on its next poll.
  */
-const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness', 'glowLayers'];
+const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
+                'glowLayers', 'maxBlur'];
 
 function readKnobs() {
   const c = vscode.workspace.getConfiguration('neonGlow');

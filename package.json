@@ -2,7 +2,7 @@
   "name": "vscode-neon-glow",
   "displayName": "Neon Glow",
   "description": "Neon glow for syntax highlighting, derived from whatever colour theme is active.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "Ruminem",
   "license": "MIT",
   "repository": {
@@ -46,19 +46,28 @@
           "enum": [3, 2, 1],
           "enumDescriptions": [
             "Tight core, mid halo and wide bloom. The look this was designed around.",
-            "Drops the wide bloom. About two thirds less blurred area, and the one to reach for on large, token-dense files.",
-            "Core only. About ninety percent less blurred area; the glow becomes a thin rim."
+            "Drops the wide bloom. Measured at roughly a fifth of the raster time of three passes on a dense C++ file, and the one to reach for there.",
+            "Core only. Marginally cheaper again than two passes; the glow becomes a thin rim."
           ],
           "order": 0,
           "scope": "application",
-          "markdownDescription": "How many shadow passes each token gets. **This is the expensive setting, not `#neonGlow.brightness#`** — a blur spreads about its radius in every direction, so the widest pass alone is roughly two thirds of all the blurred area painted. Applies without a restart."
+          "markdownDescription": "How many shadow passes each token gets. **This is the expensive setting, not `#neonGlow.brightness#`.** Measured over a real scroll on a dense C++ viewport: 12ms of raster with the glow off, 16ms at two passes, 87ms at three. Blur time climbs far faster than radius, and at the widest pass the blurs of neighbouring tokens overlap heavily. Applies without a restart."
+        },
+        "neonGlow.maxBlur": {
+          "type": "number",
+          "default": 36,
+          "minimum": 1,
+          "maximum": 64,
+          "order": 1,
+          "scope": "application",
+          "markdownDescription": "Ceiling on any single blur radius, in pixels. The default is the widest the glow ever emits, so it changes nothing until you lower it. Raster time climbs steeply with radius: measured on a dense C++ file, `32` is about a tenth cheaper, `30` a fifth, `28` a third, `26` nearly half, and the bloom narrows to match. A gentler trade than `#neonGlow.glowLayers#`, which drops the outer pass outright."
         },
         "neonGlow.brightness": {
           "type": "number",
           "default": 1.0,
           "minimum": 0,
           "maximum": 3,
-          "order": 1,
+          "order": 2,
           "scope": "application",
           "markdownDescription": "Overall glow strength. `0` turns the glow off while leaving the colours alone; `1` is the default. Applies without a restart."
         },
@@ -67,7 +76,7 @@
           "default": 0.3,
           "minimum": 0,
           "maximum": 1,
-          "order": 2,
+          "order": 3,
           "scope": "application",
           "markdownDescription": "Colours flatter than this do not glow. Chroma is `max(r,g,b) - min(r,g,b)`, so raising this is what keeps body text and comments out of it."
         },
@@ -76,7 +85,7 @@
           "default": 0.5,
           "minimum": 0.01,
           "maximum": 2,
-          "order": 3,
+          "order": 4,
           "scope": "application",
           "markdownDescription": "How much chroma above `#neonGlow.minChroma#` it takes to reach full strength. Smaller means the difference between token colours is more abrupt."
         },
@@ -85,7 +94,7 @@
           "default": 0.4,
           "minimum": 0,
           "maximum": 1,
-          "order": 4,
+          "order": 5,
           "scope": "application",
           "markdownDescription": "Strength given to a colour that only just passes `#neonGlow.minChroma#`. Raise it to flatten the difference between token colours, lower it to exaggerate it."
         },
@@ -94,7 +103,7 @@
           "default": 0.25,
           "minimum": 0,
           "maximum": 1,
-          "order": 5,
+          "order": 6,
           "scope": "application",
           "markdownDescription": "Colours darker than this are skipped, however saturated they are. Keeps a dark theme's dim accents from glowing."
         }
