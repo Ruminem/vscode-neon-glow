@@ -114,6 +114,17 @@ try {
 
     var t = Math.max(0, Math.min(1, (chroma - KNOBS.minChroma) / KNOBS.chromaSpan));
     var k = (KNOBS.floor + (1 - KNOBS.floor) * t) * KNOBS.brightness;
+    /* The tube, not the halo. Every counted pass is wide enough that the
+       letterform is gone by the time it lands - even the narrowest, at 5px, is
+       thicker than the stroke it is meant to trace - so a glyph sat inside a
+       smear instead of lighting one. A radius this tight still follows the
+       outline, which is what reads as neon rather than as blurred text.
+
+       It rides along at every glowLayers setting instead of being one of them.
+       Blur time climbs steeply with radius, so at 1-2px this costs a rounding
+       error beside the 36px pass, and dropping it would take the edge away
+       while saving nothing. */
+    var core = blur(Math.max(1, Math.round(1 + k)));
     var near = blur(Math.round(2 + 3*k)), mid = blur(Math.round(6 + 10*k)), far = blur(Math.round(14 + 22*k));
 
     /* No !important on the colour. The token stylesheet is made of single-class
@@ -122,8 +133,12 @@ try {
        specificity - unless an !important here overrides it and collapses every
        bracket level onto one token colour. The copied rule already comes later
        in the document than the original, so it wins without forcing anything. */
+    /* near drops from 0.90 to 0.75 to make room for the core. The light near
+       the glyph is moved towards the edge rather than added to, so the text
+       comes out sharper instead of merely bolder. */
     var n = layers();
-    var shadow = ' 0 0 '+near+'px #'+hex+alpha(0.90*k);
+    var shadow = ' 0 0 '+core+'px #'+hex+alpha(0.95*k);
+    shadow += ', 0 0 '+near+'px #'+hex+alpha(0.75*k);
     if (n >= 2) shadow += ', 0 0 '+mid+'px #'+hex+alpha(0.65*k);
     if (n >= 3) shadow += ', 0 0 '+far+'px #'+hex+alpha(0.40*k);
 
@@ -156,8 +171,9 @@ try {
 
     var k = KNOBS.brightness;
     if (k > 0) {
+      var core = blur(Math.max(1, Math.round(1 + k)));
       var near = blur(Math.round(2 + 3 * k)), mid = blur(Math.round(6 + 10 * k));
-      var shadow = ' 0 0 ' + near + 'px currentColor';
+      var shadow = ' 0 0 ' + core + 'px currentColor, 0 0 ' + near + 'px currentColor';
       if (layers() >= 2) shadow += ', 0 0 ' + mid + 'px currentColor';
       css += '.monaco-editor [class*="bracket-highlighting-"] { text-shadow:'
         + shadow + ' !important; }\n';

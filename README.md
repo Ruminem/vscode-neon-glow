@@ -259,7 +259,7 @@ editor within a second or so — no re-patch, no restart.
 
 | Setting | Default | |
 |---------|---------|--|
-| `neonGlow.glowLayers` | `3` | shadow passes per token — the expensive one, see below |
+| `neonGlow.glowLayers` | `3` | halo passes per token, over an edge pass that always runs — the expensive one, see below |
 | `neonGlow.maxBlur` | `36` | ceiling on any one blur radius; the default is already the widest emitted |
 | `neonGlow.brightness` | `1.0` | overall strength; `0` leaves the colours alone and drops the glow |
 | `neonGlow.minChroma` | `0.30` | colours flatter than this never glow — this is what keeps body text out |

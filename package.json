@@ -45,13 +45,13 @@
           "default": 3,
           "enum": [3, 2, 1],
           "enumDescriptions": [
-            "Tight core, mid halo and wide bloom. The look this was designed around.",
+            "Near halo, mid halo and wide bloom, over the edge pass. The look this was designed around.",
             "Drops the wide bloom. Measured at roughly a fifth of the raster time of three passes on a dense C++ file, and the one to reach for there.",
-            "Core only. Marginally cheaper again than two passes; the glow becomes a thin rim."
+            "The near halo only. Marginally cheaper again than two passes; past the edge pass the glow becomes a thin rim."
           ],
           "order": 0,
           "scope": "application",
-          "markdownDescription": "How many shadow passes each token gets. **This is the expensive setting, not `#neonGlow.brightness#`.** Measured over a real scroll on a dense C++ viewport: 12ms of raster with the glow off, 16ms at two passes, 87ms at three. Blur time climbs far faster than radius, and at the widest pass the blurs of neighbouring tokens overlap heavily. Applies without a restart."
+          "markdownDescription": "How many shadow passes each token gets. **This is the expensive setting, not `#neonGlow.brightness#`.** Measured over a real scroll on a dense C++ viewport: 12ms of raster with the glow off, 16ms at two passes, 87ms at three. Blur time climbs far faster than radius, and at the widest pass the blurs of neighbouring tokens overlap heavily. A tight 1-2px edge pass always runs and is not counted here: at that radius it costs a rounding error, while dropping it would take the letterform back out of the glow. Applies without a restart."
         },
         "neonGlow.maxBlur": {
           "type": "number",
