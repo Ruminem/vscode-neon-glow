@@ -4,26 +4,13 @@
 
 Neon glow for VS Code syntax highlighting — **for any colour theme**.
 
-Inspired by [SynthWave '84](https://github.com/robb0wen/synthwave-vscode), but it does not
-ship a theme and is not tied to one. It reads whatever colours your current theme
-produces and makes the vivid ones glow, so you can keep changing themes and the glow
-follows along.
+It ships no theme of its own. It reads whatever colours your current theme produces
+and makes the vivid ones glow, so you can keep changing themes and the glow follows
+along — no reload needed.
 
 ![requires VS Code 1.70 or newer](https://img.shields.io/badge/VS%20Code-1.70%2B-blue)
 
-[How it differs](#how-it-differs-from-synthwave-84) · [Which tokens glow](#which-tokens-glow) · [Turning it on and off](#turning-it-on-and-off) · [Install](#install) · [Tuning](#tuning) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
-
-## How it differs from SynthWave '84
-
-SynthWave hardcodes five hex values and refuses to run unless its own theme is active:
-
-```js
-const tokenReplacements = { 'fe4450': "...", 'ff7edb': "...", /* ...3 more */ };
-const usingSynthwave = () => document.querySelector('[class*="RobbOwen-synthwave-vscode-themes"]');
-```
-
-This one derives the glow from the theme's own token colours at runtime, and re-derives
-them when you switch themes — no reload needed.
+[Which tokens glow](#which-tokens-glow) · [Turning it on and off](#turning-it-on-and-off) · [Install](#install) · [Tuning](#tuning) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
 
 ## Which tokens glow
 
