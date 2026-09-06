@@ -42,9 +42,11 @@ function ensureStateFile(stateFile) {
   } catch (e) { return false; }
 }
 
-function writeState(stateFile, enabled) {
+function writeState(stateFile, enabled, knobs) {
   fs.mkdirSync(path.dirname(stateFile), { recursive: true });
-  fs.writeFileSync(stateFile, JSON.stringify({ enabled: !!enabled, seq: Date.now() }), 'utf8');
+  const body = { enabled: !!enabled, seq: Date.now() };
+  if (knobs) body.knobs = knobs;
+  fs.writeFileSync(stateFile, JSON.stringify(body), 'utf8');
 }
 
 function readState(stateFile) {

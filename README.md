@@ -219,17 +219,25 @@ falloff the extension paints with, and the PNG is assembled on top of `zlib`.
 
 ## Tuning
 
-The knobs are at the top of `neon-glow.js` — in the installed extension's folder
-if you used the VSIX. Edit it, run `Neon Glow: Show status` again
-(or `node install.js`), and restart.
+Open Settings (`Ctrl+,`) and search `Neon Glow`. Changes apply to the open
+editor within a second or so — no re-patch, no restart.
 
-```js
-var BRIGHTNESS    = 1.0;   // overall strength
-var MIN_CHROMA    = 0.30;  // raise -> fewer colours glow (more selective)
-var CHROMA_SPAN   = 0.50;  // how quickly strength ramps up with chroma
-var FLOOR         = 0.40;  // strength of a colour that barely passes MIN_CHROMA
-var MIN_LIGHTNESS = 0.25;  // skip colours darker than this
-```
+| Setting | Default | |
+|---------|---------|--|
+| `neonGlow.brightness` | `1.0` | overall strength; `0` leaves the colours alone and drops the glow |
+| `neonGlow.minChroma` | `0.30` | colours flatter than this never glow — this is what keeps body text out |
+| `neonGlow.chromaSpan` | `0.50` | how much chroma above the threshold reaches full strength |
+| `neonGlow.floor` | `0.40` | strength of a colour that only just passes `minChroma` |
+| `neonGlow.minLightness` | `0.25` | skip colours darker than this, however saturated |
+
+They work without a restart because they do not live in the patch. The extension
+writes them into the same `state.json` the toggle uses, and the renderer clamps
+and applies them on its next poll, rebuilding the stylesheet from the theme's
+token colours. So the bundle only ever has to be written once.
+
+The same values are also the defaults at the top of `neon-glow.js`, which is
+what a CLI-only install uses — there is no extension there to send anything.
+Editing those means re-running `node install.js` and restarting.
 
 ## Things that will bite you
 

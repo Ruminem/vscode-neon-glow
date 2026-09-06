@@ -113,16 +113,36 @@ function reflect(enabled) {
   }
 }
 
-/** Toggling writes the state file and the status bar; the renderer follows both. */
-function setGlow(enabled) {
+/**
+ * The tuning values, straight from Settings. They ride the state file rather
+ * than being baked into the payload, so changing one takes effect without
+ * rewriting workbench.js or restarting - the renderer clamps and applies them
+ * on its next poll.
+ */
+const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness'];
+
+function readKnobs() {
+  const c = vscode.workspace.getConfiguration('neonGlow');
+  const out = {};
+  for (const k of KNOBS) {
+    const v = c.get(k);
+    if (typeof v === 'number' && isFinite(v)) out[k] = v;
+  }
+  return out;
+}
+
+/** Write the whole state - switch and knobs together - and mirror it locally. */
+function publish(enabled) {
   try {
-    writeState(stateFile, enabled);
+    writeState(stateFile, enabled, readKnobs());
   } catch (e) {
     vscode.window.showErrorMessage('Neon Glow: could not write state - ' + e.message);
     return;
   }
   reflect(enabled);
 }
+
+function setGlow(enabled) { publish(enabled); }
 
 /** A bundle rewrite only takes effect on a cold start, so offer to do one. */
 async function noteRestart(what) {
@@ -173,8 +193,17 @@ function activate(context) {
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 0);
   context.subscriptions.push(statusItem);
   refreshPatched();
-  reflect(readState(stateFile).enabled);
   statusItem.show();
+
+  /* Publish once so the file carries the current settings even if nothing is
+     toggled this session, then again whenever any of them changes. */
+  publish(readState(stateFile).enabled);
+
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+    if (KNOBS.some(k => e.affectsConfiguration('neonGlow.' + k))) {
+      publish(readState(stateFile).enabled);
+    }
+  }));
 
   const cmd = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 

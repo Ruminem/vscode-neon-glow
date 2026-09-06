@@ -5,12 +5,25 @@ try {
   if (typeof window === 'undefined' || window.__NEON_INSTALLED) { return; }
   window.__NEON_INSTALLED = true;
 
-  /* ---- tuning knobs ---- */
-  var BRIGHTNESS    = 1.0;   /* overall strength, 0.0 ~ 1.5                        */
-  var MIN_CHROMA    = 0.30;  /* below this = not a vivid syntax colour -> no glow  */
-  var CHROMA_SPAN   = 0.50;  /* chroma range mapped onto the strength ramp         */
-  var FLOOR         = 0.40;  /* strength for a colour that just passes MIN_CHROMA  */
-  var MIN_LIGHTNESS = 0.25;  /* darker than this -> no glow                        */
+  /**
+   * Tuning knobs. These are the defaults; the extension sends the settings
+   * over the same bridge the toggle uses, so editing them in Settings takes
+   * effect without a re-patch or a restart. Editing them here only matters for
+   * a CLI-only install, where nothing is sending anything.
+   */
+  var KNOBS = {
+    brightness:   1.0,   /* overall strength, 0.0 ~ 1.5                        */
+    minChroma:    0.30,  /* below this = not a vivid syntax colour -> no glow  */
+    chromaSpan:   0.50,  /* chroma range mapped onto the strength ramp         */
+    floor:        0.40,  /* strength for a colour that just passes minChroma   */
+    minLightness: 0.25   /* darker than this -> no glow                        */
+  };
+
+  /* Clamped so a hand-edited settings.json cannot produce nonsense. */
+  var KNOB_RANGE = {
+    brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
+    floor: [0, 1], minLightness: [0, 1]
+  };
 
   /**
    * Fallback shortcut, used only when the extension bridge is unavailable.
@@ -66,11 +79,11 @@ try {
     var lightness = (max + min) / 2;
     var chroma = max - min;   /* NOT hsl saturation: that inflates near-white colours */
 
-    if (lightness < MIN_LIGHTNESS) return null;
-    if (chroma < MIN_CHROMA) return null;
+    if (lightness < KNOBS.minLightness) return null;
+    if (chroma < KNOBS.minChroma) return null;
 
-    var t = Math.max(0, Math.min(1, (chroma - MIN_CHROMA) / CHROMA_SPAN));
-    var k = (FLOOR + (1 - FLOOR) * t) * BRIGHTNESS;
+    var t = Math.max(0, Math.min(1, (chroma - KNOBS.minChroma) / KNOBS.chromaSpan));
+    var k = (KNOBS.floor + (1 - KNOBS.floor) * t) * KNOBS.brightness;
     var near = Math.round(2 + 3*k), mid = Math.round(6 + 10*k), far = Math.round(14 + 22*k);
 
     return 'color: #'+hex+' !important; text-shadow:'
@@ -164,6 +177,29 @@ try {
     mark(enabled ? 'enabled' : 'disabled');
   }
 
+  /**
+   * Take tuning values sent by the extension. Unlike the on/off state there is
+   * nothing local to protect here, so these apply on the very first read too.
+   * A change invalidates lastLen, because the stylesheet has to be rebuilt from
+   * the token source rather than merely re-shown.
+   */
+  function applyKnobs(k) {
+    if (!k || typeof k !== 'object') return false;
+    var changed = false;
+    for (var name in KNOBS) {
+      if (!Object.prototype.hasOwnProperty.call(KNOBS, name)) continue;
+      var v = k[name];
+      if (typeof v !== 'number' || !isFinite(v)) continue;
+      var r = KNOB_RANGE[name];
+      v = Math.max(r[0], Math.min(r[1], v));
+      if (KNOBS[name] === v) continue;
+      KNOBS[name] = v;
+      changed = true;
+    }
+    if (changed) { lastLen = -1; render(); mark('knobs'); }
+    return changed;
+  }
+
   /* ------------------------------------------------------------------
    * Bridge, in two halves. Both carry the same state, so the commands stay
    * inside the VS Code keybinding system and nothing here intercepts a key.
@@ -191,6 +227,7 @@ try {
       .then(function (s) {
         if (!s || typeof s.enabled !== 'boolean') return;
         if (!bridgeOk) { bridgeOk = true; mark('bridge-ok file'); }
+        applyKnobs(s.knobs);
         if (lastSeq === null) { lastSeq = s.seq; return; }
         if (s.seq !== lastSeq) { lastSeq = s.seq; setEnabled(s.enabled); }
       })

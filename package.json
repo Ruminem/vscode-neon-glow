@@ -2,7 +2,7 @@
   "name": "vscode-neon-glow",
   "displayName": "Neon Glow",
   "description": "Neon glow for syntax highlighting, derived from whatever colour theme is active.",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "publisher": "Ruminem",
   "license": "MIT",
   "repository": {
@@ -36,6 +36,56 @@
         { "command": "neonGlow.install", "when": "false" },
         { "command": "neonGlow.remove",  "when": "false" }
       ]
+    },
+    "configuration": {
+      "title": "Neon Glow",
+      "properties": {
+        "neonGlow.brightness": {
+          "type": "number",
+          "default": 1.0,
+          "minimum": 0,
+          "maximum": 3,
+          "order": 1,
+          "scope": "application",
+          "markdownDescription": "Overall glow strength. `0` turns the glow off while leaving the colours alone; `1` is the default. Applies without a restart."
+        },
+        "neonGlow.minChroma": {
+          "type": "number",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "order": 2,
+          "scope": "application",
+          "markdownDescription": "Colours flatter than this do not glow. Chroma is `max(r,g,b) - min(r,g,b)`, so raising this is what keeps body text and comments out of it."
+        },
+        "neonGlow.chromaSpan": {
+          "type": "number",
+          "default": 0.5,
+          "minimum": 0.01,
+          "maximum": 2,
+          "order": 3,
+          "scope": "application",
+          "markdownDescription": "How much chroma above `#neonGlow.minChroma#` it takes to reach full strength. Smaller means the difference between token colours is more abrupt."
+        },
+        "neonGlow.floor": {
+          "type": "number",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "order": 4,
+          "scope": "application",
+          "markdownDescription": "Strength given to a colour that only just passes `#neonGlow.minChroma#`. Raise it to flatten the difference between token colours, lower it to exaggerate it."
+        },
+        "neonGlow.minLightness": {
+          "type": "number",
+          "default": 0.25,
+          "minimum": 0,
+          "maximum": 1,
+          "order": 5,
+          "scope": "application",
+          "markdownDescription": "Colours darker than this are skipped, however saturated they are. Keeps a dark theme's dim accents from glowing."
+        }
+      }
     }
   }
 }
