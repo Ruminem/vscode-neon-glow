@@ -406,8 +406,11 @@ open an issue if they misfire.
 
 ## Credit
 
-The idea, and the original workbench-patching approach, come from
-[SynthWave '84](https://github.com/robb0wen/synthwave-vscode) by Robb Owen.
+The idea — that syntax highlighting can glow, and that patching the workbench is
+a way to get there — comes from
+[SynthWave '84](https://github.com/robb0wen/synthwave-vscode) by Robb Owen. The
+technique differs: SynthWave drops a script beside the workbench and loads it from
+the HTML, while this appends to `workbench.js` directly.
 
 ## License
 

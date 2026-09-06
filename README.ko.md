@@ -359,8 +359,10 @@ macOS와 Linux는 동작하도록 작성했을 뿐 아무도 실행해보지 않
 
 ## 출처
 
-아이디어와 워크벤치 패치 방식의 원형은 Robb Owen의
-[SynthWave '84](https://github.com/robb0wen/synthwave-vscode)에서 왔음.
+구문 강조가 빛날 수 있다는 것, 그리고 워크벤치를 패치하면 거기에 닿는다는 것 — 아이디어는
+Robb Owen의 [SynthWave '84](https://github.com/robb0wen/synthwave-vscode)에서 왔음.
+패치 방식은 다름. SynthWave는 워크벤치 옆에 스크립트를 떨구고 HTML에서 불러오지만, 이쪽은
+`workbench.js`에 직접 덧붙임.
 
 ## 라이선스
 
