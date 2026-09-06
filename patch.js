@@ -52,6 +52,33 @@ function patchedStamp(file) {
   } catch (e) { return null; }
 }
 
+/**
+ * Whether another glow extension is patched into the same installation.
+ *
+ * SynthWave '84 and its forks never touch workbench.js: they drop a
+ * neondreams.js beside it and add a <script> tag to the workbench HTML.
+ * Different files, different backups, so neither patch can corrupt or silently
+ * undo the other. What they do share is the DOM - both build a <style> from
+ * .vscode-tokens-styles and set text-shadow with !important, at equal
+ * specificity, so whichever is appended last wins. That is worth saying out
+ * loud rather than leaving someone to wonder why the glow looks doubled.
+ *
+ * Checked from disk rather than from the renderer, because this side can read
+ * it directly and the bridge only runs the other way.
+ */
+function rivalGlow(workbenchJs) {
+  try {
+    const dir = path.dirname(workbenchJs);
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith('.html')) continue;
+      if (fs.readFileSync(path.join(dir, name), 'utf8').includes('neondreams.js')) {
+        return "SynthWave '84";
+      }
+    }
+  } catch (e) { /* an unreadable install directory is not this function's problem */ }
+  return null;
+}
+
 /** Absolute fs path -> the vscode-file URL the renderer can fetch. */
 function toVscodeFileUrl(fsPath) {
   let p = String(fsPath).split('\\').join('/');
@@ -131,6 +158,6 @@ function removePatch(file) {
 const payloadPath = () => path.join(__dirname, 'neon-glow.js');
 
 module.exports = {
-  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, backupOf, payloadPath,
+  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, backupOf, payloadPath,
   toVscodeFileUrl, defaultStateFile, ensureStateFile, writeState, readState,
 };

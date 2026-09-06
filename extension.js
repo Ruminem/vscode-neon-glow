@@ -4,7 +4,7 @@ const path = require('path');
 const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
 const {
-  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, payloadPath,
+  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, payloadPath,
   ensureStateFile, writeState, readState,
 } = require('./patch');
 
@@ -288,8 +288,20 @@ function activate(context) {
       ? 'Restore the original bundle'
       : 'Patch it now';
 
-    const answer = await vscode.window.showInformationMessage(
-      'Neon Glow is ' + on + '. Bundle: ' + where, action);
+    let msg = 'Neon Glow is ' + on + '. Bundle: ' + where;
+
+    /* Another glow extension cannot corrupt this one - different files - but it
+       does paint the same tokens, so say whether it is actually competing.
+       SynthWave stands down unless its own theme is active. */
+    const rival = targets.map(rivalGlow).find(Boolean);
+    if (rival) {
+      const theme = String(vscode.workspace.getConfiguration('workbench').get('colorTheme') || '');
+      msg += ' | ' + rival + ' is also patched in, ' + (/synthwave/i.test(theme)
+        ? 'and its theme is active, so both are painting the same tokens - turn one off.'
+        : 'but it only paints under its own theme, so nothing is competing right now.');
+    }
+
+    const answer = await vscode.window.showInformationMessage(msg, action);
 
     if (answer === 'Patch it now') installPatch(context);
     else if (answer) vscode.commands.executeCommand('neonGlow.remove');

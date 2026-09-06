@@ -293,6 +293,21 @@ Run `node uninstall.js` with the rights it needs, or `Neon Glow: Show status`
 before uninstalling. Note that *disabling* the extension is not uninstalling it:
 the patch stays, and the glow keeps working off the last state it saw.
 
+**SynthWave '84 can sit alongside this, but only one of them should paint.** It
+never touches `workbench.js`: it writes a `neondreams.js` next to it and adds a
+`<script>` tag to the workbench HTML. Different files, different backups, so
+neither patch can corrupt or silently undo the other — the two can be installed
+together safely. What they share is the DOM. Both build a `<style>` from
+`.vscode-tokens-styles` and set `text-shadow` with `!important` at equal
+specificity, so whichever is appended last wins, which is a race rather than a
+rule. SynthWave stands down unless its own theme is active, so they only really
+compete when you are using it — and this extension already derives a glow from
+that theme's colours, which is what SynthWave's own patch is for.
+
+`Neon Glow: Show status` reports whether the other one is patched in and whether
+it is currently competing. `Neon Glow: Disable` turns this one off instantly
+without touching a file, so switching between the two costs nothing.
+
 ## Status
 
 Developed and verified against **VS Code 1.136.1 on Windows 11**, with the applied
