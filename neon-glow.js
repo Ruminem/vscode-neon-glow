@@ -222,7 +222,16 @@ try {
 
        !important because VS Code's own editor.cursorSmoothCaretAnimation paints
        ".cursors-layer.cursor-smooth-caret-animation > .cursor" - three classes
-       against our two - and hard-codes 80ms. With both on, this value wins. */
+       against our two - and hard-codes 80ms. With both on, this value wins.
+
+       Of the three properties listed, this build animates left and top: the
+       caret is position:absolute and Monaco moves it by setting those, not by
+       transforming it. They are layout properties, so each frame of the slide
+       is main-thread work rather than compositor work - which is why the
+       duration is worth keeping short, and part of why this ships off. The
+       same is true of VS Code's own option, at 80ms and over "all". transform
+       is listed anyway, and costs nothing while it goes unused, so that a build
+       which moves the caret that way keeps the trail. */
     var trail = Math.round(KNOBS.cursorTrail);
     if (trail > 0) {
       css += '@media (prefers-reduced-motion: no-preference) {'
@@ -232,16 +241,19 @@ try {
 
     /* The jolt on save.
 
-       A CSS animation on transform alone, not a JS loop writing inline styles,
-       and that distinction is the whole cost of the feature. will-change lifts
-       the workbench onto its own compositor layer for the duration, so the
-       frames are the compositor translating a texture it already holds - the
-       glow is not re-rastered once. Driven from JS instead, every frame would
-       redo the blur pass that measures 87ms on a dense viewport, which is what
-       made this look like the expensive idea of the four.
+       A CSS animation on transform alone, not a JS loop writing inline styles.
+       An animation the compositor can run needs nothing from the main thread
+       once it starts, while a loop asks for a style recalculation on every
+       frame of it - that much is what the choice buys.
 
-       The layer is dropped again the moment the class comes off, so nothing is
-       held promoted while you are only reading. */
+       What it does not buy is known: whether either approach re-rasters the
+       glow was never measured. Both promote a layer, and a claim about raster
+       cost here would be arithmetic rather than a reading. tools/bench.js is
+       the place to settle it if it ever matters.
+
+       will-change is scoped to the class rather than left on the rule, so the
+       promotion lasts the 150ms and nothing is held promoted while you are only
+       reading. */
     var amp = Math.round(KNOBS.saveShake);
     if (amp > 0) {
       var off = Math.max(1, Math.round(amp * 0.6));

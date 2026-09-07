@@ -77,11 +77,11 @@ duration leaves the caret trailing the text you are typing: `130` reads as lag,
 over it.
 
 **The save jolt** (`saveShake`) knocks the workbench sideways when a file is saved.
-It is a CSS animation on `transform` alone rather than a loop writing inline styles,
-which is the difference between the compositor moving a texture it already holds and
-redoing the blur pass on every frame — see [What it costs](#what-it-costs). Of the
-four this is the only one derived from nothing: it is decoration, and it is off
-unless you want it.
+It is a CSS animation on `transform` alone rather than a loop writing inline
+styles, so once it starts the frames ask nothing of the main thread. That is as
+far as the claim goes: whether either approach re-draws the glow underneath was
+never measured. Of the four this is the only one derived from nothing — it is
+decoration, and it is off unless you want it.
 
 The two that move — the caret trail and the save jolt — are dropped when the system
 asks for reduced motion. A save reaches the renderer over the same wire as the
