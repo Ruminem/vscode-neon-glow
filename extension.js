@@ -23,6 +23,21 @@ let stateFile = null;
 let statusItem = null;
 
 /**
+ * The save pulse, sent on the same wire as the switch.
+ *
+ * The renderer cannot subscribe to onDidSaveTextDocument - it lives in the
+ * workbench, not here - and the only other channel is state.json, which it
+ * polls about once a second. That is far too late to read as a reaction to
+ * Ctrl+S, so the news goes on the status bar label, which a MutationObserver
+ * over there sees within a frame. The label is on screen, so the marker is
+ * U+200B: zero width, and nothing a screen reader announces. The count cycles
+ * 0-3 so consecutive saves always differ and the label never grows.
+ */
+const PULSE = String.fromCharCode(0x200b);
+let statusBase = '';
+let savePulse = 0;
+
+/**
  * Whether the bundle actually carries the payload. Cached on purpose: isPatched
  * reads the whole multi-megabyte workbench.js, and the answer can only change
  * through the install/remove commands or a VS Code update, which needs a
@@ -161,7 +176,8 @@ function reflect(enabled) {
   /* The label is the wire - the renderer matches /NEON:(ON|OFF)/ against it -
      so an unpatched bundle is reported through colour and tooltip instead.
      Otherwise the item would keep claiming ON with nothing there to glow. */
-  statusItem.text = 'NEON:' + (enabled ? 'ON' : 'OFF');
+  statusBase = 'NEON:' + (enabled ? 'ON' : 'OFF');
+  statusItem.text = statusBase + PULSE.repeat(savePulse);
 
   const warn = new vscode.ThemeColor('statusBarItem.warningBackground');
 
@@ -196,7 +212,7 @@ function reflect(enabled) {
  * on its next poll.
  */
 const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
-                'glowLayers', 'maxBlur', 'cursorTrail'];
+                'glowLayers', 'maxBlur', 'cursorTrail', 'saveShake'];
 
 function readKnobs() {
   const c = vscode.workspace.getConfiguration('neonGlow');
@@ -295,6 +311,18 @@ function activate(context) {
     if (KNOBS.some(k => e.affectsConfiguration('neonGlow.' + k))) {
       publish(readState(stateFile).enabled);
     }
+  }));
+
+  /* Nudge the label so the renderer jolts. Nothing else about the item changes,
+     so this deliberately does not go through reflect(): a save should not be
+     re-running setContext or rebuilding the tooltip. Skipped outright when the
+     setting is off, which is also what keeps it quiet under files.autoSave. */
+  context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(() => {
+    if (!statusItem) return;
+    const amp = vscode.workspace.getConfiguration('neonGlow').get('saveShake');
+    if (!(typeof amp === 'number' && amp > 0)) return;
+    savePulse = (savePulse + 1) % 4;
+    statusItem.text = statusBase + PULSE.repeat(savePulse);
   }));
 
   /* One state file serves every window, because one workbench.js does. A toggle

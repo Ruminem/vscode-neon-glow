@@ -19,14 +19,15 @@ try {
     minLightness: 0.25,  /* darker than this -> no glow                        */
     glowLayers:   3,     /* shadow passes per token: 3 tight+mid+wide, 1 core  */
     maxBlur:      36,    /* ceiling on any one radius; 36 = the widest we emit */
-    cursorTrail:  0      /* ms for the caret to slide; 0 = jump, as VS Code does */
+    cursorTrail:  0,     /* ms for the caret to slide; 0 = jump, as VS Code does */
+    saveShake:    0      /* px the workbench jolts on a save; 0 = it stays still */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
   var KNOB_RANGE = {
     brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
     floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64],
-    cursorTrail: [0, 400]
+    cursorTrail: [0, 400], saveShake: [0, 24]
   };
 
   /**
@@ -201,6 +202,35 @@ try {
         + ' .monaco-editor .cursor { transition: transform ' + trail + 'ms ease-out,'
         + ' left ' + trail + 'ms ease-out, top ' + trail + 'ms ease-out !important; } }\n';
     }
+
+    /* The jolt on save.
+
+       A CSS animation on transform alone, not a JS loop writing inline styles,
+       and that distinction is the whole cost of the feature. will-change lifts
+       the workbench onto its own compositor layer for the duration, so the
+       frames are the compositor translating a texture it already holds - the
+       glow is not re-rastered once. Driven from JS instead, every frame would
+       redo the blur pass that measures 87ms on a dense viewport, which is what
+       made this look like the expensive idea of the four.
+
+       The layer is dropped again the moment the class comes off, so nothing is
+       held promoted while you are only reading. */
+    var amp = Math.round(KNOBS.saveShake);
+    if (amp > 0) {
+      var off = Math.max(1, Math.round(amp * 0.6));
+      css += '@media (prefers-reduced-motion: no-preference) {'
+        + ' @keyframes neon-glow-shake {'
+        + ' 0%, 100% { transform: translate(0, 0); }'
+        + ' 15% { transform: translate(-' + amp + 'px, ' + off + 'px); }'
+        + ' 30% { transform: translate(' + amp + 'px, -' + off + 'px); }'
+        + ' 45% { transform: translate(-' + off + 'px, -' + amp + 'px); }'
+        + ' 60% { transform: translate(' + off + 'px, ' + amp + 'px); }'
+        + ' 80% { transform: translate(-' + off + 'px, 0); }'
+        + ' }'
+        + ' .monaco-workbench.neon-glow-shaking {'
+        + ' animation: neon-glow-shake 150ms ease-out; will-change: transform; }'
+        + ' }\n';
+    }
     return css;
   }
 
@@ -332,9 +362,51 @@ try {
       .catch(function () {});
   }
 
+  /**
+   * Play the jolt. Everything about how it looks lives in the stylesheet; this
+   * only puts the class on and takes it off again.
+   *
+   * The class is removed and re-added across two frames rather than in one go,
+   * so a second save while the first jolt is still running restarts it. Doing
+   * that by reading offsetWidth would work too, but it forces a synchronous
+   * layout of the whole workbench - the one thing worth not doing on a keypress.
+   */
+  var SHAKE_CLASS = 'neon-glow-shaking';
+  function shake() {
+    if (!enabled || Math.round(KNOBS.saveShake) <= 0) return;
+    var w = document.querySelector('.monaco-workbench');
+    if (!w) return;
+    w.classList.remove(SHAKE_CLASS);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { w.classList.add(SHAKE_CLASS); });
+    });
+    clearTimeout(shake._t);
+    shake._t = setTimeout(function () { w.classList.remove(SHAKE_CLASS); }, 400);
+  }
+
   /* ---- fast half: the status bar item ---- */
   var STATUS_RE = /NEON:(ON|OFF)/;
   var lastStatus = null;
+
+  /**
+   * Saves ride the same label as the switch.
+   *
+   * The renderer has no extension host to subscribe to. Its two channels are
+   * this label, which a MutationObserver sees in the frame it is written, and
+   * state.json, polled about once a second - and a jolt that lands a second
+   * after Ctrl+S is not a jolt. So it has to be the label; and the label is on
+   * screen, so the marker has to be invisible. U+200B is zero width, is not
+   * whitespace to trim(), and adds nothing a screen reader announces. The count
+   * cycles 0-3, so consecutive saves always differ and the string never grows.
+   */
+  var PULSE_CODE = 0x200b;
+  var lastPulse = null;
+
+  function pulseOf(text) {
+    var n = 0;
+    while (n < text.length && text.charCodeAt(text.length - 1 - n) === PULSE_CODE) n++;
+    return n;
+  }
   var statusEl = null;        /* the one item that carries our label */
   var statusObserver = null;
 
@@ -343,10 +415,19 @@ try {
   }
 
   function applyStatus(text) {
-    var m = STATUS_RE.exec(text || '');
+    text = text || '';
+    var m = STATUS_RE.exec(text);
     if (!m) return;
     var v = (m[1] === 'ON');
     if (!bridgeOk) { bridgeOk = true; mark('bridge-ok status-bar'); }
+
+    /* Read before the first-sighting guard below returns, so a label that
+       already carries a count is recorded rather than mistaken for a save on
+       the next mutation. */
+    var pulse = pulseOf(text);
+    if (lastPulse === null) lastPulse = pulse;
+    else if (pulse !== lastPulse) { lastPulse = pulse; shake(); }
+
     if (lastStatus === null) { lastStatus = v; return; }
     if (v !== lastStatus) { lastStatus = v; setEnabled(v); }
   }

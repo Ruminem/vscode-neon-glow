@@ -117,6 +117,15 @@
           "order": 7,
           "scope": "application",
           "markdownDescription": "Milliseconds for the caret to slide to a new position, so the glow on it leaves a short streak behind. `0` keeps the instant jump. Typing restarts the slide on every keystroke, so a long duration reads as the caret lagging the text being entered: `45` keeps up while still streaking on a jump across the file, and much past `100` feels behind. Ignored when the system asks for reduced motion. VS Code has its own `#editor.cursorSmoothCaretAnimation#`, fixed at 80ms; whatever you set here wins over it. Applies without a restart."
+        },
+        "neonGlow.saveShake": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 24,
+          "order": 8,
+          "scope": "application",
+          "markdownDescription": "How far, in pixels, the workbench jolts when a file is saved. `0` holds it still; `5` is a knock, `12` is theatrical. It runs as a compositor animation on `transform` alone, so the glow is not re-drawn during it. **Turn this off if you use `#files.autoSave#`** - on a delay or a focus change, every one of those saves is a save, and the screen will not stop moving. Ignored when the system asks for reduced motion. Applies without a restart."
         }
       }
     }

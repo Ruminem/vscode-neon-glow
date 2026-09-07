@@ -260,6 +260,7 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.floor` | `0.40` | strength of a colour that only just passes `minChroma` |
 | `neonGlow.minLightness` | `0.25` | skip colours darker than this, however saturated |
 | `neonGlow.cursorTrail` | `0` | ms for the caret to slide to a new position, so its glow streaks; `0` keeps the jump |
+| `neonGlow.saveShake` | `0` | px the workbench jolts on save; `0` holds it still, and so should `files.autoSave` |
 
 They work without a restart because they do not live in the patch. The extension
 writes them into the same `state.json` the toggle uses, and the renderer clamps
