@@ -348,6 +348,29 @@ its own column:
 | `28` | 47 ms | −34% |
 | `26` | 39 ms | −45% |
 
+**Both tables were measured against the falloff that shipped before `0.9.9`, and
+the milliseconds in them now read high.** The alphas were `0.95 / 0.75 / 0.65 /
+0.40` over passes of `2 / 5 / 16 / 36px`; they are now `1.00 / 0.65 / 0.32 /
+0.14` over `1 / 5 / 11 / 26px`.
+
+That was a change made to look better, not to run faster. A blur is brightest at
+its source, so every pass paints at the glyph as well, and the old alphas summed
+to about `2.75` there — everything past `1.0` being equally opaque, the widest
+pass was as solid at the letter edge as the tightest, leaving no gradient for an
+eye to find an edge in. Counters filled, and neighbouring blurs lit the space
+between words as brightly as the words. What is visible is the ratio between the
+innermost and outermost pass, not the total.
+
+Narrowing the two widest radii came with it, and that is where the time went.
+Measured with `tools/bench.js`, which alternates the two formulas over one
+viewport and compares adjacent pairs, the new distribution costs **57% less
+raster time** — four pairs at −56.3%, −57.3%, −56.8%, −57.4%. The ordering these
+tables establish is unchanged: passes and radius are still where the cost is.
+
+`maxBlur` no longer binds at its default, because the formula now stops at
+`26px` by itself. It still matters above `brightness` `1`, which scales every
+radius, and to anyone who wants the bloom capped tighter than the formula does.
+
 `brightness` shrinks the radii too, but only by about a third at half strength —
 the two tight passes barely move — so it fades the glow far more than it speeds
 it up.

@@ -36,12 +36,18 @@ try {
   /**
    * How many shadow passes to paint.
    *
-   * This is the expensive knob, not brightness. Measured over a real scroll on
-   * a dense C++ viewport - 390 token spans, 220 of them glowing - the widest
-   * pass is not two thirds of the cost as the area arithmetic suggests but
-   * nearly all of it: 12ms of raster with no glow, 16ms at two passes, 87ms at
-   * three. Blur time climbs far faster than radius, and at 36px the blurs of
-   * neighbouring tokens overlap heavily.
+   * This is the expensive knob, not brightness. The widest pass is not two
+   * thirds of the cost as the area arithmetic suggests but nearly all of it:
+   * measured over a real scroll on a dense C++ viewport - 390 token spans, 220
+   * of them glowing - 12ms of raster with no glow, 16ms at two passes, 87ms at
+   * three. Blur time climbs far faster than radius, and the widest blurs of
+   * neighbouring tokens overlap.
+   *
+   * Those figures are from the formula that ran until the falloff was
+   * rebalanced, whose widest pass was 36px rather than 26px, so the absolute
+   * numbers now read high. The ordering they establish is what matters and has
+   * not changed. `tools/bench.js` measures a candidate against the shipped
+   * formula in pairs if a number is needed again.
    */
   function layers() {
     return Math.max(1, Math.min(3, Math.round(KNOBS.glowLayers)));
@@ -51,11 +57,15 @@ try {
    * Ceiling on a single blur radius.
    *
    * Raster time climbs steeply and smoothly with radius rather than with the
-   * area the arithmetic predicts. Measured on a dense C++ viewport, capping the
-   * widest pass costs nothing down to 34px and then falls away fast: 32px is
-   * about a tenth off, 30px a fifth, 28px a third, 26px nearly half. The
-   * default is the widest radius the formula can produce, so it changes
-   * nothing until someone lowers it.
+   * area the arithmetic predicts. Measured on a dense C++ viewport against the
+   * earlier formula, capping its 36px pass cost nothing down to 34px and then
+   * fell away fast: 32px about a tenth off, 30px a fifth, 28px a third, 26px
+   * nearly half.
+   *
+   * The formula now stops at 26px of its own accord at brightness 1, so the
+   * default of 36 no longer binds anything. It still matters at brightness
+   * above 1, which scales every radius, and to anyone who wants to cap the
+   * bloom tighter than the formula does.
    */
   function blur(px) {
     return Math.max(1, Math.min(Math.round(KNOBS.maxBlur), px));
@@ -121,17 +131,28 @@ try {
     var t = Math.max(0, Math.min(1, (chroma - KNOBS.minChroma) / KNOBS.chromaSpan));
     var k = (KNOBS.floor + (1 - KNOBS.floor) * t) * KNOBS.brightness;
     /* The tube, not the halo. Every counted pass is wide enough that the
-       letterform is gone by the time it lands - even the narrowest, at 5px, is
-       thicker than the stroke it is meant to trace - so a glyph sat inside a
-       smear instead of lighting one. A radius this tight still follows the
-       outline, which is what reads as neon rather than as blurred text.
+       letterform is gone by the time it lands, so a glyph sat inside a smear
+       instead of lighting one. A 1px radius still follows the outline, which is
+       what reads as neon rather than as blurred text. It rides along at every
+       glowLayers setting instead of being one of them, and costs a rounding
+       error beside the wide passes.
 
-       It rides along at every glowLayers setting instead of being one of them.
-       Blur time climbs steeply with radius, so at 1-2px this costs a rounding
-       error beside the 36px pass, and dropping it would take the edge away
-       while saving nothing. */
-    var core = blur(Math.max(1, Math.round(1 + k)));
-    var near = blur(Math.round(2 + 3*k)), mid = blur(Math.round(6 + 10*k)), far = blur(Math.round(14 + 22*k));
+       What makes the outline read is not this pass on its own but the drop
+       behind it. A blur is brightest at its source, so all four passes paint at
+       the glyph too, and the old alphas - 0.95, 0.75, 0.65, 0.40 - summed to
+       about 2.75 there. Everything past 1.0 is the same opaque, so the wide
+       passes were as solid at the letter edge as the tight one and there was no
+       gradient for an eye to read an edge from; counters filled in, and at 36px
+       neighbouring blurs lit the space between words as brightly as the words.
+       The ratio between the innermost and outermost pass is what is visible,
+       not the total: 1.00 to 0.14 rather than 0.95 to 0.40.
+
+       Measured with tools/bench.js against the previous formula, four pairs on
+       one viewport: 57% less raster time. Sharper and cheaper came together,
+       because the same change that restores the gradient also narrows the two
+       widest radii. */
+    var core = blur(1);
+    var near = blur(Math.round(4*k) + 1), mid = blur(Math.round(11*k)), far = blur(Math.round(26*k));
 
     /* No !important on the colour. The token stylesheet is made of single-class
        .mtkN rules, but bracket pair colourisation paints
@@ -143,10 +164,10 @@ try {
        the glyph is moved towards the edge rather than added to, so the text
        comes out sharper instead of merely bolder. */
     var n = layers();
-    var shadow = ' 0 0 '+core+'px #'+hex+alpha(0.95*k);
-    shadow += ', 0 0 '+near+'px #'+hex+alpha(0.75*k);
-    if (n >= 2) shadow += ', 0 0 '+mid+'px #'+hex+alpha(0.65*k);
-    if (n >= 3) shadow += ', 0 0 '+far+'px #'+hex+alpha(0.40*k);
+    var shadow = ' 0 0 '+core+'px #'+hex+alpha(1.00*k);
+    shadow += ', 0 0 '+near+'px #'+hex+alpha(0.65*k);
+    if (n >= 2) shadow += ', 0 0 '+mid+'px #'+hex+alpha(0.32*k);
+    if (n >= 3) shadow += ', 0 0 '+far+'px #'+hex+alpha(0.14*k);
 
     return 'color: #'+hex+'; text-shadow:' + shadow + ' !important;'
       + ' backface-visibility: hidden;';
@@ -177,10 +198,13 @@ try {
 
     var k = KNOBS.brightness;
     if (k > 0) {
-      var core = blur(Math.max(1, Math.round(1 + k)));
-      var near = blur(Math.round(2 + 3 * k)), mid = blur(Math.round(6 + 10 * k));
-      var shadow = ' 0 0 ' + core + 'px currentColor, 0 0 ' + near + 'px currentColor';
-      if (layers() >= 2) shadow += ', 0 0 ' + mid + 'px currentColor';
+      /* Only the two tight passes, and no wide one. currentColor carries no
+         alpha to fade, so every pass here lands at full strength - which is
+         survivable at 1px and 5px and would be a blob at 26px. The token rule
+         gets its falloff from alpha; this one gets it by stopping early. */
+      var core = blur(1), near = blur(Math.round(4 * k) + 1);
+      var shadow = ' 0 0 ' + core + 'px currentColor';
+      if (layers() >= 2) shadow += ', 0 0 ' + near + 'px currentColor';
       css += '.monaco-editor [class*="bracket-highlighting-"] { text-shadow:'
         + shadow + ' !important; }\n';
     }

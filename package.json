@@ -62,7 +62,7 @@
           "maximum": 64,
           "order": 1,
           "scope": "application",
-          "markdownDescription": "Ceiling on any single blur radius, in pixels. The default is the widest the glow ever emits, so it changes nothing until you lower it. Raster time climbs steeply with radius: measured on a dense C++ file, `32` is about a tenth cheaper, `30` a fifth, `28` a third, `26` nearly half, and the bloom narrows to match. A gentler trade than `#neonGlow.glowLayers#`, which drops the outer pass outright."
+          "markdownDescription": "Ceiling on any single blur radius, in pixels. The formula stops at `26` on its own at `#neonGlow.brightness#` `1`, so the default binds nothing until you lower it past that - or raise brightness, which scales every radius. Raster time climbs steeply with radius: measured on a dense C++ file, `32` is about a tenth cheaper, `30` a fifth, `28` a third, `26` nearly half, and the bloom narrows to match. A gentler trade than `#neonGlow.glowLayers#`, which drops the outer pass outright."
         },
         "neonGlow.brightness": {
           "type": "number",
