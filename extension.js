@@ -196,7 +196,7 @@ function reflect(enabled) {
  * on its next poll.
  */
 const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
-                'glowLayers', 'maxBlur'];
+                'glowLayers', 'maxBlur', 'cursorTrail'];
 
 function readKnobs() {
   const c = vscode.workspace.getConfiguration('neonGlow');

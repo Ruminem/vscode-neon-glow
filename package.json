@@ -108,6 +108,15 @@
           "order": 6,
           "scope": "application",
           "markdownDescription": "Colours darker than this are skipped, however saturated they are. Keeps a dark theme's dim accents from glowing."
+        },
+        "neonGlow.cursorTrail": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 400,
+          "order": 7,
+          "scope": "application",
+          "markdownDescription": "Milliseconds for the caret to slide to a new position, so the glow on it leaves a short streak behind. `0` keeps the instant jump. Typing restarts the slide on every keystroke, so a long duration reads as the caret lagging the text being entered: `45` keeps up while still streaking on a jump across the file, and much past `100` feels behind. Ignored when the system asks for reduced motion. VS Code has its own `#editor.cursorSmoothCaretAnimation#`, fixed at 80ms; whatever you set here wins over it. Applies without a restart."
         }
       }
     }

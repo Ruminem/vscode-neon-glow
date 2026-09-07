@@ -18,13 +18,15 @@ try {
     floor:        0.40,  /* strength for a colour that just passes minChroma   */
     minLightness: 0.25,  /* darker than this -> no glow                        */
     glowLayers:   3,     /* shadow passes per token: 3 tight+mid+wide, 1 core  */
-    maxBlur:      36     /* ceiling on any one radius; 36 = the widest we emit */
+    maxBlur:      36,    /* ceiling on any one radius; 36 = the widest we emit */
+    cursorTrail:  0      /* ms for the caret to slide; 0 = jump, as VS Code does */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
   var KNOB_RANGE = {
     brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
-    floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64]
+    floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64],
+    cursorTrail: [0, 400]
   };
 
   /**
@@ -177,6 +179,27 @@ try {
       if (layers() >= 2) shadow += ', 0 0 ' + mid + 'px currentColor';
       css += '.monaco-editor [class*="bracket-highlighting-"] { text-shadow:'
         + shadow + ' !important; }\n';
+    }
+
+    /* The caret slides to a new position instead of jumping, and the glow on it
+       rides along, so a move across the file leaves a short streak of light
+       behind. Motion only - the colour is still the theme's own cursor colour,
+       so unlike a scanline or a tint this imposes no palette of its own.
+
+       Off by default, because it is the one value here that changes how the
+       editor behaves rather than how it looks. Every keystroke restarts the
+       transition, so too long a duration leaves the caret trailing the text
+       being typed: 130ms reads as lag, 45ms keeps up and still streaks on a
+       jump across the file.
+
+       !important because VS Code's own editor.cursorSmoothCaretAnimation paints
+       ".cursors-layer.cursor-smooth-caret-animation > .cursor" - three classes
+       against our two - and hard-codes 80ms. With both on, this value wins. */
+    var trail = Math.round(KNOBS.cursorTrail);
+    if (trail > 0) {
+      css += '@media (prefers-reduced-motion: no-preference) {'
+        + ' .monaco-editor .cursor { transition: transform ' + trail + 'ms ease-out,'
+        + ' left ' + trail + 'ms ease-out, top ' + trail + 'ms ease-out !important; } }\n';
     }
     return css;
   }
