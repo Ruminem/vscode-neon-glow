@@ -50,6 +50,45 @@ colour would beat it on force alone and collapse every nesting level onto one
 colour. The glow sets colour without `!important`, and gives brackets a rule of
 their own in `currentColor`, so each level glows in the colour it is painted.
 
+## What else can glow
+
+The token glow is always on. Four more effects are not: they ship at `0` and stay
+dark until you set them in Settings, because they change what the editor does
+rather than only how it is painted.
+
+**Find results and the selection** (`findGlow`, `selectionGlow`) are the same idea
+as the token glow applied to two more surfaces — the colour still comes from the
+theme, not from here. Find results are the one place where the glow does work
+rather than decoration: a match becomes visible without hunting the scrollbar for
+its mark.
+
+Both of those theme colours are semi-transparent, because they sit behind text and
+must not hide it, and a shadow that only blurs them comes out nearly invisible. So
+these two take a `spread`: the weak colour is carried outwards at full width before
+the blur starts, instead of asking the blur to do both jobs. The caret, whose
+colour is opaque, needs none — which is why the rules do not match.
+
+**The caret trail** (`cursorTrail`) gives the caret a duration to cross instead of
+letting it jump, so the glow already on it smears into a short streak. Motion only;
+the colour is the theme's own. Every keystroke restarts the transition, so a long
+duration leaves the caret trailing the text you are typing: `130` reads as lag,
+`45` keeps up and still streaks when you jump across a file. VS Code has its own
+`editor.cursorSmoothCaretAnimation`, fixed at 80ms — whatever you set here wins
+over it.
+
+**The save jolt** (`saveShake`) knocks the workbench sideways when a file is saved.
+It is a CSS animation on `transform` alone rather than a loop writing inline styles,
+which is the difference between the compositor moving a texture it already holds and
+redoing the blur pass on every frame — see [What it costs](#what-it-costs). Of the
+four this is the only one derived from nothing: it is decoration, and it is off
+unless you want it.
+
+The two that move — the caret trail and the save jolt — are dropped when the system
+asks for reduced motion. A save reaches the renderer over the same wire as the
+toggle, described in [How the toggle reaches the
+editor](#how-the-toggle-reaches-the-editor); the payload lives in the workbench and
+cannot hear the extension host any other way.
+
 ## Turning it on and off
 
 The toggle is a real VS Code command, so it lives inside the normal keybinding
@@ -264,6 +303,10 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.findGlow` | `0` | px of bloom on find results, in the theme's own find colours; `18` to start |
 | `neonGlow.selectionGlow` | `0` | px of bloom on selected text, in the theme's own selection colour; `12` to start |
 
+The last four ship at `0` and do nothing until set — they are new behaviour to opt
+into rather than adjustments to the glow that is already running. See
+[What else can glow](#what-else-can-glow).
+
 They work without a restart because they do not live in the patch. The extension
 writes them into the same `state.json` the toggle uses, and the renderer clamps
 and applies them on its next poll, rebuilding the stylesheet from the theme's
@@ -364,6 +407,11 @@ itself. It is best effort: if the install directory is not writable — a
 system-wide install, no elevation — the hook fails and the bundle stays patched.
 Run `node uninstall.js` with the rights it needs. Note that *disabling* the extension is not uninstalling it:
 the patch stays, and the glow keeps working off the last state it saw.
+
+**`files.autoSave` and `saveShake` do not mix.** On a delay or on a focus change,
+every one of those is a save, and the screen never stops moving. The jolt is off by
+default, so this only bites if you turn it on — but if you use autosave you will
+want it off again within the minute.
 
 **SynthWave '84 can sit alongside this, but only one of them should paint.** It
 never touches `workbench.js`: it writes a `neondreams.js` next to it and adds a
