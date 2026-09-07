@@ -14,7 +14,12 @@ jobs:
   vsix:
     runs-on: ubuntu-latest
     steps:
+      # Full history: the changelog below is built from the commits between this
+      # tag and the one before it, and the default shallow clone has neither the
+      # commits nor the tags to find them with.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       # Node 24 rather than the runner default: it is the LTS with the longest
       # remaining life, and this repository is touched rarely enough that the
@@ -61,15 +66,40 @@ jobs:
           (cd win && zip -r "../neon-glow-$ver-windows.zip" "neon-glow-$ver")
           (cd nix && tar czf "../neon-glow-$ver-macos-linux.tar.gz" "neon-glow-$ver")
 
+      # The changelog, from commits rather than from pull requests.
+      #
+      # --generate-notes builds its list out of merged PRs, and everything here
+      # goes straight to main, so it produced a compare link and nothing else -
+      # ten releases in a row that said what the extension is and never what
+      # changed in them. Subjects are written as sentences about what and why,
+      # which is exactly what a changelog line wants to be.
+      #
+      # The version bump is dropped: it is the commit that made the tag, not a
+      # change anyone downloads it for.
+      - name: Build the changelog
+        run: |
+          prev="$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)"
+          if [ -n "$prev" ]; then
+            echo "## Changes since $prev" > changes.md
+          else
+            echo "## Changes" > changes.md
+            prev="$(git rev-list --max-parents=0 HEAD | tail -1)"
+          fi
+          echo "" >> changes.md
+          git log --no-merges --format='- %s' "$prev..$GITHUB_REF_NAME"             | grep -v '^- Bump to ' >> changes.md || true
+          echo "" >> changes.md
+          cat changes.md
+
       # Written with a quoted heredoc so the backticks stay literal, then the
-      # version is substituted in. --notes-file is prepended to the notes
-      # --generate-notes produces, so the changelog still follows underneath.
+      # version and the changelog are substituted in.
       - name: Write the release notes
         run: |
           cat > notes.md <<'EOF'
           Neon glow for VS Code syntax highlighting, for any colour theme.
 
           Docs: [English](https://github.com/REPOSLUG/blob/TAGNAME/README.md) · [한국어](https://github.com/REPOSLUG/blob/TAGNAME/README.ko.md)
+
+          CHANGELOG
 
           ## Install
 
@@ -152,6 +182,8 @@ jobs:
           EOF
           sed -i "s/VERSION/${GITHUB_REF_NAME#v}/g" notes.md
           sed -i "s|REPOSLUG|$GITHUB_REPOSITORY|g; s|TAGNAME|$GITHUB_REF_NAME|g" notes.md
+          sed -i "/^CHANGELOG$/r changes.md" notes.md
+          sed -i "/^CHANGELOG$/d" notes.md
 
       - name: Publish the release
         env:
