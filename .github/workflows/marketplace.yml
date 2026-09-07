@@ -25,11 +25,15 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      # Node 24 rather than the runner default: it is the LTS with the longest
+      # remaining life, and this repository is touched rarely enough that the
+      # next bump should be far away. Nothing here has dependencies to install,
+      # so this only decides what runs npx.
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
 
       # Without this the run dies on a 401 from the Marketplace, which reads
       # like a rejected token rather than an absent one.
