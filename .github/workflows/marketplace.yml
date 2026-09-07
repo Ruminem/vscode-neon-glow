@@ -1,0 +1,73 @@
+name: Marketplace
+
+# Publish to the Visual Studio Marketplace, on the same tag that cuts a release.
+#
+# Kept in its own file rather than added as a job to release.yml, because the
+# two fail in ways that want different answers: a release asset can be rebuilt
+# and re-uploaded, while a version that has reached the Marketplace can never be
+# published again under that number. One red job should not make the other look
+# unfinished, and this one has to be re-runnable on its own.
+on:
+  push:
+    tags:
+      - "v*"
+  # Publishing is the step most likely to fail on something outside the code -
+  # a personal access token expires after a year, by which time the tag is long
+  # since pushed. This allows the same tag to be retried without moving it.
+  workflow_dispatch:
+
+# Nothing here writes to the repository; the release workflow is what creates
+# releases. Marketplace credentials come from the secret below, not the token.
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Without this the run dies on a 401 from the Marketplace, which reads
+      # like a rejected token rather than an absent one.
+      - name: Check the token is set
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "VSCE_PAT is not set." >&2
+            echo "Add it under Settings > Secrets and variables > Actions > New repository secret." >&2
+            echo "It is an Azure DevOps personal access token scoped to Marketplace: Manage," >&2
+            echo "issued for All accessible organizations." >&2
+            exit 1
+          fi
+
+      # The Marketplace takes the version from package.json rather than from the
+      # tag, so a disagreement publishes a number nobody asked for - and that one
+      # cannot be taken back. Refuse before anything is uploaded.
+      - name: Check the tag against package.json
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "Run this from a tag, not from $GITHUB_REF_NAME." >&2
+            exit 1
+          fi
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p 'require("./package.json").version')"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag is $tag but package.json says $pkg" >&2
+            exit 1
+          fi
+
+      - name: Package
+        run: npx --yes @vscode/vsce@latest package --out "neon-glow-${GITHUB_REF_NAME#v}.vsix"
+
+      # --packagePath publishes the file just built instead of packaging a second
+      # time, so what reaches the Marketplace is the artifact this run inspected
+      # rather than a rebuild of it.
+      - name: Publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce@latest publish --packagePath "neon-glow-${GITHUB_REF_NAME#v}.vsix"
