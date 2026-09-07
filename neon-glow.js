@@ -398,7 +398,15 @@ try {
    *          the extension host paints it, so a toggle lands in ~16ms.
    *   slow   state.json in the extension's globalStorage, polled over
    *          vscode-file. It reconciles whatever the fast half missed - a
-   *          hidden status bar, or a background window with no rAF ticks.
+   *          hidden status bar, say - and it is the only way settings arrive,
+   *          since nothing writes those to the label.
+   *
+   * The slow half backs off. It used to run every 1.5s for as long as the window
+   * lived, hidden or not, which is around 19,000 reads over a working day and
+   * the same again for every background window. Now a run of unchanged readings
+   * widens the gap towards 15s, any change drops it back, and a hidden window
+   * does not poll at all - it reads once on becoming visible instead, which is
+   * the first moment the answer could matter.
    *
    * Neither half applies its first reading; it only records it. Startup state
    * comes from localStorage, so a stale file, or a status bar not yet written,
@@ -407,20 +415,34 @@ try {
   var bridgeOk = false;
   var lastSeq = null;
 
-  /* Polling backs off once the status bar half has proven it works. */
-  var POLL_FAST = 800, POLL_SLOW = 1500;
+  /* Polling backs off twice over: once when the status bar half proves it
+     works, and again when nothing has changed for a while. quiet counts
+     readings that carried no news - a failed fetch counts, so a window with no
+     extension behind it stops hammering a file that is not there. */
+  var POLL_FAST = 800, POLL_SLOW = 1500, POLL_IDLE = 15000;
+  var QUIET_BEFORE_BACKOFF = 8;
+  var quiet = 0;
+
+  function pollDelay() {
+    if (quiet < QUIET_BEFORE_BACKOFF) {
+      return (statusLive() && lastStatus !== null) ? POLL_SLOW : POLL_FAST;
+    }
+    return Math.min(POLL_IDLE,
+      POLL_SLOW * Math.pow(2, quiet - QUIET_BEFORE_BACKOFF + 1));
+  }
 
   function pollState() {
     fetch(STATE_URL, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (s) {
-        if (!s || typeof s.enabled !== 'boolean') return;
-        if (!bridgeOk) { bridgeOk = true; mark('bridge-ok file'); }
-        applyKnobs(s.knobs);
-        if (lastSeq === null) { lastSeq = s.seq; return; }
-        if (s.seq !== lastSeq) { lastSeq = s.seq; setEnabled(s.enabled); }
+        if (!s || typeof s.enabled !== 'boolean') { quiet++; return; }
+        if (!bridgeOk) { bridgeOk = true; quiet = 0; mark('bridge-ok file'); }
+        var news = applyKnobs(s.knobs);
+        if (lastSeq === null) { lastSeq = s.seq; quiet = 0; return; }
+        if (s.seq !== lastSeq) { lastSeq = s.seq; setEnabled(s.enabled); news = true; }
+        if (news) quiet = 0; else quiet++;
       })
-      .catch(function () {});
+      .catch(function () { quiet++; });
   }
 
   /**
@@ -541,14 +563,35 @@ try {
   if (STATE_URL && STATE_URL.indexOf('vscode-file:') === 0) {
     (function schedulePoll() {
       setTimeout(function () {
-        /* Also the retry loop that finds the item, and the recovery path if it
-           is ever replaced - which is why the interval tracks it being live. */
-        try { attachStatusBar(); } catch (e) {}
-        pollState();
+        /* Nothing here can matter to a window nobody is looking at, and the
+           work is not free: this is the whole reason the old loop cost anything
+           worth naming. The listener below reads once on the way back. */
+        if (!document.hidden) {
+          /* Also the retry loop that finds the item, and the recovery path if
+             it is ever replaced. Finding it is news, so the backoff restarts -
+             otherwise a slow extension host could leave the search running at
+             15s intervals. */
+          var wasLive = statusLive();
+          try { attachStatusBar(); } catch (e) {}
+          if (!wasLive && statusLive()) quiet = 0;
+          pollState();
+        }
         schedulePoll();
-      }, (statusLive() && lastStatus !== null) ? POLL_SLOW : POLL_FAST);
+      }, pollDelay());
     })();
     pollState();
+
+    /* Guarded like the three at the bottom of the file, and for the same
+       reason: this sits in the middle of the payload, so anything it throws
+       takes everything after it - the first paint included - down with it. */
+    try {
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) return;
+        quiet = 0;
+        try { attachStatusBar(); } catch (e) {}
+        pollState();
+      });
+    } catch (e) {}
   }
 
   /* Fallback only, and on the bubble phase: whatever VS Code has bound wins. */
