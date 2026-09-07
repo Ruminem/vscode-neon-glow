@@ -20,14 +20,17 @@ try {
     glowLayers:   3,     /* shadow passes per token: 3 tight+mid+wide, 1 core  */
     maxBlur:      36,    /* ceiling on any one radius; 36 = the widest we emit */
     cursorTrail:  0,     /* ms for the caret to slide; 0 = jump, as VS Code does */
-    saveShake:    0      /* px the workbench jolts on a save; 0 = it stays still */
+    saveShake:    0,     /* px the workbench jolts on a save; 0 = it stays still */
+    findGlow:     0,     /* px of bloom on find matches; 0 = leave them flat     */
+    selectionGlow: 0     /* px of bloom on the selection; 0 = leave it flat      */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
   var KNOB_RANGE = {
     brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
     floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64],
-    cursorTrail: [0, 400], saveShake: [0, 24]
+    cursorTrail: [0, 400], saveShake: [0, 24],
+    findGlow: [0, 48], selectionGlow: [0, 32]
   };
 
   /**
@@ -230,6 +233,40 @@ try {
         + ' .monaco-workbench.neon-glow-shaking {'
         + ' animation: neon-glow-shake 150ms ease-out; will-change: transform; }'
         + ' }\n';
+    }
+
+    /* Find matches and the selection, lit from the colours the theme already
+       gives them - the same derivation as the token glow, applied to two more
+       surfaces rather than to a look of our own.
+
+       Both of those colours are semi-transparent, because they sit behind text
+       and must not hide it, and a shadow that only blurs them comes out nearly
+       invisible. The spread is what makes them read: it carries the weak colour
+       outwards at full width before the blur starts, instead of asking the blur
+       to do both jobs. This is why these take a spread and the cursor, whose
+       colour is opaque, does not.
+
+       Cost stays bounded by the viewport. Only rendered lines carry a
+       .selected-text span, so selecting a whole file lights the screenful in
+       front of you and nothing beyond it. */
+    var find = Math.round(KNOBS.findGlow);
+    if (find > 0) {
+      var fh = 'var(--vscode-editor-findMatchHighlightBackground)';
+      var fc = 'var(--vscode-editor-findMatchBackground)';
+      css += '.monaco-editor .findMatch { box-shadow:'
+        + ' 0 0 ' + find + 'px ' + Math.round(find / 3) + 'px ' + fh + ','
+        + ' 0 0 ' + Math.round(find * 1.9) + 'px ' + Math.round(find / 4) + 'px ' + fh
+        + ' !important; }\n';
+      css += '.monaco-editor .currentFindMatch { box-shadow:'
+        + ' 0 0 ' + Math.round(find * 1.25) + 'px ' + Math.round(find / 2.2) + 'px ' + fc + ','
+        + ' 0 0 ' + Math.round(find * 2.4) + 'px ' + Math.round(find / 3) + 'px ' + fc
+        + ' !important; }\n';
+    }
+
+    var sel = Math.round(KNOBS.selectionGlow);
+    if (sel > 0) {
+      css += '.monaco-editor .selected-text { box-shadow: 0 0 ' + sel + 'px'
+        + ' var(--vscode-editor-selectionBackground) !important; }\n';
     }
     return css;
   }

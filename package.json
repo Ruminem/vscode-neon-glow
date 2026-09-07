@@ -126,6 +126,24 @@
           "order": 8,
           "scope": "application",
           "markdownDescription": "How far, in pixels, the workbench jolts when a file is saved. `0` holds it still; `5` is a knock, `12` is theatrical. It runs as a compositor animation on `transform` alone, so the glow is not re-drawn during it. **Turn this off if you use `#files.autoSave#`** - on a delay or a focus change, every one of those saves is a save, and the screen will not stop moving. Ignored when the system asks for reduced motion. Applies without a restart."
+        },
+        "neonGlow.findGlow": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 48,
+          "order": 9,
+          "scope": "application",
+          "markdownDescription": "Bloom on find results, in pixels, taken from the theme's own find colours. `0` leaves them flat; `18` is a good starting point. The current match is lit harder than the rest, so it still stands out among them. This is the one place the glow does work rather than decoration - matches become visible without hunting the scrollbar. Applies without a restart."
+        },
+        "neonGlow.selectionGlow": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32,
+          "order": 10,
+          "scope": "application",
+          "markdownDescription": "Bloom on selected text, in pixels, taken from the theme's own selection colour. `0` leaves it flat; `12` is a good starting point. Only rendered lines carry a selection span, so selecting a whole file costs the screenful in front of you and nothing beyond it. Applies without a restart."
         }
       }
     }

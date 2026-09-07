@@ -261,6 +261,8 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.minLightness` | `0.25` | skip colours darker than this, however saturated |
 | `neonGlow.cursorTrail` | `0` | ms for the caret to slide to a new position, so its glow streaks; `0` keeps the jump |
 | `neonGlow.saveShake` | `0` | px the workbench jolts on save; `0` holds it still, and so should `files.autoSave` |
+| `neonGlow.findGlow` | `0` | px of bloom on find results, in the theme's own find colours; `18` to start |
+| `neonGlow.selectionGlow` | `0` | px of bloom on selected text, in the theme's own selection colour; `12` to start |
 
 They work without a restart because they do not live in the patch. The extension
 writes them into the same `state.json` the toggle uses, and the renderer clamps
