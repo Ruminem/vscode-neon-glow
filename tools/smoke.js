@@ -94,10 +94,12 @@ function makeStub(opts) {
     head: { appendChild: (n) => { if (!appended.includes(n)) appended.push(n); } },
     body: { appendChild: (n) => { if (!appended.includes(n)) appended.push(n); return n; } },
     getElementById: (id) => appended.find((n) => n.id === id) || null,
+    /* Deliberately no answer for a ".focused" lookup. Nothing may have focus -
+       the panel, a dialog and the developer tools all take it away - and the
+       arc used to ask for the focused editor and therefore find nothing. */
     querySelector: (s) => s === '.vscode-tokens-styles' ? tokens
-                        : s === '.monaco-workbench' ? workbench
-                        : s === '.monaco-editor.focused .cursors-layer' ? layer : null,
-    querySelectorAll: () => [statusEl],
+                        : s === '.monaco-workbench' ? workbench : null,
+    querySelectorAll: (s) => s === '.monaco-editor .cursors-layer' ? [layer] : [statusEl],
     createElement: node,
     createElementNS: (ns, tag) => { const n = node(tag); n.ns = ns; return n; }
   };
@@ -233,6 +235,8 @@ async function main() {
   await wait(120);
   check('a word knob is accepted', !!s.callbackFor(s.layer),
     'the style never reached the payload, so no caret is being watched');
+  check('watching without anything focused', s.api.arcWatching() === 1,
+    'the arc went looking for the focused editor, which is often nothing');
   await s.jump(600);
   let drawn = s.drawn();
   check('a long jump draws something', drawn.length === 1);

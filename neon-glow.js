@@ -522,7 +522,8 @@ try {
   var reduceMotion = null;
   try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)'); } catch (e) {}
 
-  var arcLayer = null, arcObserver = null, arcCaret = null, arcX = 0, arcY = 0;
+  /* One entry per cursors layer on screen - one editor, or one pane of a split. */
+  var arcWatch = [];
 
   function arcStyle() {
     var s = KNOBS.caretArc;
@@ -649,22 +650,27 @@ try {
     }
   }
 
-  function arcMoved() {
-    if (!arcCaret) return;
-    var nx = parseFloat(arcCaret.style.left) || 0;
-    var ny = parseFloat(arcCaret.style.top) || 0;
-    var dx = nx - arcX, dy = ny - arcY;
-    arcX = nx; arcY = ny;
+  function arcMoved(w) {
+    /* The caret element is replaced when a line is re-rendered, so it is looked
+       up again whenever the one held has left the document rather than on every
+       move. */
+    if (!w.caret || !w.caret.isConnected) w.caret = w.layer.querySelector('.cursor');
+    if (!w.caret) return;
+
+    var nx = parseFloat(w.caret.style.left) || 0;
+    var ny = parseFloat(w.caret.style.top) || 0;
+    var dx = nx - w.x, dy = ny - w.y;
+    w.x = nx; w.y = ny;
 
     var style = arcStyle();
     if (!style || !enabled) return;
     if (reduceMotion && reduceMotion.matches) return;
     if (Math.abs(dy) >= 1 || Math.abs(dx) < arcMinJump()) return;
 
-    var r = arcCaret.getBoundingClientRect();
+    var r = w.caret.getBoundingClientRect();
     if (!r.width && !r.height) return;
 
-    var colour = arcColour(arcCaret);
+    var colour = arcColour(w.caret);
     var midY = r.top + r.height / 2;
     var w = Math.abs(dx);
     if (style === 'flash') { drawFlash(dx > 0 ? r.left : r.left + r.width, midY, colour, 260); return; }
@@ -672,27 +678,56 @@ try {
   }
 
   /**
-   * Follow the focused editor rather than whichever caret was in the document
-   * when this ran. Tabs open, split and close, so an element captured once goes
-   * stale; re-seeking on focusin costs nothing and is the moment it changes.
+   * Watch every cursors layer on screen, not the focused one.
+   *
+   * Focus looked like the right handle and is not. ".focused" is put on the
+   * editor by Monaco and taken off again the moment focus goes anywhere else -
+   * a panel, a dialog, the developer tools - so a lookup that requires it
+   * answers null most of the times it is asked. Worse, the re-seek rode on
+   * focusin in the capture phase, which runs before Monaco has added the class:
+   * the one moment it was guaranteed to fail.
+   *
+   * There are only ever a handful of layers, one per open pane, and each fires
+   * only when its own caret moves, so watching all of them costs nothing over
+   * watching one and needs no idea of which is in front.
    */
   function attachArc() {
     if (!arcStyle()) return;
-    var layer, caret;
-    try {
-      layer = document.querySelector('.monaco-editor.focused .cursors-layer');
-      caret = layer && layer.querySelector('.cursor');
-    } catch (e) { return; }
-    if (!layer || !caret) return;
-    if (layer === arcLayer && arcCaret && arcCaret.isConnected) return;
+    var layers;
+    try { layers = document.querySelectorAll('.monaco-editor .cursors-layer'); }
+    catch (e) { return; }
 
-    if (arcObserver) { arcObserver.disconnect(); arcObserver = null; }
-    arcLayer = layer;
-    arcCaret = caret;
-    arcX = parseFloat(caret.style.left) || 0;
-    arcY = parseFloat(caret.style.top) || 0;
-    arcObserver = new MutationObserver(function () { try { arcMoved(); } catch (e) {} });
-    arcObserver.observe(layer, { attributes: true, attributeFilter: ['style'], subtree: true });
+    for (var i = arcWatch.length - 1; i >= 0; i--) {
+      if (!arcWatch[i].layer.isConnected) {
+        try { arcWatch[i].mo.disconnect(); } catch (e) {}
+        arcWatch.splice(i, 1);
+      }
+    }
+
+    for (var j = 0; j < layers.length; j++) {
+      var layer = layers[j], seen = false;
+      for (var k = 0; k < arcWatch.length; k++) {
+        if (arcWatch[k].layer === layer) { seen = true; break; }
+      }
+      if (seen) continue;
+
+      var caret = layer.querySelector('.cursor');
+      var w = {
+        layer: layer, caret: caret, mo: null,
+        x: caret ? (parseFloat(caret.style.left) || 0) : 0,
+        y: caret ? (parseFloat(caret.style.top) || 0) : 0
+      };
+      /* Reported rather than swallowed. A throw in here used to leave nothing
+         at all behind, which is a bad way to learn that a selector was wrong. */
+      w.mo = new MutationObserver((function (watch) {
+        return function () {
+          try { arcMoved(watch); }
+          catch (e) { mark('arc-error', String(e && e.message || e)); }
+        };
+      })(w));
+      w.mo.observe(layer, { attributes: true, attributeFilter: ['style'], subtree: true });
+      arcWatch.push(w);
+    }
   }
 
   /* ---- fast half: the status bar item ---- */
@@ -842,6 +877,7 @@ try {
     disable: function () { setEnabled(false); },
     isEnabled: function () { return enabled; },
     bridgeOk: function () { return bridgeOk; },
+    arcWatching: function () { return arcWatch.length; },
     statusBarOk: function () { return statusLive() && lastStatus !== null; }
   };
 
@@ -879,13 +915,13 @@ try {
   try { attachStatusBar(); } catch (e) {}
   try { attachArc(); } catch (e) {}
 
-  /* Focus moving between editors is the moment the caret being watched becomes
-     the wrong one, and it is rare, so the re-seek rides on it rather than on a
-     timer. The poll re-seeks too, for a window that was never focused at all. */
+  /* Panes come and go, and focusin is a cheap signal that one might have. It no
+     longer decides which caret to watch - all of them are watched - so it only
+     has to catch a layer that appeared, which the poll would find anyway. */
   try {
     window.addEventListener('focusin', function () {
       try { attachArc(); } catch (e) {}
-    }, true);
+    });
   } catch (e) {}
 })();
 } catch (e) {
