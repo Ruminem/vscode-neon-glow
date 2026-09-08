@@ -49,6 +49,17 @@ jobs:
             exit 1
           fi
 
+      # A token that is not accepted does not come back as 401. The gallery
+      # answers an unauthenticated request with a 302 to a sign-in page, and the
+      # client follows it into something that never finishes, so a bad token
+      # looks exactly like the Marketplace being down: three minutes of nothing
+      # and "Request timeout: /_apis/gallery". verify-pat says which it is, in
+      # seconds, before anything is uploaded.
+      - name: Check the token still works
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce@latest verify-pat Ruminem
+
       # The Marketplace takes the version from package.json rather than from the
       # tag, so a disagreement publishes a number nobody asked for - and that one
       # cannot be taken back. Refuse before anything is uploaded.
