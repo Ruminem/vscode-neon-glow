@@ -260,6 +260,15 @@ async function main() {
   await wait(120);
   await s.jump(107);
   check('an arrow-sized move clears the default threshold', s.drawn().length === 1);
+  /* A dash longer than the path it runs on animates its offset the wrong way,
+     and every arrow key is a seven pixel path. */
+  check('the spark never runs backwards', (function () {
+    const drawn = s.drawn();
+    if (!drawn.length) return false;
+    const lines = drawn[0].descendants().filter((n) => n.tag === 'polyline');
+    return lines.length > 0 && lines.every((l) => l.anims.every((a) =>
+      a.frames.every((f) => !('strokeDashoffset' in f) || f.strokeDashoffset <= 0)));
+  })());
 
   s = run({ knobs: { caretArc: 'arc', caretArcMinJump: 40 } });
   await wait(120);

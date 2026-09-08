@@ -344,6 +344,7 @@ try {
       return true;
     }
     lastLen = source.length;
+    arcCachedColour = null;    /* a new theme brings a new caret colour */
 
     if (!styleTag) {
       styleTag = document.createElement('style');
@@ -546,12 +547,23 @@ try {
     return Math.max(1, Math.round(KNOBS.caretArcMinJump));
   }
 
+  /**
+   * Cached, because reading a computed style forces the engine to resolve one
+   * and a held arrow key draws about thirty times a second. It only changes
+   * with the theme, and the theme arriving is exactly when the stylesheet is
+   * rebuilt, so that is where it is thrown away.
+   */
+  var arcCachedColour = null;
+
   function arcColour(el) {
+    if (arcCachedColour) return arcCachedColour;
+    var c = '#ffffff';
     try {
-      var c = getComputedStyle(el).getPropertyValue('--vscode-editorCursor-foreground');
-      if (c && c.trim()) return c.trim();
+      var v = getComputedStyle(el).getPropertyValue('--vscode-editorCursor-foreground');
+      if (v && v.trim()) c = v.trim();
     } catch (e) {}
-    return '#ffffff';
+    arcCachedColour = c;
+    return c;
   }
 
   function arcRelease(node, ms) {
@@ -603,8 +615,13 @@ try {
       pts.push(X.toFixed(1) + ',' + Y.toFixed(1));
     }
     var points = pts.join(' ');
+    /* Capped to the path, or the dash is longer than the line it runs on and
+       the offset animates the wrong way: the spark slides backwards. Nothing
+       showed it until the threshold dropped to five, where an arrow key draws
+       seven pixels of path against a fourteen pixel head. */
     var head = comet ? Math.max(8, Math.min(len * 0.08, 26))
                      : Math.max(14, Math.min(len * 0.30, 70));
+    head = Math.min(head, len * 0.8);
 
     var wrap = document.createElement('div');
     wrap.style.cssText = ARC_BOX + 'left:' + boxLeft + 'px;top:' + (midY - mid) + 'px'
@@ -676,9 +693,11 @@ try {
 
     var colour = arcColour(w.caret);
     var midY = r.top + r.height / 2;
-    var w = Math.abs(dx);
+    /* Not "w": that is the watch this was handed, and shadowing it here worked
+       only because nothing below touched it again. */
+    var dist = Math.abs(dx);
     if (style === 'flash') { drawFlash(dx > 0 ? r.left : r.left + r.width, midY, colour, 260); return; }
-    drawPath(style, dx > 0 ? r.left - w : r.left + r.width, midY, w, dx < 0, colour, 300);
+    drawPath(style, dx > 0 ? r.left - dist : r.left + r.width, midY, dist, dx < 0, colour, 300);
   }
 
   /**
