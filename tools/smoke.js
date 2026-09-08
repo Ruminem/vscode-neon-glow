@@ -37,6 +37,30 @@ function check(name, ok, detail) {
   else { failed++; console.log('  FAIL  ' + name + (detail ? '\n          ' + detail : '')); }
 }
 
+/** Every node the payload builds, so a test can look at what it made. */
+function node(tag) {
+  return {
+    tag: tag || 'div', id: '', className: '', textContent: '', disabled: false,
+    isConnected: true,
+    style: { cssText: '', setProperty(k, v) { this[k] = v; } },
+    children: [], attrs: {}, anims: [],
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'id') this.id = String(v); },
+    appendChild(n) { this.children.push(n); return n; },
+    append() { for (const n of arguments) this.children.push(n); },
+    remove() { this.isConnected = false; },
+    animate(frames, opts) { this.anims.push({ frames, opts }); return {}; },
+    getBoundingClientRect() { return { left: 400, top: 200, width: 2, height: 18 }; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+    /* Depth-first, for asserting on what a wrapper ended up containing. */
+    descendants() {
+      const out = [];
+      for (const c of this.children) { out.push(c); out.push.apply(out, c.descendants()); }
+      return out;
+    }
+  };
+}
+
 /**
  * A workbench that is just enough DOM for the payload to run in.
  *
@@ -57,27 +81,38 @@ function makeStub(opts) {
   };
   const statusEl = { textContent: 'NEON:ON', isConnected: true };
 
-  const el = () => ({
-    id: '', textContent: '', disabled: false, style: { cssText: '' },
-    setAttribute(k, v) { this[k] = v; }, appendChild() {}
-  });
+  /* The focused editor, its cursors layer, and the caret inside it. */
+  const caret = node('div');
+  caret.style.left = '100px';
+  caret.style.top = '50px';
+  const layer = node('div');
+  layer.querySelector = (s) => (s === '.cursor' ? caret : null);
 
   const document = {
     hidden: false,
     documentElement: { setAttribute() {} },
     head: { appendChild: (n) => { if (!appended.includes(n)) appended.push(n); } },
-    body: { appendChild: (n) => { if (!appended.includes(n)) appended.push(n); } },
+    body: { appendChild: (n) => { if (!appended.includes(n)) appended.push(n); return n; } },
     getElementById: (id) => appended.find((n) => n.id === id) || null,
     querySelector: (s) => s === '.vscode-tokens-styles' ? tokens
-                        : s === '.monaco-workbench' ? workbench : null,
+                        : s === '.monaco-workbench' ? workbench
+                        : s === '.monaco-editor.focused .cursors-layer' ? layer : null,
     querySelectorAll: () => [statusEl],
-    createElement: el
+    createElement: node,
+    createElementNS: (ns, tag) => { const n = node(tag); n.ns = ns; return n; }
   };
   if (!opts.crippled) document.addEventListener = () => {};
 
   const globals = {
-    window: { addEventListener() {} },
+    window: {
+      addEventListener() {},
+      matchMedia: () => ({ matches: !!opts.reduceMotion })
+    },
     document,
+    getComputedStyle: () => ({
+      getPropertyValue: (p) =>
+        p === '--vscode-editorCursor-foreground' ? '#22d3ee' : ''
+    }),
     MutationObserver: class {
       constructor(cb) { this.cb = cb; }
       observe(target) { observers.push({ cb: this.cb, target }); }
@@ -93,16 +128,27 @@ function makeStub(opts) {
   };
 
   return {
-    globals, appended, observers, classes, statusEl, tokens, workbench,
+    globals, appended, observers, classes, statusEl, tokens, workbench, caret, layer,
     styles() {
       const s = appended.find((n) => n.id === 'neon-glow-styles');
       return s ? s.textContent : '';
     },
-    /* The observer watching the status bar item, which is how a toggle and a
-       save both reach the renderer. */
-    statusCallback() {
-      const o = observers.find((x) => x.target === statusEl);
+    callbackFor(target) {
+      const o = observers.find((x) => x.target === target);
       return o ? o.cb : null;
+    },
+    /* Whatever the caret arc appended to the body, if anything. */
+    drawn() {
+      return appended.filter((n) => n.style && /position:fixed/.test(n.style.cssText || ''));
+    },
+    /* Move the caret and let the payload notice. */
+    async jump(px) {
+      const cb = this.callbackFor(this.layer);
+      if (!cb) return false;
+      this.caret.style.left = px + 'px';
+      cb();
+      await wait(40);
+      return true;
     }
   };
 }
@@ -123,7 +169,7 @@ function run(opts) {
 async function main() {
   console.log('payload: ' + path.relative(process.cwd(), PAYLOAD) + '\n');
 
-  /* ---- defaults: the glow runs, the four opt-ins stay dark ---- */
+  /* ---- defaults: the glow runs, the opt-ins stay dark ---- */
   console.log('defaults');
   let s = run({});
   await wait(80);
@@ -137,6 +183,8 @@ async function main() {
   check('no jolt keyframes', css.indexOf('neon-glow-shake') === -1);
   check('no find bloom', css.indexOf('.findMatch') === -1);
   check('no selection bloom', css.indexOf('.selected-text') === -1);
+  await s.jump(600);
+  check('no arc on a jump', s.drawn().length === 0);
 
   /* ---- knobs arriving over the state file ---- */
   console.log('\nknobs over state.json');
@@ -153,7 +201,7 @@ async function main() {
 
   /* ---- a save, carried on the status bar label ---- */
   console.log('\nsave pulse');
-  const cb = s.statusCallback();
+  const cb = s.callbackFor(s.statusEl);
   check('the status bar item is being watched', !!cb);
   if (cb) {
     check('no jolt before a save', s.classes.size === 0);
@@ -178,6 +226,48 @@ async function main() {
   s.api.enable();
   check('enabling brings it back',
     s.api.isEnabled() === true && s.appended.find((n) => n.id === 'neon-glow-styles').disabled === false);
+
+  /* ---- the caret arc, which builds elements rather than a stylesheet ---- */
+  console.log('\ncaret arc');
+  s = run({ knobs: { caretArc: 'arc' } });
+  await wait(120);
+  check('a word knob is accepted', !!s.callbackFor(s.layer),
+    'the style never reached the payload, so no caret is being watched');
+  await s.jump(600);
+  let drawn = s.drawn();
+  check('a long jump draws something', drawn.length === 1);
+  if (drawn.length) {
+    const kids = drawn[0].descendants();
+    const svg = kids.filter((n) => n.tag === 'svg');
+    const lines = kids.filter((n) => n.tag === 'polyline');
+    check('built as SVG, not as markup', svg.length === 1 && !!svg[0].ns);
+    check('wire, bloom and core', lines.length === 3);
+    check('the path is jagged', (lines[0].attrs.points || '').split(' ').length > 3);
+    check('the colour comes from the theme', lines[0].attrs.stroke === '#22d3ee');
+    check('the spark travels rather than grows',
+      lines.every((l) => l.anims.length === 1)
+      && lines[1].anims[0].frames.some((f) => 'strokeDashoffset' in f));
+  }
+
+  s = run({ knobs: { caretArc: 'arc' } });
+  await wait(120);
+  await s.jump(110);
+  check('a short jump draws nothing', s.drawn().length === 0);
+
+  s = run({ knobs: { caretArc: 'flash' } });
+  await wait(120);
+  await s.jump(114);
+  drawn = s.drawn();
+  check('flash fires where a path style would not', drawn.length === 1);
+  if (drawn.length) {
+    check('flash draws no path', drawn[0].descendants().length === 0);
+    check('flash is animated', drawn[0].anims.length === 1);
+  }
+
+  s = run({ knobs: { caretArc: 'arc' }, reduceMotion: true });
+  await wait(120);
+  await s.jump(600);
+  check('reduced motion draws nothing', s.drawn().length === 0);
 
   /* ---- the regression this file was written for ---- */
   console.log('\nmissing document.addEventListener');

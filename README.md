@@ -52,7 +52,7 @@ their own in `currentColor`, so each level glows in the colour it is painted.
 
 ## What else can glow
 
-The token glow is always on. Four more effects are not: they ship at `0` and stay
+The token glow is always on. Five more effects are not: they ship off and stay
 dark until you set them in Settings, because they change what the editor does
 rather than only how it is painted.
 
@@ -83,8 +83,28 @@ far as the claim goes: whether either approach re-draws the glow underneath was
 never measured. Of the four this is the only one derived from nothing — it is
 decoration, and it is off unless you want it.
 
-The two that move — the caret trail and the save jolt — are dropped when the system
-asks for reduced motion. A save reaches the renderer over the same wire as the
+**The caret arc** (`caretArc`) draws a line of light along the way the caret has
+just moved, and it is the one setting here that is a choice rather than a number:
+`arc` is a jagged bolt that lights the path behind it, `beam` is the same drawn
+straight, `comet` is a short head flying with nothing behind it, and `flash` is a
+burst where the caret landed. Anything that moves the caret sets it off — a key, a
+click, find-next, go-to-definition.
+
+The first three need somewhere to draw, and a Tab moves the caret about two
+characters, which is not a line. `caretArcMinJump` holds them back until the caret
+has covered a real distance; `0` lets each style choose, which is `12` for
+`flash` and `40` for the rest. `flash` is the one that still reads on a Tab,
+because it marks the arrival rather than the journey.
+
+These are built out of SVG rather than a stylesheet, and the workbench enforces
+Trusted Types — assigning to `innerHTML` throws there, so every node is created
+through `createElementNS`. This is also the first thing here that watches the
+editor while you work: a MutationObserver on the focused editor's cursors layer,
+reading the caret's inline `left` and `top` as strings so an ordinary keystroke
+costs no layout. A rectangle is measured only on the frames that actually draw.
+
+The three that move — the caret trail, the save jolt and the caret arc — are
+dropped when the system asks for reduced motion. A save reaches the renderer over the same wire as the
 toggle, described in [How the toggle reaches the
 editor](#how-the-toggle-reaches-the-editor); the payload lives in the workbench and
 cannot hear the extension host any other way.
@@ -302,6 +322,8 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.saveShake` | `0` | px the workbench jolts on save; `0` holds it still, and so should `files.autoSave` |
 | `neonGlow.findGlow` | `0` | px of bloom on find results, in the theme's own find colours; `18` to start |
 | `neonGlow.selectionGlow` | `0` | px of bloom on selected text, in the theme's own selection colour; `12` to start |
+| `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
+| `neonGlow.caretArcMinJump` | `0` | px of travel before an arc is drawn; `0` lets the style decide |
 
 The last four ship at `0` and do nothing until set — they are new behaviour to opt
 into rather than adjustments to the glow that is already running. See

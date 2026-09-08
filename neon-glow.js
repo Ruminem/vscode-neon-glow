@@ -22,7 +22,9 @@ try {
     cursorTrail:  0,     /* ms for the caret to slide; 0 = jump, as VS Code does */
     saveShake:    0,     /* px the workbench jolts on a save; 0 = it stays still */
     findGlow:     0,     /* px of bloom on find matches; 0 = leave them flat     */
-    selectionGlow: 0     /* px of bloom on the selection; 0 = leave it flat      */
+    selectionGlow: 0,    /* px of bloom on the selection; 0 = leave it flat      */
+    caretArc:    'off',  /* off | arc | beam | comet | flash                     */
+    caretArcMinJump: 0   /* px of travel before an arc is drawn; 0 = per style   */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
@@ -30,7 +32,15 @@ try {
     brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
     floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64],
     cursorTrail: [0, 400], saveShake: [0, 24],
-    findGlow: [0, 48], selectionGlow: [0, 32]
+    findGlow: [0, 48], selectionGlow: [0, 32],
+    caretArcMinJump: [0, 400]
+  };
+
+  /* Knobs that carry a word rather than a number. A value outside the list is
+     dropped the same way a non-number is: the renderer decides what it will
+     accept, so a hand-edited settings.json cannot put nonsense in here. */
+  var KNOB_ENUM = {
+    caretArc: ['off', 'arc', 'beam', 'comet', 'flash']
   };
 
   /**
@@ -390,14 +400,27 @@ try {
     for (var name in KNOBS) {
       if (!Object.prototype.hasOwnProperty.call(KNOBS, name)) continue;
       var v = k[name];
-      if (typeof v !== 'number' || !isFinite(v)) continue;
-      var r = KNOB_RANGE[name];
-      v = Math.max(r[0], Math.min(r[1], v));
+      var words = KNOB_ENUM[name];
+      if (words) {
+        if (typeof v !== 'string' || words.indexOf(v) === -1) continue;
+      } else {
+        if (typeof v !== 'number' || !isFinite(v)) continue;
+        var r = KNOB_RANGE[name];
+        v = Math.max(r[0], Math.min(r[1], v));
+      }
       if (KNOBS[name] === v) continue;
       KNOBS[name] = v;
       changed = true;
     }
-    if (changed) { lastLen = -1; render(); mark('knobs'); }
+    if (changed) {
+      lastLen = -1;
+      render();
+      /* Switching the arc on has to find a caret to watch; switching it off
+         leaves the observer in place, which costs two parseFloats on a move
+         that then draws nothing. */
+      try { attachArc(); } catch (e) {}
+      mark('knobs');
+    }
     return changed;
   }
 
@@ -477,6 +500,199 @@ try {
     });
     clearTimeout(shake._t);
     shake._t = setTimeout(function () { w.classList.remove(SHAKE_CLASS); }, 400);
+  }
+
+  /* ------------------------------------------------------------------
+   * The caret arc: a line of light drawn along the way the caret just moved.
+   *
+   * This is the first thing here that builds elements rather than a stylesheet,
+   * and the workbench enforces Trusted Types, so innerHTML is not available -
+   * assigning a string to it throws. Everything below goes through
+   * createElementNS, which is not gated.
+   *
+   * The trigger is a MutationObserver on the focused editor's cursors layer
+   * rather than a key listener, because the caret also moves for reasons no key
+   * explains: find-next, go-to-definition, undo, a click. The callback reads the
+   * caret's inline left/top as strings and compares numbers, which costs no
+   * layout; a rect is only measured on the rare frame that actually draws.
+   * ------------------------------------------------------------------ */
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var ARC_BOX = 'position:fixed;pointer-events:none;z-index:2147483647;';
+
+  var reduceMotion = null;
+  try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)'); } catch (e) {}
+
+  var arcLayer = null, arcObserver = null, arcCaret = null, arcX = 0, arcY = 0;
+
+  function arcStyle() {
+    var s = KNOBS.caretArc;
+    return (typeof s === 'string' && s !== 'off') ? s : null;
+  }
+
+  /**
+   * Zero means "let the style decide", which is the only way one number can
+   * serve all four. A flash has no path to draw, so it reads the same at any
+   * distance and can afford to fire on a Tab; the other three are a line along
+   * the way, and two characters of travel is not a line worth drawing.
+   */
+  function arcMinJump() {
+    var m = Math.round(KNOBS.caretArcMinJump);
+    if (m > 0) return m;
+    return arcStyle() === 'flash' ? 12 : 40;
+  }
+
+  function arcColour(el) {
+    try {
+      var c = getComputedStyle(el).getPropertyValue('--vscode-editorCursor-foreground');
+      if (c && c.trim()) return c.trim();
+    } catch (e) {}
+    return '#ffffff';
+  }
+
+  function arcRelease(node, ms) {
+    document.body.appendChild(node);
+    setTimeout(function () { try { node.remove(); } catch (e) {} }, ms + 150);
+  }
+
+  /* No travel to trace, so it marks the arrival instead of the journey. The one
+     style that still reads at a Tab's two characters. */
+  function drawFlash(x, y, colour, ms) {
+    var d = document.createElement('div');
+    d.style.cssText = ARC_BOX + 'width:30px;height:30px;border-radius:50%;left:'
+      + (x - 15) + 'px;top:' + (y - 15) + 'px;'
+      + 'background:radial-gradient(circle,#fff 0%,' + colour + ' 35%,transparent 70%)';
+    arcRelease(d, ms);
+    d.animate([
+      { transform: 'scale(0.2)', opacity: 0 },
+      { transform: 'scale(1)', opacity: 1, offset: 0.25 },
+      { transform: 'scale(2)', opacity: 0 }
+    ], { duration: ms, easing: 'cubic-bezier(.1,.8,.2,1)', fill: 'forwards' });
+  }
+
+  /**
+   * The other three, which differ only in numbers.
+   *
+   *   arc    jagged, with the path lit behind the spark
+   *   beam   the same, straight
+   *   comet  no path at all, just a short head flying
+   *
+   * The spark travels by dash offset rather than by growing: a stroke that
+   * lengthens reads as a bar being drawn, where a short dash moving along a
+   * fixed path reads as something going somewhere. The jitter is rolled fresh
+   * every time, because a fixed zigzag repeating on every jump is the thing
+   * that would look cheap.
+   */
+  function drawPath(style, boxLeft, midY, w, flip, colour, ms) {
+    var jag = (style === 'arc');
+    var comet = (style === 'comet');
+    var amp = jag ? Math.max(2.5, Math.min(w * 0.035, 7)) : 0;
+    var h = amp * 2 + 14, mid = h / 2;
+    var n = jag ? Math.max(3, Math.round(w / 20)) : 1;
+
+    var pts = [], len = 0, px = 0, py = mid;
+    for (var i = 0; i <= n; i++) {
+      var X = w * i / n;
+      var Y = (i === 0 || i === n) ? mid : mid + (Math.random() * 2 - 1) * amp;
+      if (i) len += Math.sqrt((X - px) * (X - px) + (Y - py) * (Y - py));
+      px = X; py = Y;
+      pts.push(X.toFixed(1) + ',' + Y.toFixed(1));
+    }
+    var points = pts.join(' ');
+    var head = comet ? Math.max(8, Math.min(len * 0.08, 26))
+                     : Math.max(14, Math.min(len * 0.30, 70));
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText = ARC_BOX + 'left:' + boxLeft + 'px;top:' + (midY - mid) + 'px'
+      + (flip ? ';transform:scaleX(-1)' : '');
+
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    svg.style.cssText = 'display:block;overflow:visible';
+
+    function line(stroke, width, css) {
+      var p = document.createElementNS(SVG_NS, 'polyline');
+      p.setAttribute('points', points);
+      p.setAttribute('fill', 'none');
+      p.setAttribute('stroke', stroke);
+      p.setAttribute('stroke-width', width);
+      p.setAttribute('stroke-linecap', 'round');
+      p.setAttribute('stroke-linejoin', 'round');
+      if (css) p.style.cssText = css;
+      svg.appendChild(p);
+      return p;
+    }
+
+    /* The wire warming and cooling behind the spark. A comet leaves nothing. */
+    var wire = comet ? null : line(colour, 1.5);
+    if (wire) wire.setAttribute('opacity', '0');
+    var glow = line(colour, comet ? 7 : 5, 'filter:blur(' + (comet ? 4 : 3) + 'px)');
+    var core = line('#ffffff', comet ? 2 : 1.4);
+
+    wrap.appendChild(svg);
+    arcRelease(wrap, ms);
+
+    if (wire) {
+      wire.animate([{ opacity: 0 }, { opacity: 0.4, offset: 0.25 }, { opacity: 0 }],
+        { duration: ms, fill: 'forwards' });
+    }
+    /* White core over a blurred wide pass, the same core-to-bloom split the
+       token glow settled on. */
+    for (var j = 0; j < 2; j++) {
+      var el = j ? core : glow;
+      el.style.strokeDasharray = head + ' ' + len;
+      el.animate([
+        { strokeDashoffset: 0, opacity: 0 },
+        { opacity: 1, offset: 0.12 },
+        { strokeDashoffset: -(len - head), opacity: 0 }
+      ], { duration: ms, easing: 'cubic-bezier(.12,.85,.2,1)', fill: 'forwards' });
+    }
+  }
+
+  function arcMoved() {
+    if (!arcCaret) return;
+    var nx = parseFloat(arcCaret.style.left) || 0;
+    var ny = parseFloat(arcCaret.style.top) || 0;
+    var dx = nx - arcX, dy = ny - arcY;
+    arcX = nx; arcY = ny;
+
+    var style = arcStyle();
+    if (!style || !enabled) return;
+    if (reduceMotion && reduceMotion.matches) return;
+    if (Math.abs(dy) >= 1 || Math.abs(dx) < arcMinJump()) return;
+
+    var r = arcCaret.getBoundingClientRect();
+    if (!r.width && !r.height) return;
+
+    var colour = arcColour(arcCaret);
+    var midY = r.top + r.height / 2;
+    var w = Math.abs(dx);
+    if (style === 'flash') { drawFlash(dx > 0 ? r.left : r.left + r.width, midY, colour, 260); return; }
+    drawPath(style, dx > 0 ? r.left - w : r.left + r.width, midY, w, dx < 0, colour, 300);
+  }
+
+  /**
+   * Follow the focused editor rather than whichever caret was in the document
+   * when this ran. Tabs open, split and close, so an element captured once goes
+   * stale; re-seeking on focusin costs nothing and is the moment it changes.
+   */
+  function attachArc() {
+    if (!arcStyle()) return;
+    var layer, caret;
+    try {
+      layer = document.querySelector('.monaco-editor.focused .cursors-layer');
+      caret = layer && layer.querySelector('.cursor');
+    } catch (e) { return; }
+    if (!layer || !caret) return;
+    if (layer === arcLayer && arcCaret && arcCaret.isConnected) return;
+
+    if (arcObserver) { arcObserver.disconnect(); arcObserver = null; }
+    arcLayer = layer;
+    arcCaret = caret;
+    arcX = parseFloat(caret.style.left) || 0;
+    arcY = parseFloat(caret.style.top) || 0;
+    arcObserver = new MutationObserver(function () { try { arcMoved(); } catch (e) {} });
+    arcObserver.observe(layer, { attributes: true, attributeFilter: ['style'], subtree: true });
   }
 
   /* ---- fast half: the status bar item ---- */
@@ -585,6 +801,7 @@ try {
              15s intervals. */
           var wasLive = statusLive();
           try { attachStatusBar(); } catch (e) {}
+          try { attachArc(); } catch (e) {}
           if (!wasLive && statusLive()) quiet = 0;
           pollState();
         }
@@ -660,6 +877,16 @@ try {
   try { render(); } catch (e) { mark('error', String(e && e.message || e)); }
   try { startObservers(); } catch (e) {}
   try { attachStatusBar(); } catch (e) {}
+  try { attachArc(); } catch (e) {}
+
+  /* Focus moving between editors is the moment the caret being watched becomes
+     the wrong one, and it is rare, so the re-seek rides on it rather than on a
+     timer. The poll re-seeks too, for a window that was never focused at all. */
+  try {
+    window.addEventListener('focusin', function () {
+      try { attachArc(); } catch (e) {}
+    }, true);
+  } catch (e) {}
 })();
 } catch (e) {
   try { console.error('[NEON] fatal', e); } catch (_) {}

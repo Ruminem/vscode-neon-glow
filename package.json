@@ -2,7 +2,7 @@
   "name": "vscode-neon-glow",
   "displayName": "Neon Glow",
   "description": "Neon glow for syntax highlighting, derived from whatever colour theme is active.",
-  "version": "0.9.10",
+  "version": "0.9.11",
   "publisher": "Ruminem",
   "license": "MIT",
   "repository": {
@@ -144,6 +144,30 @@
           "order": 10,
           "scope": "application",
           "markdownDescription": "Bloom on selected text, in pixels, taken from the theme's own selection colour. `0` leaves it flat; `12` is a good starting point. Only rendered lines carry a selection span, so selecting a whole file costs the screenful in front of you and nothing beyond it. Applies without a restart."
+        },
+        "neonGlow.caretArc": {
+          "type": "string",
+          "default": "off",
+          "enum": ["off", "arc", "beam", "comet", "flash"],
+          "enumDescriptions": [
+            "Nothing is drawn when the caret moves.",
+            "A jagged bolt runs the way the caret went, lighting the path behind it before it fades. The jitter is rolled fresh every time, so no two are the same shape.",
+            "The same thing, drawn straight. Quieter, and the one to reach for if the jitter reads as noise.",
+            "A short bright head flies the path and leaves nothing behind it. The most restrained of the four.",
+            "No path at all - a burst where the caret landed. The only one that still reads on a Tab, because it does not need distance to draw."
+          ],
+          "order": 11,
+          "scope": "application",
+          "markdownDescription": "What to draw when the caret jumps: a key, a click, find-next, go-to-definition - anything that moves it, not only a keystroke. Off by default. The colour is the theme's own caret colour rather than one of ours, and each shape is SVG that lives a few hundred milliseconds and is then removed. `#neonGlow.caretArcMinJump#` decides how far the caret has to travel first. Ignored when the system asks for reduced motion. Applies without a restart."
+        },
+        "neonGlow.caretArcMinJump": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 400,
+          "order": 12,
+          "scope": "application",
+          "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. `0` lets the style decide: `12` for `flash`, `40` for the other three. Typing moves the caret roughly seven pixels per character, so a low number turns ordinary typing into a stream of animations - which is why the three styles that draw a path ask for a real jump before they bother."
         }
       }
     }

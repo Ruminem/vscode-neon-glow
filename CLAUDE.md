@@ -20,7 +20,7 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 | `NEXT.md` | 세션 인수인계 노트. VSIX에는 안 들어감 |
 
 명령: `neonGlow.toggle` `enable` `disable` `install` `remove` `status`
-설정: `glowLayers` `maxBlur` `brightness` `minChroma` `chromaSpan` `floor` `minLightness` `cursorTrail` `saveShake` `findGlow` `selectionGlow`
+설정: `glowLayers` `maxBlur` `brightness` `minChroma` `chromaSpan` `floor` `minLightness` `cursorTrail` `saveShake` `findGlow` `selectionGlow` `caretArc` `caretArcMinJump`
 
 설정 값은 `state.json`을 타고 렌더러로 가므로 **재패치 없이 즉시** 반영됨. 반대로
 `neon-glow.js`를 고치면 페이로드 해시가 바뀌어 **재패치와 완전 재시작이 필요**함.

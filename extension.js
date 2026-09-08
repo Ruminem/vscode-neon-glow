@@ -213,14 +213,17 @@ function reflect(enabled) {
  */
 const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
                 'glowLayers', 'maxBlur', 'cursorTrail', 'saveShake',
-                'findGlow', 'selectionGlow'];
+                'findGlow', 'selectionGlow', 'caretArc', 'caretArcMinJump'];
 
 function readKnobs() {
   const c = vscode.workspace.getConfiguration('neonGlow');
   const out = {};
   for (const k of KNOBS) {
     const v = c.get(k);
-    if (typeof v === 'number' && isFinite(v)) out[k] = v;
+    /* Words as well as numbers now: caretArc carries the name of a style. What
+       counts as a valid name is the renderer's business - it keeps its own list
+       and drops anything else - so this only sorts types. */
+    if (typeof v === 'string' || (typeof v === 'number' && isFinite(v))) out[k] = v;
   }
   return out;
 }
