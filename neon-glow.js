@@ -24,7 +24,7 @@ try {
     findGlow:     0,     /* px of bloom on find matches; 0 = leave them flat     */
     selectionGlow: 0,    /* px of bloom on the selection; 0 = leave it flat      */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
-    caretArcMinJump: 0   /* px of travel before an arc is drawn; 0 = per style   */
+    caretArcMinJump: 5   /* px of travel before an arc is drawn                  */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
@@ -33,7 +33,7 @@ try {
     floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64],
     cursorTrail: [0, 400], saveShake: [0, 24],
     findGlow: [0, 48], selectionGlow: [0, 32],
-    caretArcMinJump: [0, 400]
+    caretArcMinJump: [1, 400]
   };
 
   /* Knobs that carry a word rather than a number. A value outside the list is
@@ -531,15 +531,19 @@ try {
   }
 
   /**
-   * Zero means "let the style decide", which is the only way one number can
-   * serve all four. A flash has no path to draw, so it reads the same at any
-   * distance and can afford to fire on a Tab; the other three are a line along
-   * the way, and two characters of travel is not a line worth drawing.
+   * How far the caret has to go before this is worth drawing.
+   *
+   * The default of 5 is under one character, so a single arrow key clears it.
+   * That is deliberate: holding an arrow reads as light running along with the
+   * caret, which is what the effect is for. It also means a held key draws one
+   * of these per repeat, which is the only place the feature costs anything -
+   * raising this is the lever if that ever matters.
+   *
+   * Never zero. A style attribute on the caret changes for reasons that are not
+   * a move at all, and a floor of one keeps those from drawing.
    */
   function arcMinJump() {
-    var m = Math.round(KNOBS.caretArcMinJump);
-    if (m > 0) return m;
-    return arcStyle() === 'flash' ? 12 : 40;
+    return Math.max(1, Math.round(KNOBS.caretArcMinJump));
   }
 
   function arcColour(el) {

@@ -253,16 +253,24 @@ async function main() {
       && lines[1].anims[0].frames.some((f) => 'strokeDashoffset' in f));
   }
 
+  /* An arrow key is about seven pixels, and the default threshold is under a
+     character on purpose: holding one is meant to read as light running along
+     with the caret. */
   s = run({ knobs: { caretArc: 'arc' } });
   await wait(120);
+  await s.jump(107);
+  check('an arrow-sized move clears the default threshold', s.drawn().length === 1);
+
+  s = run({ knobs: { caretArc: 'arc', caretArcMinJump: 40 } });
+  await wait(120);
   await s.jump(110);
-  check('a short jump draws nothing', s.drawn().length === 0);
+  check('and is held back once the threshold is raised', s.drawn().length === 0);
 
   s = run({ knobs: { caretArc: 'flash' } });
   await wait(120);
   await s.jump(114);
   drawn = s.drawn();
-  check('flash fires where a path style would not', drawn.length === 1);
+  check('flash draws at the size of a Tab', drawn.length === 1);
   if (drawn.length) {
     check('flash draws no path', drawn[0].descendants().length === 0);
     check('flash is animated', drawn[0].anims.length === 1);

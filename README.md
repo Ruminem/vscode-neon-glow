@@ -90,11 +90,16 @@ straight, `comet` is a short head flying with nothing behind it, and `flash` is 
 burst where the caret landed. Anything that moves the caret sets it off — a key, a
 click, find-next, go-to-definition.
 
-The first three need somewhere to draw, and a Tab moves the caret about two
-characters, which is not a line. `caretArcMinJump` holds them back until the caret
-has covered a real distance; `0` lets each style choose, which is `12` for
-`flash` and `40` for the rest. `flash` is the one that still reads on a Tab,
-because it marks the arrival rather than the journey.
+`caretArcMinJump` decides how little counts as a move. The default of `5` is
+under one character, so a single arrow key clears it and holding one reads as
+light running along beside the caret, which is what the effect is for. It is also
+the only place this costs anything — a held key draws one animation per repeat —
+so raising it is the lever if that ever shows. At `40` only real jumps qualify:
+End, Ctrl+arrow, a click across the file.
+
+The first three still need somewhere to draw. A Tab moves the caret about two
+characters, and a bolt fourteen pixels wide is not much of a bolt, so `flash` is
+the one that reads at that size: it marks the arrival rather than the journey.
 
 These are built out of SVG rather than a stylesheet, and the workbench enforces
 Trusted Types — assigning to `innerHTML` throws there, so every node is created
@@ -323,7 +328,7 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.findGlow` | `0` | px of bloom on find results, in the theme's own find colours; `18` to start |
 | `neonGlow.selectionGlow` | `0` | px of bloom on selected text, in the theme's own selection colour; `12` to start |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
-| `neonGlow.caretArcMinJump` | `0` | px of travel before an arc is drawn; `0` lets the style decide |
+| `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 
 The last four ship at `0` and do nothing until set — they are new behaviour to opt
 into rather than adjustments to the glow that is already running. See

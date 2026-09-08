@@ -162,12 +162,12 @@
         },
         "neonGlow.caretArcMinJump": {
           "type": "number",
-          "default": 0,
-          "minimum": 0,
+          "default": 5,
+          "minimum": 1,
           "maximum": 400,
           "order": 12,
           "scope": "application",
-          "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. `0` lets the style decide: `12` for `flash`, `40` for the other three. Typing moves the caret roughly seven pixels per character, so a low number turns ordinary typing into a stream of animations - which is why the three styles that draw a path ask for a real jump before they bother."
+          "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. The default of `5` is under one character, so a single arrow key clears it and holding one reads as light running along beside the caret - which is what the effect is for. It also means a held key draws one animation per repeat, and that is the only place this costs anything, so raise it if it ever shows. At `40` only real jumps qualify: End, Ctrl+arrow, a click across the file."
         }
       }
     }
