@@ -435,6 +435,14 @@ It is a hash of the payload rather than the release number on purpose: most
 releases change only the extension, and a version stamp would demand a re-patch
 and a restart for a bundle that is already byte-for-byte correct.
 
+**Patching does not update the extension either.** The two halves are updated by
+different commands and neither touches the other: `node install.js` writes the
+payload into `workbench.js`, and installing the VSIX replaces everything else -
+including the list of settings VS Code puts in its Settings UI. Patch alone after
+adding a setting and the payload will understand it while the settings screen has
+never heard of it, which looks like a setting that does nothing. The count beside
+**Neon Glow** in Settings is the quickest way to tell which half is behind.
+
 **VS Code updates wipe the patch.** The updater replaces `workbench.js`. This is
 the same state as a fresh extension install — an unpatched bundle — so the
 extension offers to re-patch on the next launch. You can also run
