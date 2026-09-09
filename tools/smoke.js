@@ -181,38 +181,50 @@ async function main() {
   check('a vivid colour glows', /\.mtk1 \{[^}]*text-shadow:/.test(css));
   check('a flat colour is skipped', /\.mtk2 \{ color: #808080; \}/.test(css));
   check('brackets get their own rule', css.indexOf('bracket-highlighting-') !== -1);
+  /* The line the defaults are drawn on: a knob that only decides what colour
+     lands where is on, a knob that moves something is off. Both halves are
+     checked, because either one drifting is a change every user sees. */
   check('no caret transition', css.indexOf('transition: transform') === -1);
   check('no jolt keyframes', css.indexOf('neon-glow-shake') === -1);
-  check('no find bloom', css.indexOf('.findMatch') === -1);
-  check('no selection bloom', css.indexOf('.selected-text') === -1);
-  check('no occurrence bloom', css.indexOf('.wordHighlight') === -1);
-  check('no gutter bloom', css.indexOf('dirty-diff') === -1);
+  check('find bloom is on by default', /\.findMatch \{ box-shadow: 0 0 18px 6px/.test(css));
+  check('selection bloom is on by default', /\.selected-text \{ box-shadow: 0 0 12px/.test(css));
+  check('occurrence bloom is on by default', /\.wordHighlight \{ box-shadow: 0 0 10px 3px/.test(css));
+  check('gutter bloom is on by default', /dirty-diff-added:before \{ box-shadow: 0 0 8px 2px/.test(css));
+  check('bracket-match bloom is on by default', /\.bracket-match \{ box-shadow: 0 0 10px var/.test(css));
   await s.jump(600);
   check('no arc on a jump', s.drawn().length === 0);
 
   /* ---- knobs arriving over the state file ---- */
   console.log('\nknobs over state.json');
-  s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
-            occurrenceGlow: 10, gutterGlow: 8 } });
+  /* Every number here differs from the default, so a knob that never arrived
+     cannot pass by accident - which is what these checked when the glows all
+     shipped at 0 and any output at all proved the wire worked. */
+  s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 30, selectionGlow: 20,
+            occurrenceGlow: 20, gutterGlow: 16, bracketMatchGlow: 24 } });
   await wait(120);
   css = s.styles();
 
   check('caret transition emitted', /transition: transform 45ms/.test(css));
   check('jolt keyframes emitted', /@keyframes neon-glow-shake/.test(css));
-  check('find bloom emitted', /\.findMatch \{ box-shadow:/.test(css));
-  check('selection bloom emitted', /\.selected-text \{ box-shadow:/.test(css));
+  check('find bloom follows the knob', /\.findMatch \{ box-shadow: 0 0 30px/.test(css));
+  check('selection bloom follows the knob', /\.selected-text \{ box-shadow: 0 0 20px/.test(css));
   check('occurrence bloom emitted, reads and writes apart',
-    /\.wordHighlight \{ box-shadow: 0 0 10px/.test(css)
-    && /\.wordHighlightStrong \{ box-shadow: 0 0 13px/.test(css));
+    /\.wordHighlight \{ box-shadow: 0 0 20px/.test(css)
+    && /\.wordHighlightStrong \{ box-shadow: 0 0 25px/.test(css));
   check('the textual fallback is lit too',
     /\.wordHighlightText \{ box-shadow:/.test(css));
   check('gutter bloom emitted for every kind',
     (css.match(/dirty-diff-[a-z]+(\.secondary)?:(before|after) \{ box-shadow:/g) || []).length === 6);
   check('the gutter glow is carried by its spread',
-    /dirty-diff-added:before \{ box-shadow: 0 0 8px 2px/.test(css),
+    /dirty-diff-added:before \{ box-shadow: 0 0 16px 4px/.test(css),
     'a width:0 box with no spread paints nothing at all');
+  check('bracket-match bloom emitted, from the border colour',
+    /\.bracket-match \{ box-shadow: 0 0 24px var\(--vscode-editorBracketMatch-border,/.test(css));
+  check('and with no spread, its colour being opaque',
+    !/\.bracket-match \{ box-shadow: 0 0 24px [0-9]/.test(css));
   check('moving effects respect reduced motion',
     (css.match(/prefers-reduced-motion/g) || []).length === 2);
+
 
   /* ---- a save, carried on the status bar label ---- */
   console.log('\nsave pulse');
@@ -311,10 +323,29 @@ async function main() {
     'something in the middle threw and took the rest of the file with it');
   check('and still paints', /text-shadow:/.test(s.styles()));
 
+  /* ---- and back off again ---- */
+  /* Now that these ship on, zero is the setting somebody actually reaches for,
+     and nothing else here would notice if a guard stopped honouring it. */
+  console.log('\nturned back off');
+  /* Last, and on its own stub. run() swaps the globals the payload holds, so a
+     stub built here reaches back and kills every earlier one - which shows up
+     as two unrelated sections failing rather than as anything about this. */
+  const off = run({ knobs: { findGlow: 0, selectionGlow: 0, occurrenceGlow: 0,
+            gutterGlow: 0, bracketMatchGlow: 0 } });
+  await wait(120);
+  const offCss = off.styles();
+
+  check('zero removes the find bloom', offCss.indexOf('.findMatch') === -1);
+  check('zero removes the selection bloom', offCss.indexOf('.selected-text') === -1);
+  check('zero removes the occurrence bloom', offCss.indexOf('.wordHighlight') === -1);
+  check('zero removes the gutter bloom', offCss.indexOf('dirty-diff') === -1);
+  check('zero removes the bracket-match bloom', offCss.indexOf('.bracket-match') === -1);
+  check('and the token glow is untouched', /\.mtk1 \{[^}]*text-shadow:/.test(offCss));
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
-            occurrenceGlow: 10, gutterGlow: 8 }
+            occurrenceGlow: 10, gutterGlow: 8, bracketMatchGlow: 10 }
     }).styles());
   }
 
