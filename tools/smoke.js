@@ -185,12 +185,14 @@ async function main() {
   check('no jolt keyframes', css.indexOf('neon-glow-shake') === -1);
   check('no find bloom', css.indexOf('.findMatch') === -1);
   check('no selection bloom', css.indexOf('.selected-text') === -1);
+  check('no occurrence bloom', css.indexOf('.wordHighlight') === -1);
   await s.jump(600);
   check('no arc on a jump', s.drawn().length === 0);
 
   /* ---- knobs arriving over the state file ---- */
   console.log('\nknobs over state.json');
-  s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12 } });
+  s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
+            occurrenceGlow: 10 } });
   await wait(120);
   css = s.styles();
 
@@ -198,6 +200,11 @@ async function main() {
   check('jolt keyframes emitted', /@keyframes neon-glow-shake/.test(css));
   check('find bloom emitted', /\.findMatch \{ box-shadow:/.test(css));
   check('selection bloom emitted', /\.selected-text \{ box-shadow:/.test(css));
+  check('occurrence bloom emitted, reads and writes apart',
+    /\.wordHighlight \{ box-shadow: 0 0 10px/.test(css)
+    && /\.wordHighlightStrong \{ box-shadow: 0 0 13px/.test(css));
+  check('the textual fallback is lit too',
+    /\.wordHighlightText \{ box-shadow:/.test(css));
   check('moving effects respect reduced motion',
     (css.match(/prefers-reduced-motion/g) || []).length === 2);
 
@@ -300,7 +307,8 @@ async function main() {
 
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
-      knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12 }
+      knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
+            occurrenceGlow: 10 }
     }).styles());
   }
 

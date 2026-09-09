@@ -213,7 +213,8 @@ function reflect(enabled) {
  */
 const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
                 'glowLayers', 'maxBlur', 'cursorTrail', 'saveShake',
-                'findGlow', 'selectionGlow', 'caretArc', 'caretArcMinJump'];
+                'findGlow', 'selectionGlow', 'occurrenceGlow',
+                'caretArc', 'caretArcMinJump'];
 
 function readKnobs() {
   const c = vscode.workspace.getConfiguration('neonGlow');

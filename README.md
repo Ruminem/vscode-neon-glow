@@ -52,7 +52,7 @@ their own in `currentColor`, so each level glows in the colour it is painted.
 
 ## What else can glow
 
-The token glow is always on. Five more effects are not: they ship off and stay
+The token glow is always on. Six more effects are not: they ship off and stay
 dark until you set them in Settings, because they change what the editor does
 rather than only how it is painted.
 
@@ -67,6 +67,23 @@ must not hide it, and a shadow that only blurs them comes out nearly invisible. 
 these two take a `spread`: the weak colour is carried outwards at full width before
 the blur starts, instead of asking the blur to do both jobs. The caret, whose
 colour is opaque, needs none — which is why the rules do not match.
+
+**The symbol under the caret** (`occurrenceGlow`) lights every place that symbol
+appears on screen, in the colours the theme already gives those highlights. It is
+the same derivation on the surface next door to find, and it takes the spread for
+the same reason the find rule does.
+
+It takes one shadow pass where find takes two, and a lower number to start — `10`
+against find's `18`. The difference between them is not how they look but when
+they exist. A find match is on screen only while you are searching for something;
+these arrive every time the caret lands on a word and stay for as long as it rests
+there, which is most of a working day, so the rule that is always running is the
+one that had better be cheap. Where a theme paints a write in a different colour
+from a read, the write is lit wider: that distinction is the theme's own, and
+carrying it costs nothing. The textual fallback VS Code uses when no language
+server answers is lit too, so the effect still works in a file nothing
+understands. All of it needs VS Code's own `editor.occurrencesHighlight`, which
+is on unless you turned it off.
 
 **The caret trail** (`cursorTrail`) gives the caret a duration to cross instead of
 letting it jump, so the glow already on it smears into a short streak. Motion only;
@@ -333,10 +350,11 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.saveShake` | `0` | px the workbench jolts on save; `0` holds it still, and so should `files.autoSave` |
 | `neonGlow.findGlow` | `0` | px of bloom on find results, in the theme's own find colours; `18` to start |
 | `neonGlow.selectionGlow` | `0` | px of bloom on selected text, in the theme's own selection colour; `12` to start |
+| `neonGlow.occurrenceGlow` | `0` | px of bloom on the symbol under the caret, wherever else it appears; `10` to start |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 
-The last four ship at `0` and do nothing until set — they are new behaviour to opt
+The last five ship at `0` and do nothing until set — they are new behaviour to opt
 into rather than adjustments to the glow that is already running. See
 [What else can glow](#what-else-can-glow).
 
