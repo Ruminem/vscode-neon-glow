@@ -52,7 +52,7 @@ their own in `currentColor`, so each level glows in the colour it is painted.
 
 ## What else can glow
 
-The token glow is always on. Six more effects are not: they ship off and stay
+The token glow is always on. Seven more effects are not: they ship off and stay
 dark until you set them in Settings, because they change what the editor does
 rather than only how it is painted.
 
@@ -84,6 +84,29 @@ carrying it costs nothing. The textual fallback VS Code uses when no language
 server answers is lit too, so the effect still works in a file nothing
 understands. All of it needs VS Code's own `editor.occurrencesHighlight`, which
 is on unless you turned it off.
+
+**The change bars in the gutter** (`gutterGlow`) light in the theme's own
+`editorGutter` colours — the added, modified and deleted marks left by source
+control, which are already the one part of the gutter carrying colour.
+
+This one is carried by its spread rather than its blur, and for a reason that is
+not the find rule's. VS Code paints the bar as the element's own left border,
+giving it a style and no width, so it comes out at the CSS initial `medium` —
+3px. The box the glow hangs on is that element's `:before`, which is `width: 0`.
+A shadow of a box with no area paints nothing however wide the blur, so the
+spread is what gives the light a body at all: find takes a spread because its
+colour is weak, this takes one because its box is empty. Raising the number
+widens the light more than it softens it.
+
+Deleted lines are drawn as a wedge rather than a bar, on a different
+pseudo-element, so they are lit there instead. Each kind is matched twice, once
+bare and once as `.secondary` — VS Code grew a second set of gutter colours for
+changes it did not make itself, and the bare rule is what a build without them
+still matches.
+
+Its cost is bounded harder than anything else here: not by the viewport but by
+how many lines of it you have changed since the last commit, and only in a file
+under source control at all.
 
 **The caret trail** (`cursorTrail`) gives the caret a duration to cross instead of
 letting it jump, so the glow already on it smears into a short streak. Motion only;
@@ -351,10 +374,11 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.findGlow` | `0` | px of bloom on find results, in the theme's own find colours; `18` to start |
 | `neonGlow.selectionGlow` | `0` | px of bloom on selected text, in the theme's own selection colour; `12` to start |
 | `neonGlow.occurrenceGlow` | `0` | px of bloom on the symbol under the caret, wherever else it appears; `10` to start |
+| `neonGlow.gutterGlow` | `0` | px of bloom on the gutter's change bars, in the theme's own `editorGutter` colours; `8` to start |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 
-The last five ship at `0` and do nothing until set — they are new behaviour to opt
+The last six ship at `0` and do nothing until set — they are new behaviour to opt
 into rather than adjustments to the glow that is already running. See
 [What else can glow](#what-else-can-glow).
 
