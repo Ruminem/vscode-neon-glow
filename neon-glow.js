@@ -24,6 +24,7 @@ try {
     findGlow:     0,     /* px of bloom on find matches; 0 = leave them flat     */
     selectionGlow: 0,    /* px of bloom on the selection; 0 = leave it flat      */
     occurrenceGlow: 0,   /* px of bloom on the symbol under the caret; 0 = flat   */
+    gutterGlow:   0,     /* px of bloom on the gutter's change bars; 0 = flat     */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
     caretArcMinJump: 5   /* px of travel before an arc is drawn                  */
   };
@@ -34,6 +35,7 @@ try {
     floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64],
     cursorTrail: [0, 400], saveShake: [0, 24],
     findGlow: [0, 48], selectionGlow: [0, 32], occurrenceGlow: [0, 32],
+    gutterGlow: [0, 24],
     caretArcMinJump: [1, 400]
   };
 
@@ -347,6 +349,47 @@ try {
       css += '.monaco-editor .wordHighlightStrong { box-shadow: 0 0 '
         + Math.round(occ * 1.25) + 'px ' + Math.round(occ / 2.2) + 'px'
         + ' var(--vscode-editor-wordHighlightStrongBackground) !important; }\n';
+    }
+
+    /* The change bars in the gutter - added, modified, deleted - lit from the
+       colours the theme gives them, the same derivation once more.
+
+       The spread here is not the one the find rule takes, and the reason is
+       different enough to be worth saying. VS Code paints the bar as the
+       element's own left border, with a style but no width, so it comes out at
+       the CSS initial `medium` - 3px. Its `:before` is what sits over the bar,
+       and that box is `width: 0`. A shadow of a box with no area paints
+       nothing, whatever the blur, so the spread is what gives the glow a body
+       at all. Find needs a spread because its colour is weak; this needs one
+       because its box is empty.
+
+       Deleted is drawn elsewhere - a wedge on `:after` rather than a bar - so
+       it is lit there instead.
+
+       Each kind is listed twice: once bare, once as `.secondary`. VS Code grew
+       the secondary colours for edits it did not make itself, and the bare rule
+       is what a build without them still matches. Same `!important` on both, so
+       the more specific `.secondary` wins where it exists.
+
+       Cost is bounded harder than any other effect here: not by the viewport
+       but by how many lines of it you have changed since the last commit, and
+       only in a file under source control. */
+    var gut = Math.round(KNOBS.gutterGlow);
+    if (gut > 0) {
+      var gSpread = Math.max(1, Math.round(gut / 4));
+      var bars = [
+        ['.dirty-diff-added:before', 'addedBackground'],
+        ['.dirty-diff-added.secondary:before', 'addedSecondaryBackground'],
+        ['.dirty-diff-modified:before', 'modifiedBackground'],
+        ['.dirty-diff-modified.secondary:before', 'modifiedSecondaryBackground'],
+        ['.dirty-diff-deleted:after', 'deletedBackground'],
+        ['.dirty-diff-deleted.secondary:after', 'deletedSecondaryBackground']
+      ];
+      for (var gi = 0; gi < bars.length; gi++) {
+        css += '.monaco-editor ' + bars[gi][0] + ' { box-shadow: 0 0 ' + gut
+          + 'px ' + gSpread + 'px var(--vscode-editorGutter-' + bars[gi][1]
+          + ') !important; }\n';
+      }
     }
     return css;
   }
