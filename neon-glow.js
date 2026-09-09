@@ -253,7 +253,13 @@ try {
        duration is worth keeping short, and part of why this ships off. The
        same is true of VS Code's own option, at 80ms and over "all". transform
        is listed anyway, and costs nothing while it goes unused, so that a build
-       which moves the caret that way keeps the trail. */
+       which moves the caret that way keeps the trail.
+
+       A duration is not what anyone sees; frames are. 45ms is under three of
+       them at 60Hz and six or seven at 144Hz, so the same number is a glide on
+       one panel and a step or two on another - which is why a value that looks
+       right here can read as nothing at all elsewhere. Tuning it by eye means
+       saying which display it was tuned on. */
     var trail = Math.round(KNOBS.cursorTrail);
     if (trail > 0) {
       css += '@media (prefers-reduced-motion: no-preference) {'
