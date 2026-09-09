@@ -10,6 +10,13 @@ try {
    * over the same bridge the toggle uses, so editing them in Settings takes
    * effect without a re-patch or a restart. Editing them here only matters for
    * a CLI-only install, where nothing is sending anything.
+   *
+   * What ships on and what ships off follows one line: a knob that only decides
+   * what colour lands where is on, and a knob that changes what the editor does
+   * while you work is off. Every glow below is the theme's own colour carried to
+   * one more surface, so turning them on adds no palette that was not already
+   * there. cursorTrail, saveShake and caretArc move things, and nobody asked for
+   * that, so they wait to be asked.
    */
   var KNOBS = {
     brightness:   1.0,   /* overall strength, 0.0 ~ 1.5                        */
@@ -21,10 +28,11 @@ try {
     maxBlur:      36,    /* ceiling on any one radius; 36 = the widest we emit */
     cursorTrail:  0,     /* ms for the caret to slide; 0 = jump, as VS Code does */
     saveShake:    0,     /* px the workbench jolts on a save; 0 = it stays still */
-    findGlow:     0,     /* px of bloom on find matches; 0 = leave them flat     */
-    selectionGlow: 0,    /* px of bloom on the selection; 0 = leave it flat      */
-    occurrenceGlow: 0,   /* px of bloom on the symbol under the caret; 0 = flat   */
-    gutterGlow:   0,     /* px of bloom on the gutter's change bars; 0 = flat     */
+    findGlow:    18,     /* px of bloom on find matches; 0 = leave them flat     */
+    selectionGlow: 12,   /* px of bloom on the selection; 0 = leave it flat      */
+    occurrenceGlow: 10,  /* px of bloom on the symbol under the caret; 0 = flat  */
+    gutterGlow:    8,    /* px of bloom on the gutter's change bars; 0 = flat    */
+    bracketMatchGlow: 10, /* px of bloom on the matching bracket box; 0 = flat   */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
     caretArcMinJump: 5   /* px of travel before an arc is drawn                  */
   };
@@ -36,6 +44,7 @@ try {
     cursorTrail: [0, 400], saveShake: [0, 24],
     findGlow: [0, 48], selectionGlow: [0, 32], occurrenceGlow: [0, 32],
     gutterGlow: [0, 24],
+    bracketMatchGlow: [0, 32],
     caretArcMinJump: [1, 400]
   };
 
@@ -227,8 +236,8 @@ try {
        behind. Motion only - the colour is still the theme's own cursor colour,
        so unlike a scanline or a tint this imposes no palette of its own.
 
-       Off by default, because it is the one value here that changes how the
-       editor behaves rather than how it looks. Every keystroke restarts the
+       Off by default, on the side of the line that moves things rather than
+       colours them - see the note over KNOBS. Every keystroke restarts the
        transition, so too long a duration leaves the caret trailing the text
        being typed: 130ms reads as lag, 45ms keeps up and still streaks on a
        jump across the file.
@@ -390,6 +399,33 @@ try {
           + 'px ' + gSpread + 'px var(--vscode-editorGutter-' + bars[gi][1]
           + ') !important; }\n';
       }
+    }
+
+    /* The box drawn around a bracket and its partner while the caret is on one.
+
+       Brackets already glow - the rule above gives them one in currentColor, so
+       each nesting level lights in the colour it is painted. The box marking the
+       pair did not, which left the one moment the editor is pointing at
+       something as the dimmest thing on the line.
+
+       The border colour, not the background. VS Code registers the background
+       at #0064001a - ten percent alpha, a hint of a fill - and the border at
+       #888, and it is the border a theme is understood to be drawing with. The
+       background is the fallback for a theme that sets only that. Opaque, so no
+       spread: the same reason the caret rule has none.
+
+       This is the one rule here that lights a colour the token pass would have
+       thrown away. minChroma exists to keep body text from glowing, because a
+       glow on every word is a wash rather than a highlight; #888 would never
+       clear it. The argument does not carry over. There are two of these boxes
+       on screen at most, and only while the caret is on a bracket, so what
+       lighting them costs is bounded to the moment you asked the question. */
+    var brk = Math.round(KNOBS.bracketMatchGlow);
+    if (brk > 0) {
+      css += '.monaco-editor .bracket-match { box-shadow: 0 0 ' + brk + 'px'
+        + ' var(--vscode-editorBracketMatch-border,'
+        + ' var(--vscode-editorBracketMatch-background, transparent))'
+        + ' !important; }\n';
     }
     return css;
   }

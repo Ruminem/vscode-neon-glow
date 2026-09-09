@@ -52,9 +52,16 @@ their own in `currentColor`, so each level glows in the colour it is painted.
 
 ## What else can glow
 
-The token glow is always on. Seven more effects are not: they ship off and stay
-dark until you set them in Settings, because they change what the editor does
-rather than only how it is painted.
+The token glow is not the only thing on: five more surfaces light with it, and
+three effects wait to be asked for. The line between them is one sentence — a
+setting that only decides what colour lands where is on, and a setting that
+changes what the editor does while you work is off.
+
+Everything in the first group is the theme's own colour carried somewhere it was
+not carried before, so none of it puts a palette on your screen that the theme
+had not already chosen. The three in the second group move things — the caret
+slides, the workbench jolts, a spark flies — and nobody asked for movement, so
+they ship at `0` and stay there until you say otherwise.
 
 **Find results and the selection** (`findGlow`, `selectionGlow`) are the same idea
 as the token glow applied to two more surfaces — the colour still comes from the
@@ -107,6 +114,25 @@ still matches.
 Its cost is bounded harder than anything else here: not by the viewport but by
 how many lines of it you have changed since the last commit, and only in a file
 under source control at all.
+
+**The matching bracket box** (`bracketMatchGlow`) lights the outline VS Code
+draws around a bracket and its partner while the caret is on one. Brackets
+themselves already glow, each in the colour its nesting level is painted; the box
+that marks the pair did not, which left the one moment the editor is pointing at
+something as the dimmest thing on the line.
+
+It takes the border colour rather than the background. VS Code registers that
+background at ten percent alpha — a hint of a fill — and the border opaque, and
+it is the border a theme is understood to be drawing the box with; the background
+is the fallback for a theme that sets only that. Being opaque, it needs no
+spread, for the same reason the caret does not.
+
+This is also the one rule here that lights a colour the token pass would have
+thrown away — the default border is `#888`, and `minChroma` would never let that
+through. That threshold exists to keep body text from glowing, because a glow on
+every word is a wash rather than a highlight, and the argument does not carry
+over: there are two of these boxes on screen at most, and only while the caret is
+on a bracket.
 
 **The caret trail** (`cursorTrail`) gives the caret a duration to cross instead of
 letting it jump, so the glow already on it smears into a short streak. Motion only;
@@ -371,15 +397,17 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.minLightness` | `0.25` | skip colours darker than this, however saturated |
 | `neonGlow.cursorTrail` | `0` | ms for the caret to slide to a new position, so its glow streaks; `0` keeps the jump |
 | `neonGlow.saveShake` | `0` | px the workbench jolts on save; `0` holds it still, and so should `files.autoSave` |
-| `neonGlow.findGlow` | `0` | px of bloom on find results, in the theme's own find colours; `18` to start |
-| `neonGlow.selectionGlow` | `0` | px of bloom on selected text, in the theme's own selection colour; `12` to start |
-| `neonGlow.occurrenceGlow` | `0` | px of bloom on the symbol under the caret, wherever else it appears; `10` to start |
-| `neonGlow.gutterGlow` | `0` | px of bloom on the gutter's change bars, in the theme's own `editorGutter` colours; `8` to start |
+| `neonGlow.findGlow` | `18` | px of bloom on find results, in the theme's own find colours; `0` turns it off |
+| `neonGlow.selectionGlow` | `12` | px of bloom on selected text, in the theme's own selection colour; `0` turns it off |
+| `neonGlow.occurrenceGlow` | `10` | px of bloom on the symbol under the caret, wherever else it appears; `0` turns it off |
+| `neonGlow.gutterGlow` | `8` | px of bloom on the gutter's change bars, in the theme's own `editorGutter` colours; `0` turns it off |
+| `neonGlow.bracketMatchGlow` | `10` | px of bloom on the box around a bracket and its partner; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 
-The last six ship at `0` and do nothing until set — they are new behaviour to opt
-into rather than adjustments to the glow that is already running. See
+Three of these ship at `0` and do nothing until you set them — `cursorTrail`,
+`saveShake` and `caretArc`. They move things rather than colour them, which is
+the whole of why they wait to be asked; every other row is already running. See
 [What else can glow](#what-else-can-glow).
 
 They work without a restart because they do not live in the patch. The extension
