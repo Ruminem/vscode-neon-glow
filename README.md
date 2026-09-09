@@ -16,17 +16,13 @@ The same file with the glow off, then on:
 
 ![the same lines with the glow on: keywords, strings and numbers lit in the colours the theme already gave them](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-on.png)
 
-[Which tokens glow](#which-tokens-glow) · [Turning it on and off](#turning-it-on-and-off) · [Install](#install) · [Tuning](#tuning) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
+[Which tokens glow](#which-tokens-glow) · [What else can glow](#what-else-can-glow) · [Install](#install) · [Settings](#settings) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
 
 ## Which tokens glow
 
-Strength is driven by **chroma** (`max(r,g,b) - min(r,g,b)`), not HSL saturation.
-That distinction matters: HSL saturation divides by `1 - |2L-1|`, which explodes for
-near-white colours. Monokai's default text `#F8F8F2` has a real colour spread of only
-`0.024`, but its HSL saturation computes to `0.31` — enough to sneak past a saturation
-threshold and make *body text* glow. Chroma doesn't have that failure mode.
-
-Measured on Monokai:
+Strength is driven by **chroma** (`max(r,g,b) - min(r,g,b)`), not HSL saturation —
+saturation divides by `1 - |2L-1|`, which explodes for near-white colours and would
+let *body text* glow. Measured on Monokai:
 
 | Colour    | Role            | Chroma | Strength |
 |-----------|-----------------|--------|----------|
@@ -39,157 +35,60 @@ Measured on Monokai:
 | `#F8F8F2` | plain text      | 0.024  | — (skipped) |
 | `#88846F` | comment         | 0.098  | — (skipped) |
 
-Because it infers role from colour, themes that reuse one colour across different roles
-can't be told apart. Themes with distinct per-role colours (Monokai, Tokyo Night,
-Dracula, …) work well.
+Because it infers role from colour, themes that reuse one colour across different
+roles can't be told apart. Themes with distinct per-role colours (Monokai, Tokyo
+Night, Dracula, …) work well.
 
-Bracket pair colouring is left to VS Code. It paints
-`.monaco-editor .bracket-highlighting-N`, two classes against the single-class
-`.mtkN` rules the token stylesheet is made of, so an `!important` on the glow's
-colour would beat it on force alone and collapse every nesting level onto one
-colour. The glow sets colour without `!important`, and gives brackets a rule of
-their own in `currentColor`, so each level glows in the colour it is painted.
+**Flatter themes need different numbers.** The defaults are calibrated on Monokai,
+which is unusually saturated. In Abyss the class-name colour `#ffeebb` never reaches
+the `0.30` threshold while the comment colour `#384887` clears it, so the roles that
+glow come out close to inverted. Dropping `minChroma` to about `0.25` and raising
+`brightness` past `1` gets it back.
+
+Bracket pair colouring is left to VS Code: brackets get a rule of their own in
+`currentColor`, so each nesting level glows in the colour it is painted.
 
 ## What else can glow
 
-The token glow is not the only thing on: five more surfaces light with it, and
-three effects wait to be asked for. The line between them is one sentence — a
-setting that only decides what colour lands where is on, and a setting that
-changes what the editor does while you work is off.
+The token glow is not the only thing on. Five more surfaces light with it, and three
+effects wait to be asked for. The line between them is one sentence — **a setting
+that only decides what colour lands where is on, and a setting that changes what the
+editor does while you work is off.**
 
-Everything in the first group is the theme's own colour carried somewhere it was
-not carried before, so none of it puts a palette on your screen that the theme
-had not already chosen. The three in the second group move things — the caret
-slides, the workbench jolts, a spark flies — and nobody asked for movement, so
-they ship at `0` and stay there until you say otherwise.
+Everything in the first group is the theme's own colour carried somewhere it was not
+carried before, so none of it puts a palette on your screen the theme had not already
+chosen.
 
-**Find results and the selection** (`findGlow`, `selectionGlow`) are the same idea
-as the token glow applied to two more surfaces — the colour still comes from the
-theme, not from here. Find results are the one place where the glow does work
-rather than decoration: a match becomes visible without hunting the scrollbar for
-its mark.
+| On by default | |
+|---|---|
+| **Find results** (`findGlow`) | the one place the glow does work rather than decoration — a match is visible without hunting the scrollbar for its mark |
+| **The selection** (`selectionGlow`) | only rendered lines carry a selection span, so selecting a whole file costs the screenful in front of you and nothing beyond it |
+| **The symbol under the caret** (`occurrenceGlow`) | every place it appears on screen. Where a theme paints a write in a different colour from a read, the write is lit wider |
+| **The gutter's change bars** (`gutterGlow`) | added, modified and deleted marks from source control — bounded by how many lines you have changed, not by the viewport |
+| **The matching bracket box** (`bracketMatchGlow`) | brackets already glow; the box that marks the pair did not, which left the moment the editor points at something as the dimmest thing on the line |
 
-Both of those theme colours are semi-transparent, because they sit behind text and
-must not hide it, and a shadow that only blurs them comes out nearly invisible. So
-these two take a `spread`: the weak colour is carried outwards at full width before
-the blur starts, instead of asking the blur to do both jobs. The caret, whose
-colour is opaque, needs none — which is why the rules do not match.
+Find, selection and occurrence colours are semi-transparent, because they sit behind
+text and must not hide it, so those rules take a `spread` — the weak colour is carried
+outwards at full width before the blur starts. The gutter bars take one for a
+different reason: the box their glow hangs on is `width: 0`, and a shadow of a box
+with no area paints nothing whatever the blur. The caret and the bracket box, whose
+colours are opaque, need none. This is why the rules do not match each other, and the
+reasoning is kept beside each one in `neon-glow.js`.
 
-**The symbol under the caret** (`occurrenceGlow`) lights every place that symbol
-appears on screen, in the colours the theme already gives those highlights. It is
-the same derivation on the surface next door to find, and it takes the spread for
-the same reason the find rule does.
+| Off until you set it | |
+|---|---|
+| **The caret trail** (`cursorTrail`) | the caret gets a duration to cross instead of jumping, so the glow on it smears into a streak. `130` reads as lag; `45` keeps up and still streaks on a jump across a file. How much of a slide that is depends on the display — `45` is under three frames at 60Hz and six or seven at 144Hz, so raise it on a slower panel |
+| **The save jolt** (`saveShake`) | the workbench knocks sideways when a file is saved. A compositor animation on `transform` alone, so the glow is never re-drawn during it |
+| **The caret arc** (`caretArc`) | `arc`, `beam`, `comet` or `flash` drawn along a caret jump, in the theme's own caret colour, as SVG that lives a few hundred milliseconds |
 
-It takes one shadow pass where find takes two, and a lower number to start — `10`
-against find's `18`. The difference between them is not how they look but when
-they exist. A find match is on screen only while you are searching for something;
-these arrive every time the caret lands on a word and stay for as long as it rests
-there, which is most of a working day, so the rule that is always running is the
-one that had better be cheap. Where a theme paints a write in a different colour
-from a read, the write is lit wider: that distinction is the theme's own, and
-carrying it costs nothing. The textual fallback VS Code uses when no language
-server answers is lit too, so the effect still works in a file nothing
-understands. All of it needs VS Code's own `editor.occurrencesHighlight`, which
-is on unless you turned it off.
-
-**The change bars in the gutter** (`gutterGlow`) light in the theme's own
-`editorGutter` colours — the added, modified and deleted marks left by source
-control, which are already the one part of the gutter carrying colour.
-
-This one is carried by its spread rather than its blur, and for a reason that is
-not the find rule's. VS Code paints the bar as the element's own left border,
-giving it a style and no width, so it comes out at the CSS initial `medium` —
-3px. The box the glow hangs on is that element's `:before`, which is `width: 0`.
-A shadow of a box with no area paints nothing however wide the blur, so the
-spread is what gives the light a body at all: find takes a spread because its
-colour is weak, this takes one because its box is empty. Raising the number
-widens the light more than it softens it.
-
-Deleted lines are drawn as a wedge rather than a bar, on a different
-pseudo-element, so they are lit there instead. Each kind is matched twice, once
-bare and once as `.secondary` — VS Code grew a second set of gutter colours for
-changes it did not make itself, and the bare rule is what a build without them
-still matches.
-
-Its cost is bounded harder than anything else here: not by the viewport but by
-how many lines of it you have changed since the last commit, and only in a file
-under source control at all.
-
-**The matching bracket box** (`bracketMatchGlow`) lights the outline VS Code
-draws around a bracket and its partner while the caret is on one. Brackets
-themselves already glow, each in the colour its nesting level is painted; the box
-that marks the pair did not, which left the one moment the editor is pointing at
-something as the dimmest thing on the line.
-
-It takes the border colour rather than the background. VS Code registers that
-background at ten percent alpha — a hint of a fill — and the border opaque, and
-it is the border a theme is understood to be drawing the box with; the background
-is the fallback for a theme that sets only that. Being opaque, it needs no
-spread, for the same reason the caret does not.
-
-This is also the one rule here that lights a colour the token pass would have
-thrown away — the default border is `#888`, and `minChroma` would never let that
-through. That threshold exists to keep body text from glowing, because a glow on
-every word is a wash rather than a highlight, and the argument does not carry
-over: there are two of these boxes on screen at most, and only while the caret is
-on a bracket.
-
-**The caret trail** (`cursorTrail`) gives the caret a duration to cross instead of
-letting it jump, so the glow already on it smears into a short streak. Motion only;
-the colour is the theme's own. Every keystroke restarts the transition, so a long
-duration leaves the caret trailing the text you are typing: `130` reads as lag,
-`45` keeps up and still streaks when you jump across a file. VS Code has its own
-`editor.cursorSmoothCaretAnimation`, fixed at 80ms — whatever you set here wins
-over it.
-
-How much of a slide that is depends on the display. At 60Hz, `45` is under three
-frames, so it arrives as a step or two rather than a glide, where the same value is
-six or seven frames on a 144Hz panel - raise it on a slower one. The properties
-being animated are `left` and `top`, which the main thread has to resolve on every
-frame of the slide, so the frames are not free either.
-
-**The save jolt** (`saveShake`) knocks the workbench sideways when a file is saved.
-It is a CSS animation on `transform` alone rather than a loop writing inline
-styles, so once it starts the frames ask nothing of the main thread. That is as
-far as the claim goes: whether either approach re-draws the glow underneath was
-never measured. Of the four this is the only one derived from nothing — it is
-decoration, and it is off unless you want it.
-
-**The caret arc** (`caretArc`) draws a line of light along the way the caret has
-just moved, and it is the one setting here that is a choice rather than a number:
-`arc` is a jagged bolt that lights the path behind it, `beam` is the same drawn
-straight, `comet` is a short head flying with nothing behind it, and `flash` is a
-burst where the caret landed. Anything that moves the caret sets it off — a key, a
-click, find-next, go-to-definition.
-
-`caretArcMinJump` decides how little counts as a move. The default of `5` is
-under one character, so a single arrow key clears it and holding one reads as
-light running along beside the caret, which is what the effect is for. It is also
-the only place this costs anything — a held key draws one animation per repeat —
-so raising it is the lever if that ever shows. At `40` only real jumps qualify:
-End, Ctrl+arrow, a click across the file.
-
-The first three still need somewhere to draw. A Tab moves the caret about two
-characters, and a bolt fourteen pixels wide is not much of a bolt, so `flash` is
-the one that reads at that size: it marks the arrival rather than the journey.
-
-These are built out of SVG rather than a stylesheet, and the workbench enforces
-Trusted Types — assigning to `innerHTML` throws there, so every node is created
-through `createElementNS`. This is also the first thing here that watches the
-editor while you work: a MutationObserver on the focused editor's cursors layer,
-reading the caret's inline `left` and `top` as strings so an ordinary keystroke
-costs no layout. A rectangle is measured only on the frames that actually draw.
-
-The three that move — the caret trail, the save jolt and the caret arc — are
-dropped when the system asks for reduced motion. A save reaches the renderer over the same wire as the
-toggle, described in [How the toggle reaches the
-editor](#how-the-toggle-reaches-the-editor); the payload lives in the workbench and
-cannot hear the extension host any other way.
+These three move things, and nobody asked for movement, so they ship at `0` and stay
+there until you say otherwise. All three are ignored when the system asks for reduced
+motion.
 
 ## Turning it on and off
 
-The toggle is a real VS Code command, so it lives inside the normal keybinding
-system. From the command palette (`F1`):
+The toggle is a real VS Code command, so it lives inside the normal keybinding system.
+From the command palette (`F1`):
 
 | Command | |
 |---------|--|
@@ -197,98 +96,20 @@ system. From the command palette (`F1`):
 | `Neon Glow: Enable` / `Neon Glow: Disable` | set it explicitly — only whichever one would actually change something is listed |
 | `Neon Glow: Show status` | current state, and whether the bundle is patched |
 
-The palette filters `Enable`/`Disable` through context keys, so you never have to
-work out which of the two is the live one. Both remain bindable to a key; a
-`when` clause on `commandPalette` hides a command from the palette only, not from
-the keybinding system.
+**No default keybinding ships with this**, deliberately — that is what makes it
+impossible to collide with another extension. Bind whatever you like in *Keyboard
+Shortcuts* (`Ctrl+K Ctrl+S`) and search `Neon Glow`.
 
-There are two keys, `neonGlow.on` and `neonGlow.off`, and both are positive on
-purpose. A `when` clause cannot tell an unset key from a false one, so a single
-`enabled` key would make `!enabled` true in the window between a reload and the
-extension activating — the palette would offer `Enable` over an editor that is
-already glowing, because the renderer restores its own state from `localStorage`
-without waiting for anyone. With two keys that window reads as *not known yet*:
-neither is listed, and `Toggle`, which reads the state file rather than a context
-key, works throughout.
+Toggling never touches a file in the install directory, so it needs no admin rights
+and no restart. A status bar item on the right shows `NEON:ON` / `NEON:OFF` and
+toggles on click; a warning background on it means the switch is real but nothing can
+glow — the bundle is unpatched, or carries an older payload, or was patched after this
+window started. The tooltip says which, and clicking does the thing that fixes it.
 
-Patching and restoring the bundle are **not** in the palette. Sitting next to
-VS Code's own Enable / Disable / Uninstall buttons, "Install" and "Remove" read
-as extension management and mean something else entirely, and everything that
-needs them already offers them at the moment it matters. Patching: the prompt on
-activation, the status bar item, and `Show status`. Restoring: the Uninstall
-button, which takes the bundle with it. Both stay bindable to a key.
-
-`Show status` offers to patch when the bundle needs it, and offers nothing when
-it does not. It is a readout, and a destructive action does not belong under the
-only button on one.
-
-**No default keybinding ships with this**, deliberately - that is what makes it
-impossible to collide with another extension. Bind whatever you like in
-*Keyboard Shortcuts* (`Ctrl+K Ctrl+S`), search `Neon Glow`, and VS Code will warn
-you itself if the chord is already taken.
-
-Toggling never touches a file in the install directory, so it needs no admin
-rights and no restart.
-
-A status bar item on the right shows `NEON:ON` / `NEON:OFF` and toggles on click.
-It is not decoration — see below.
-
-It also carries the three states in which the switch is real but nothing can
-glow, because they all look identical from the editor. A **warning background**
-means the bundle is not patched, or it carries the payload from an older release
-of the extension, or it was patched after this window started and the renderer
-is still on the one it booted with. The tooltip says which, and clicking does
-the thing that fixes it. The last check is one-sided on purpose:
-"Reload Window" restarts the extension host but leaves the renderer on its
-cached bundle, so a window reloaded after a patch looks healthy from the
-extension side and stays quiet rather than guessing.
-
-### How the toggle reaches the editor
-
-Commands run in the extension host; the glow lives in the renderer. There is no
-API between the two, so the state crosses on two channels at once.
-
-**Fast: the status bar.** The extension's status bar item *is* the wire. Its label
-is the state, in plain text (a codicon would render as an element and break the
-match), and the renderer keeps a `MutationObserver` on that one item. A toggle
-lands in the frame the extension host paints it, roughly 16ms.
-
-On the item, not on the bar: the bar as a whole mutates on every cursor move, so
-watching its subtree meant waking once a frame for the whole time someone is
-typing, rebuilding the text of every item and running a regex over it, to learn
-nothing. The item itself changes only when the glow is toggled. Records are
-still coalesced into one read per frame with `requestAnimationFrame`, and if
-VS Code ever replaces the item the observer goes quiet with it — so the poll
-below re-seeks when the element is no longer connected.
-
-**Slow: the state file.** The extension also writes `state.json` into its
-`globalStorage`, which is one of the roots the `vscode-file` protocol handler is
-willing to serve, so the injected script can poll it:
-
-```js
-addValidFileRoot(e.appRoot)
-addValidFileRoot(e.extensionsPath)
-addValidFileRoot(...globalStorageHome...)   // <- the state file lives here
-```
-
-The poll reconciles whatever the fast half misses: a hidden status bar, or a
-background window, where `requestAnimationFrame` does not tick. It runs at 800ms
-until the status bar half proves it works and then backs off to 1500ms, so
-hiding the status bar degrades latency instead of breaking the toggle.
-
-Neither half applies its *first* reading, only records it. Startup state comes
-from `localStorage`, so a stale file — or a status bar not yet written — cannot
-clobber the last known state, and there is no flash of the wrong state on boot.
-
-If both halves are unavailable (patched from the CLI with no extension installed,
-say), the script falls back to `Ctrl+Alt+N`, registered on the **bubble** phase so
-anything VS Code has already bound wins and the fallback simply never fires. It
-also stands down entirely once either half answers. Change `FALLBACK_KEY` in
-`neon-glow.js` to move it, or set it to `null` to drop it.
-
-Turning off flips the stylesheet's `disabled` flag rather than removing the
-element, so turning back on re-uses the parsed CSS instead of re-running the
-regex pass over the theme's token styles.
+Commands run in the extension host and the glow lives in the renderer, with no API
+between them, so the state crosses on two channels at once: a `MutationObserver` on
+the status bar item's label, which lands a toggle in about 16ms, and a `state.json`
+poll for whatever that misses. `neon-glow.js` carries the details.
 
 You can also drive it from the DevTools console:
 
@@ -299,53 +120,38 @@ __neonGlow.bridgeOk();  // is either half live?   .statusBarOk() for the fast on
 
 ## Install
 
-Requires write access to the VS Code install directory - run the terminal as
+Requires write access to the VS Code install directory — run the terminal as
 administrator on Windows, or with `sudo` on macOS/Linux.
 
-### From a release (recommended)
+### From the Marketplace
+
+Search **Neon Glow** in the Extensions view, or:
+
+```sh
+code --install-extension Ruminem.vscode-neon-glow
+```
+
+Installing the extension does not by itself make anything glow — the payload lives in
+`workbench.js`, and only a patch puts it there. The extension notices an unpatched
+bundle when it activates and offers to fix it; you can also run `Neon Glow: Show
+status` from the palette. Either route needs write access and a **full restart**.
+Everyday on/off needs neither.
+
+### From a release
 
 On Windows, download `neon-glow-<version>-windows.zip` from
 [Releases](https://github.com/Ruminem/vscode-neon-glow/releases), unzip it, and
-double-click `install.cmd`. It finds VS Code, installs the extension and patches
-the bundle in one pass. Nothing else has to be on the machine: VS Code is
-Electron, so `Code.exe` doubles as the Node that runs the patcher.
+double-click `install.cmd`. It finds VS Code, installs the extension and patches the
+bundle in one pass. Nothing else has to be on the machine: VS Code is Electron, so
+`Code.exe` doubles as the Node that runs the patcher.
 
-On macOS and Linux, download `neon-glow-<version>-macos-linux.tar.gz`, unpack
-it, and run `./install.sh`. It does the same three things, and says what to do
-if the install directory belongs to root. A VS Code installed as a **snap or a
-flatpak cannot be patched at all** — those are mounted read-only; use the
-`.deb`, the `.rpm` or the tarball.
+On macOS and Linux, download `neon-glow-<version>-macos-linux.tar.gz`, unpack it, and
+run `./install.sh`. It does the same three things, and says what to do if the install
+directory belongs to root. A VS Code installed as a **snap or a flatpak cannot be
+patched at all** — those are mounted read-only; use the `.deb`, the `.rpm` or the
+tarball.
 
-Anywhere else, or if you would rather drive it yourself, install the `.vsix`
-from the same release:
-
-```sh
-code --install-extension neon-glow-<version>.vsix
-```
-
-Or inside VS Code: Extensions view → the `...` menu → *Install from VSIX…*.
-
-Installing the extension does not by itself make anything glow — the payload
-lives in `workbench.js`, and only a patch puts it there. The extension notices
-an unpatched bundle when it activates and offers to fix it; you can also run
-`Neon Glow: Show status` from the palette. Either route needs
-write access and a **full restart**. Everyday on/off needs neither.
-
-This is not on the Marketplace, and will not be: an extension that rewrites
-`workbench.js` cannot honestly pass review.
-
-### From a clone
-
-Clone straight into your extensions folder, then reload:
-
-```sh
-# Windows
-git clone https://github.com/Ruminem/vscode-neon-glow "%USERPROFILE%\.vscode\extensions\vscode-neon-glow"
-# macOS / Linux
-git clone https://github.com/Ruminem/vscode-neon-glow ~/.vscode/extensions/vscode-neon-glow
-```
-
-Then run the same `Neon Glow: Show status` command.
+The same release carries the `.vsix` if you would rather install that directly.
 
 ### From the command line
 
@@ -357,38 +163,32 @@ cd vscode-neon-glow
 node install.js          # node uninstall.js  to revert
 ```
 
-Point at a specific install with `--target "<path to resources/app>"`. Without
-the extension there are no commands, so the toggle falls back to `Ctrl+Alt+N`.
+Point at a specific install with `--target "<path to resources/app>"`. Without the
+extension there are no commands, so the toggle falls back to `Ctrl+Alt+N`.
 
 After any of these routes: **quit VS Code completely and start it again.**
 
-### Building the VSIX yourself
+### Building it yourself
 
 ```sh
-npm run package          # -> neon-glow-<version>.vsix
-```
-
-Tagging a commit `v<version>` builds it in CI and attaches it to a GitHub
-release; the tag must match the `version` in `package.json` or the job fails.
-
-The icon is generated rather than drawn, so it stays in step with the palette
-the README quotes:
-
-```sh
+npm run package                  # -> neon-glow-<version>.vsix
 node tools/make-icon.js          # -> icon.png   (also: bars, n)
+node tools/smoke.js              # run the payload against a stub workbench
 ```
 
-No dependencies: the shapes are signed distance fields, the bloom is the same
-falloff the extension paints with, and the PNG is assembled on top of `zlib`.
+Tagging a commit `v<version>` builds the VSIX in CI and attaches it to a GitHub
+release; the tag must match the `version` in `package.json` or the job fails. There
+are no dependencies anywhere in this repo, the icon included: its shapes are signed
+distance fields and the PNG is assembled on top of `zlib`.
 
-## Tuning
+## Settings
 
-Open Settings (`Ctrl+,`) and search `Neon Glow`. Changes apply to the open
-editor within a second or so — no re-patch, no restart.
+Open Settings (`Ctrl+,`) and search `Neon Glow`. Changes apply to the open editor
+within a second or so — no re-patch, no restart.
 
 | Setting | Default | |
 |---------|---------|--|
-| `neonGlow.glowLayers` | `3` | halo passes per token, over an edge pass that always runs — the expensive one, see below |
+| `neonGlow.glowLayers` | `3` | halo passes per token, over an edge pass that always runs — **the expensive one** |
 | `neonGlow.maxBlur` | `36` | ceiling on any one blur radius; the default is already the widest emitted |
 | `neonGlow.brightness` | `1.0` | overall strength; `0` leaves the colours alone and drops the glow |
 | `neonGlow.minChroma` | `0.30` | colours flatter than this never glow — this is what keeps body text out |
@@ -405,168 +205,65 @@ editor within a second or so — no re-patch, no restart.
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 
-Three of these ship at `0` and do nothing until you set them — `cursorTrail`,
-`saveShake` and `caretArc`. They move things rather than colour them, which is
-the whole of why they wait to be asked; every other row is already running. See
-[What else can glow](#what-else-can-glow).
+**`glowLayers` is the one that costs.** The editor virtualises, so a 10,000 line file
+is not 10,000 glowing spans and the cost scales with the viewport rather than the
+file. But the widest pass is very nearly the whole bill, not the two thirds the area
+arithmetic predicts — blur time climbs much faster than radius, and neighbouring
+tokens' widest blurs overlap. Measured over a driven scroll on a dense C++ viewport,
+`3` cost several times what `2` did. Drop it to `2` on a slow machine. `maxBlur` is
+the same lever with a finer grain; `brightness` is not, and fades the glow far more
+than it speeds it up. The measurements and their caveats are kept in `neon-glow.js`,
+and `tools/bench.js` re-runs them in pairs.
 
-They work without a restart because they do not live in the patch. The extension
-writes them into the same `state.json` the toggle uses, and the renderer clamps
-and applies them on its next poll, rebuilding the stylesheet from the theme's
-token colours. So the bundle only ever has to be written once.
-
-The same values are also the defaults at the top of `neon-glow.js`, which is
-what a CLI-only install uses — there is no extension there to send anything.
-Editing those means re-running `node install.js` and restarting.
-
-### What it costs
-
-The editor virtualises, so a 10,000 line file is not 10,000 glowing spans — only
-the visible lines are ever in the DOM. The cost scales with the viewport and how
-token-dense the language is, not with file size.
-
-It is still real work. Measured over a driven scroll on 50 lines of
-`nlohmann/json`'s 27,000-line single header — 390 token spans, 220 of them
-glowing, 77 of them brackets — summing the compositor's `RasterTask` time:
-
-| | Raster |
-|---|--------|
-| glow off | 12 ms |
-| `glowLayers` 2 | 16 ms |
-| `glowLayers` 3 (default) | **87 ms** |
-
-The widest pass is not two thirds of the cost, which is what the area
-arithmetic predicts; it is very nearly all of it. Blur time climbs much faster
-than radius, and at `36px` the blurs of neighbouring tokens overlap heavily.
-
-`maxBlur` is the same lever with a finer grain — a ceiling on the radius rather
-than a pass removed outright. From a separate run, so comparable only within
-its own column:
-
-| Ceiling | Raster | |
-|---------|--------|--|
-| `36` (default) | 71 ms | unchanged |
-| `32` | 65 ms | −9% |
-| `30` | 58 ms | −18% |
-| `28` | 47 ms | −34% |
-| `26` | 39 ms | −45% |
-
-**Both tables were measured against the falloff that shipped before `0.9.9`, and
-the milliseconds in them now read high.** The alphas were `0.95 / 0.75 / 0.65 /
-0.40` over passes of `2 / 5 / 16 / 36px`; they are now `1.00 / 0.65 / 0.32 /
-0.14` over `1 / 5 / 11 / 26px`.
-
-That was a change made to look better, not to run faster. A blur is brightest at
-its source, so every pass paints at the glyph as well, and the old alphas summed
-to about `2.75` there — everything past `1.0` being equally opaque, the widest
-pass was as solid at the letter edge as the tightest, leaving no gradient for an
-eye to find an edge in. Counters filled, and neighbouring blurs lit the space
-between words as brightly as the words. What is visible is the ratio between the
-innermost and outermost pass, not the total.
-
-Narrowing the two widest radii came with it, and that is where the time went.
-Measured with `tools/bench.js`, which alternates the two formulas over one
-viewport and compares adjacent pairs, the new distribution costs **57% less
-raster time** — four pairs at −56.3%, −57.3%, −56.8%, −57.4%. The ordering these
-tables establish is unchanged: passes and radius are still where the cost is.
-
-`maxBlur` no longer binds at its default, because the formula now stops at
-`26px` by itself. It still matters above `brightness` `1`, which scales every
-radius, and to anyone who wants the bloom capped tighter than the formula does.
-
-`brightness` shrinks the radii too, but only by about a third at half strength —
-the two tight passes barely move — so it fades the glow far more than it speeds
-it up.
-
-Nothing else measured. Dropping `backface-visibility: hidden`, a layer-promotion
-hack inherited from SynthWave, came out inside the noise on a current Chromium,
-so it stays; and the numbers above only separate from noise when the same
-variants are measured in adjacent pairs, because raster time drifts downwards as
-caches warm.
-
-**Flatter themes need different numbers.** The defaults are calibrated on
-Monokai, which is unusually saturated. Abyss, for instance, tops out around half
-of it: its class-name colour `#ffeebb` has a chroma of `0.27` and never reaches
-the `0.30` threshold at all, while its comment colour `#384887` clears it at
-`0.31` — so the roles that glow are close to inverted. Dropping `minChroma` to
-about `0.25` and raising `brightness` past `1` gets it back.
+Settings work without a restart because they do not live in the patch: the extension
+writes them into the same `state.json` the toggle uses, and the renderer clamps and
+applies them on its next poll. The same values are also the defaults at the top of
+`neon-glow.js`, which is what a CLI-only install uses — editing those means re-running
+`node install.js` and restarting.
 
 ## Things that will bite you
 
-**"Reload Window" does not apply changes.** It is a soft reload, and Chromium serves the
-`vscode-file` bundle from cache — the `vscode-file` scheme is registered with
-`codeCache: true`. A window that was launched before you patched will keep running the
-old bundle no matter how many times you reload it. Quit every VS Code process and
-relaunch.
+**"Reload Window" does not apply changes.** It is a soft reload, and Chromium serves
+the `vscode-file` bundle from cache. A window launched before you patched keeps
+running the old bundle no matter how many times you reload it. Quit every VS Code
+process and relaunch.
 
-**VS Code will warn that the installation is corrupt.** Expected: `product.json` carries
-a SHA-256 (base64, padding stripped) of `workbench.js`, and patching it breaks the match.
-Dismiss the notification with *Don't Show Again*. You could rewrite the checksum in
-`product.json` to silence it permanently, but that disables tamper detection for **all**
-future modifications, not just this one — not worth it for a notification.
+**VS Code will warn that the installation is corrupt.** Expected: `product.json`
+carries a SHA-256 of `workbench.js`, and patching it breaks the match. Dismiss with
+*Don't Show Again*. Rewriting the checksum would silence it permanently but disables
+tamper detection for **all** future modifications, not just this one.
 
-**Updating the extension does not update the patch.** The payload lives in
-`workbench.js`, and installing a new VSIX never touches it, so anything the new
-release added to the renderer sits there inert — a setting can appear and do
-nothing. The injected banner carries a hash of the payload it was written from,
-so the extension notices the mismatch and offers to patch again. Accepting it
-needs a full restart like any other patch.
+**Updating the extension does not update the patch,** and patching does not update the
+extension. The two halves are written by different commands and neither touches the
+other, so a new setting can appear in the Settings UI while the payload has never
+heard of it, or the reverse. The injected banner carries a hash of the payload, so the
+extension notices a mismatch and offers to patch again.
 
-It is a hash of the payload rather than the release number on purpose: most
-releases change only the extension, and a version stamp would demand a re-patch
-and a restart for a bundle that is already byte-for-byte correct.
+**VS Code updates wipe the patch.** The updater replaces `workbench.js`, which leaves
+the same state as a fresh install, so the extension offers to re-patch on next launch.
+Re-patching is safe: it always rebuilds from the pristine `.pre-neon.bak`, never from
+an already-patched file.
 
-**Patching does not update the extension either.** The two halves are updated by
-different commands and neither touches the other: `node install.js` writes the
-payload into `workbench.js`, and installing the VSIX replaces everything else -
-including the list of settings VS Code puts in its Settings UI. Patch alone after
-adding a setting and the payload will understand it while the settings screen has
-never heard of it, which looks like a setting that does nothing. The count beside
-**Neon Glow** in Settings is the quickest way to tell which half is behind.
+**Uninstalling the extension restores the bundle** through a `vscode:uninstall` hook.
+It is best effort — if the install directory is not writable the hook fails and the
+bundle stays patched; run `node uninstall.js` with the rights it needs. *Disabling*
+the extension is not uninstalling it: the patch stays and the glow keeps working off
+the last state it saw.
 
-**VS Code updates wipe the patch.** The updater replaces `workbench.js`. This is
-the same state as a fresh extension install — an unpatched bundle — so the
-extension offers to re-patch on the next launch. You can also run
-`Neon Glow: Show status`, or `node install.js` if you went the CLI
-route. Reinstalling is safe: it always rebuilds from the pristine
-`.pre-neon.bak`, never from an already-patched file.
+**`files.autoSave` and `saveShake` do not mix.** Every autosave is a save, and the
+screen never stops moving.
 
-Restoring the bundle on purpose suppresses that offer, so it does not turn into a
-prompt you have to dismiss on every launch.
-
-**Uninstalling the extension restores the bundle.** `package.json` declares a
-`vscode:uninstall` hook, which VS Code runs as a node script when the extension
-is removed, so the Uninstall button in the Extensions view cleans up after
-itself. It is best effort: if the install directory is not writable — a
-system-wide install, no elevation — the hook fails and the bundle stays patched.
-Run `node uninstall.js` with the rights it needs. Note that *disabling* the extension is not uninstalling it:
-the patch stays, and the glow keeps working off the last state it saw.
-
-**`files.autoSave` and `saveShake` do not mix.** On a delay or on a focus change,
-every one of those is a save, and the screen never stops moving. The jolt is off by
-default, so this only bites if you turn it on — but if you use autosave you will
-want it off again within the minute.
-
-**SynthWave '84 can sit alongside this, but only one of them should paint.** It
-never touches `workbench.js`: it writes a `neondreams.js` next to it and adds a
-`<script>` tag to the workbench HTML. Different files, different backups, so
-neither patch can corrupt or silently undo the other — the two can be installed
-together safely. What they share is the DOM. Both build a `<style>` from
-`.vscode-tokens-styles` and set `text-shadow` with `!important` at equal
-specificity, so whichever is appended last wins, which is a race rather than a
-rule. SynthWave stands down unless its own theme is active, so they only really
-compete when you are using it — and this extension already derives a glow from
-that theme's colours, which is what SynthWave's own patch is for.
-
-`Neon Glow: Show status` reports whether the other one is patched in and whether
-it is currently competing. `Neon Glow: Disable` turns this one off instantly
-without touching a file, so switching between the two costs nothing.
+**SynthWave '84 can sit alongside this, but only one of them should paint.** Different
+files and different backups, so neither patch can corrupt the other — but both build a
+`<style>` from `.vscode-tokens-styles` at equal specificity, so whichever is appended
+last wins. `Neon Glow: Show status` reports whether it is competing, and
+`Neon Glow: Disable` steps aside instantly without touching a file.
 
 ## Status
 
 Developed and verified against **VS Code 1.136.1 on Windows 11**, with the applied
 `text-shadow` values read back out of the live renderer over the Chrome DevTools
-Protocol, and the raster measurements above taken the same way.
+Protocol.
 
 | | Works | Verified | |
 |---|---|---|--|
@@ -575,21 +272,14 @@ Protocol, and the raster measurements above taken the same way.
 | **Linux**, `.deb` / `.rpm` / tarball | should | no | `/usr/share/code` belongs to root, so the palette command cannot do it; use `sudo node install.js` or `sudo ./install.sh` |
 | **Linux**, snap or flatpak | **no** | — | mounted read-only, so nothing can patch them. The extension says so rather than failing obscurely |
 
-The extension asks the running editor where it lives (`vscode.env.appRoot`)
-rather than guessing, so portable builds and unusual prefixes are found
-correctly on every platform. Only the CLI has to guess, from the list in
-`locate.js`.
-
-macOS and Linux are written to work and have not been run by anyone — please
-open an issue if they misfire.
+macOS and Linux are written to work and have not been run by anyone — please open an
+issue if they misfire.
 
 ## Credit
 
-The idea — that syntax highlighting can glow, and that patching the workbench is
-a way to get there — comes from
-[SynthWave '84](https://github.com/robb0wen/synthwave-vscode) by Robb Owen. The
-technique differs: SynthWave drops a script beside the workbench and loads it from
-the HTML, while this appends to `workbench.js` directly.
+The idea — that syntax highlighting can glow, and that patching the workbench is a way
+to get there — comes from
+[SynthWave '84](https://github.com/robb0wen/synthwave-vscode) by Robb Owen.
 
 ## License
 
