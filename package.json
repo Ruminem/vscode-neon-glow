@@ -116,7 +116,7 @@
           "maximum": 400,
           "order": 7,
           "scope": "application",
-          "markdownDescription": "Milliseconds for the caret to slide to a new position, so the glow on it leaves a short streak behind. `0` keeps the instant jump. Typing restarts the slide on every keystroke, so a long duration reads as the caret lagging the text being entered: `45` keeps up while still streaking on a jump across the file, and much past `100` feels behind. Ignored when the system asks for reduced motion. VS Code has its own `#editor.cursorSmoothCaretAnimation#`, fixed at 80ms; whatever you set here wins over it. Applies without a restart."
+          "markdownDescription": "Milliseconds for the caret to slide to a new position, so the glow on it leaves a short streak behind. `0` keeps the instant jump. Typing restarts the slide on every keystroke, so a long duration reads as the caret lagging the text being entered: `45` keeps up while still streaking on a jump across the file, and much past `100` feels behind. Ignored when the system asks for reduced motion. VS Code has its own `#editor.cursorSmoothCaretAnimation#`, fixed at 80ms; whatever you set here wins over it. How much of a slide that is depends on the display: at 60Hz `45` is under three frames and arrives as a step or two rather than a glide, where the same value is six or seven frames at 144Hz - raise it on a slower panel. Applies without a restart."
         },
         "neonGlow.saveShake": {
           "type": "number",
