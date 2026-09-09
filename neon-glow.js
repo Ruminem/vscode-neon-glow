@@ -23,6 +23,7 @@ try {
     saveShake:    0,     /* px the workbench jolts on a save; 0 = it stays still */
     findGlow:     0,     /* px of bloom on find matches; 0 = leave them flat     */
     selectionGlow: 0,    /* px of bloom on the selection; 0 = leave it flat      */
+    occurrenceGlow: 0,   /* px of bloom on the symbol under the caret; 0 = flat   */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
     caretArcMinJump: 5   /* px of travel before an arc is drawn                  */
   };
@@ -32,7 +33,7 @@ try {
     brightness: [0, 3], minChroma: [0, 1], chromaSpan: [0.01, 2],
     floor: [0, 1], minLightness: [0, 1], glowLayers: [1, 3], maxBlur: [1, 64],
     cursorTrail: [0, 400], saveShake: [0, 24],
-    findGlow: [0, 48], selectionGlow: [0, 32],
+    findGlow: [0, 48], selectionGlow: [0, 32], occurrenceGlow: [0, 32],
     caretArcMinJump: [1, 400]
   };
 
@@ -313,6 +314,39 @@ try {
     if (sel > 0) {
       css += '.monaco-editor .selected-text { box-shadow: 0 0 ' + sel + 'px'
         + ' var(--vscode-editor-selectionBackground) !important; }\n';
+    }
+
+    /* The symbol under the caret, and every other place it appears on screen.
+
+       The same derivation again, on the surface next door to find: these are
+       semi-transparent backgrounds behind text, so they take a spread for the
+       reason the find rule does.
+
+       One pass each, where find takes two. The difference is not how they look
+       but when they exist. A find match is on screen only while the widget is
+       open and you are looking for something; these appear every time the caret
+       lands on a word and stay for as long as it rests there, which is most of
+       a working day. The cheaper rule is the one that is always running.
+
+       Three classes rather than one, because VS Code lights the same idea from
+       different sources and gives each its own colour. wordHighlight is a read
+       and wordHighlightStrong a write, both answered by a language server; a
+       theme that separates them is saying something worth keeping, so the write
+       gets the wider radius. wordHighlightText is what VS Code falls back to
+       when no server answers - plain textual matches - and carrying it means the
+       effect still works in a file nothing understands. A theme that leaves any
+       one of these colours undefined drops that rule and keeps the others: an
+       unset custom property invalidates the declaration, not the block. */
+    var occ = Math.round(KNOBS.occurrenceGlow);
+    if (occ > 0) {
+      var oSpread = Math.round(occ / 3);
+      css += '.monaco-editor .wordHighlight { box-shadow: 0 0 ' + occ + 'px '
+        + oSpread + 'px var(--vscode-editor-wordHighlightBackground) !important; }\n';
+      css += '.monaco-editor .wordHighlightText { box-shadow: 0 0 ' + occ + 'px '
+        + oSpread + 'px var(--vscode-editor-wordHighlightTextBackground) !important; }\n';
+      css += '.monaco-editor .wordHighlightStrong { box-shadow: 0 0 '
+        + Math.round(occ * 1.25) + 'px ' + Math.round(occ / 2.2) + 'px'
+        + ' var(--vscode-editor-wordHighlightStrongBackground) !important; }\n';
     }
     return css;
   }

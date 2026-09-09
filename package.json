@@ -145,6 +145,15 @@
           "scope": "application",
           "markdownDescription": "Bloom on selected text, in pixels, taken from the theme's own selection colour. `0` leaves it flat; `12` is a good starting point. Only rendered lines carry a selection span, so selecting a whole file costs the screenful in front of you and nothing beyond it. Applies without a restart."
         },
+        "neonGlow.occurrenceGlow": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32,
+          "order": 11,
+          "scope": "application",
+          "markdownDescription": "Bloom on the symbol under the caret and every other place it appears on screen, in pixels, taken from the theme's own highlight colours. `0` leaves them flat; `10` is a good starting point - lower than `#neonGlow.findGlow#`, because these are on screen whenever the caret rests on a word rather than only while you are searching. Where the theme gives writes a different colour from reads, a write is lit wider. Needs VS Code's `#editor.occurrencesHighlight#` to be on, which it is by default. Applies without a restart."
+        },
         "neonGlow.caretArc": {
           "type": "string",
           "default": "off",
@@ -156,7 +165,7 @@
             "A short bright head flies the path and leaves nothing behind it. The most restrained of the four.",
             "No path at all - a burst where the caret landed. The only one that still reads on a Tab, because it does not need distance to draw."
           ],
-          "order": 11,
+          "order": 12,
           "scope": "application",
           "markdownDescription": "What to draw when the caret jumps: a key, a click, find-next, go-to-definition - anything that moves it, not only a keystroke. Off by default. The colour is the theme's own caret colour rather than one of ours, and each shape is SVG that lives a few hundred milliseconds and is then removed. `#neonGlow.caretArcMinJump#` decides how far the caret has to travel first. Ignored when the system asks for reduced motion. Applies without a restart."
         },
@@ -165,7 +174,7 @@
           "default": 5,
           "minimum": 1,
           "maximum": 400,
-          "order": 12,
+          "order": 13,
           "scope": "application",
           "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. The default of `5` is under one character, so a single arrow key clears it and holding one reads as light running along beside the caret - which is what the effect is for. It also means a held key draws one animation per repeat, and that is the only place this costs anything, so raise it if it ever shows. At `40` only real jumps qualify: End, Ctrl+arrow, a click across the file."
         }
