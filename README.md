@@ -76,6 +76,12 @@ duration leaves the caret trailing the text you are typing: `130` reads as lag,
 `editor.cursorSmoothCaretAnimation`, fixed at 80ms — whatever you set here wins
 over it.
 
+How much of a slide that is depends on the display. At 60Hz, `45` is under three
+frames, so it arrives as a step or two rather than a glide, where the same value is
+six or seven frames on a 144Hz panel - raise it on a slower one. The properties
+being animated are `left` and `top`, which the main thread has to resolve on every
+frame of the slide, so the frames are not free either.
+
 **The save jolt** (`saveShake`) knocks the workbench sideways when a file is saved.
 It is a CSS animation on `transform` alone rather than a loop writing inline
 styles, so once it starts the frames ask nothing of the main thread. That is as
