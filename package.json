@@ -2,7 +2,7 @@
   "name": "vscode-neon-glow",
   "displayName": "Neon Glow",
   "description": "Neon glow for syntax highlighting, derived from whatever colour theme is active.",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "publisher": "Ruminem",
   "license": "MIT",
   "repository": {
