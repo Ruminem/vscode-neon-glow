@@ -1,6 +1,6 @@
 # vscode-neon-glow
 
-**English** · [한국어](#한국어)
+**English** · [한국어](#korean)
 
 Neon glow for VS Code syntax highlighting — **for any colour theme**.
 
@@ -287,7 +287,7 @@ MIT
 
 ---
 
-## 한국어
+## Korean
 
 [English](#vscode-neon-glow) · **한국어**
 

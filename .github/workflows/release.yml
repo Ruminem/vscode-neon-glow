@@ -97,7 +97,7 @@ jobs:
           cat > notes.md <<'EOF'
           Neon glow for VS Code syntax highlighting, for any colour theme.
 
-          Docs: [English](https://github.com/REPOSLUG/blob/TAGNAME/README.md) · [한국어](https://github.com/REPOSLUG/blob/TAGNAME/README.md#한국어)
+          Docs: [English](https://github.com/REPOSLUG/blob/TAGNAME/README.md) · [한국어](https://github.com/REPOSLUG/blob/TAGNAME/README.md#korean)
 
           CHANGELOG
 
