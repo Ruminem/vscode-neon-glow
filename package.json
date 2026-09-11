@@ -172,6 +172,15 @@
           "scope": "application",
           "markdownDescription": "Bloom on the box VS Code draws around a bracket and its partner while the caret is on one, in pixels. On at `10`; `0` leaves it flat. The colour is the theme's `editorBracketMatch.border`, falling back to the background where a theme sets only that. Brackets themselves already glow in whatever colour they are painted; this lights the box that marks the pair, which otherwise stays dark at the one moment the editor is pointing at something. Needs `#editor.matchBrackets#`. Applies without a restart."
         },
+        "neonGlow.squiggleGlow": {
+          "type": "number",
+          "default": 5,
+          "minimum": 0,
+          "maximum": 16,
+          "order": 14,
+          "scope": "application",
+          "markdownDescription": "Bloom on the wavy underline under errors, warnings and info, in pixels, taken from the theme's own `editorError`, `editorWarning` and `editorInfo` colours. On at `5`; `0` leaves them flat. The wave is an image rather than a box, so the glow follows its shape instead of lighting the word above it. Hints are left alone - they are the three dots VS Code keeps quiet on purpose. Each visible squiggle is composited on its own, so a screen full of errors is the most this costs. Applies without a restart."
+        },
         "neonGlow.caretArc": {
           "type": "string",
           "default": "off",
@@ -183,7 +192,7 @@
             "A short bright head flies the path and leaves nothing behind it. The most restrained of the four.",
             "No path at all - a burst where the caret landed. The only one that still reads on a Tab, because it does not need distance to draw."
           ],
-          "order": 14,
+          "order": 15,
           "scope": "application",
           "markdownDescription": "What to draw when the caret jumps: a key, a click, find-next, go-to-definition - anything that moves it, not only a keystroke. Off by default. The colour is the theme's own caret colour rather than one of ours, and each shape is SVG that lives a few hundred milliseconds and is then removed. `#neonGlow.caretArcMinJump#` decides how far the caret has to travel first. Ignored when the system asks for reduced motion. Applies without a restart."
         },
@@ -192,7 +201,7 @@
           "default": 5,
           "minimum": 1,
           "maximum": 400,
-          "order": 15,
+          "order": 16,
           "scope": "application",
           "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. The default of `5` is under one character, so a single arrow key clears it and holding one reads as light running along beside the caret - which is what the effect is for. It also means a held key draws one animation per repeat, and that is the only place this costs anything, so raise it if it ever shows. At `40` only real jumps qualify: End, Ctrl+arrow, a click across the file."
         }

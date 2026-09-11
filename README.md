@@ -50,7 +50,7 @@ Bracket pair colouring is left to VS Code: brackets get a rule of their own in
 
 ## What else can glow
 
-The token glow is not the only thing on. Five more surfaces light with it, and three
+The token glow is not the only thing on. Six more surfaces light with it, and three
 effects wait to be asked for. The line between them is one sentence — **a setting
 that only decides what colour lands where is on, and a setting that changes what the
 editor does while you work is off.**
@@ -66,14 +66,17 @@ chosen.
 | **The symbol under the caret** (`occurrenceGlow`) | every place it appears on screen. Where a theme paints a write in a different colour from a read, the write is lit wider |
 | **The gutter's change bars** (`gutterGlow`) | added, modified and deleted marks from source control — bounded by how many lines you have changed, not by the viewport |
 | **The matching bracket box** (`bracketMatchGlow`) | brackets already glow; the box that marks the pair did not, which left the moment the editor points at something as the dimmest thing on the line |
+| **Error, warning and info squiggles** (`squiggleGlow`) | the glow follows the wave itself, so an error is visible from across the screen without the word above it blooming. Hints are left alone — VS Code keeps them quiet on purpose |
 
 Find, selection and occurrence colours are semi-transparent, because they sit behind
 text and must not hide it, so those rules take a `spread` — the weak colour is carried
 outwards at full width before the blur starts. The gutter bars take one for a
 different reason: the box their glow hangs on is `width: 0`, and a shadow of a box
 with no area paints nothing whatever the blur. The caret and the bracket box, whose
-colours are opaque, need none. This is why the rules do not match each other, and the
-reasoning is kept beside each one in `neon-glow.js`.
+colours are opaque, need none. The squiggles take no box-shadow at all: the wave is an SVG
+image, not a box, so they use a `drop-shadow` filter, which follows the drawn shape. This
+is why the rules do not match each other, and the reasoning is kept beside each one in
+`neon-glow.js`.
 
 | Off until you set it | |
 |---|---|
@@ -202,6 +205,7 @@ within a second or so — no re-patch, no restart.
 | `neonGlow.occurrenceGlow` | `10` | px of bloom on the symbol under the caret, wherever else it appears; `0` turns it off |
 | `neonGlow.gutterGlow` | `8` | px of bloom on the gutter's change bars, in the theme's own `editorGutter` colours; `0` turns it off |
 | `neonGlow.bracketMatchGlow` | `10` | px of bloom on the box around a bracket and its partner; `0` turns it off |
+| `neonGlow.squiggleGlow` | `5` | px of bloom on error, warning and info squiggles, in the theme's own colours; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 
@@ -330,7 +334,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 
 ### 토큰 말고 빛나는 것
 
-켜져 있는 것이 토큰 글로우만은 아님. 표면 다섯 개가 같이 빛나고, 효과 셋은 부를 때까지
+켜져 있는 것이 토큰 글로우만은 아님. 표면 여섯 개가 같이 빛나고, 효과 셋은 부를 때까지
 기다림. 그 경계는 한 문장임 — **어떤 색이 어디에 놓이는지만 정하는 설정은 켜져 나가고,
 일하는 동안 에디터가 하는 일을 바꾸는 설정은 꺼져 나감.**
 
@@ -344,13 +348,15 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 | **커서가 놓인 심볼** (`occurrenceGlow`) | 그 심볼이 화면에 나온 자리 전부. 테마가 읽기와 쓰기를 다른 색으로 칠하면 쓰기를 더 넓게 밝힘 |
 | **거터의 변경 막대** (`gutterGlow`) | 소스 관리가 남기는 추가·수정·삭제 표시. 뷰포트가 아니라 고친 줄 수에 비용이 묶임 |
 | **괄호 짝 상자** (`bracketMatchGlow`) | 괄호 자체는 이미 빛나는데 짝을 표시하는 상자는 안 빛났음. 에디터가 무언가를 가리키는 그 순간이 줄에서 제일 어두운 자리였음 |
+| **에러·경고·정보 물결선** (`squiggleGlow`) | 물결 모양을 그대로 따라 빛나서, 그 위 단어는 번지지 않은 채로 에러가 멀리서도 보임. 힌트는 건드리지 않음 — VS Code가 일부러 조용하게 두는 표시임 |
 
 찾기·선택·심볼 색은 글자 뒤에 깔리는 색이라 테마가 반투명으로 잡아둠. 그래서 그 셋에는
 `spread`가 붙음 — 약한 색을 원래 폭만큼 먼저 밀어낸 다음에 번지게 함. 거터 막대에도
 `spread`가 붙지만 이유가 다름. 글로우를 거는 상자가 `width: 0`이라, 넓이가 없는 상자의
 그림자는 블러를 아무리 키워도 아무것도 안 그림. 커서와 괄호 상자는 색이 불투명이라
-필요 없음. 규칙이 서로 다르게 생긴 것은 그 때문이고, 이유는 규칙마다 `neon-glow.js`에
-붙여뒀음.
+필요 없음. 물결선은 `box-shadow`부터 안 씀 — 물결은 상자가 아니라 SVG 그림이라, 그린
+모양을 따라가는 `drop-shadow` 필터를 씀. 규칙이 서로 다르게 생긴 것은 그 때문이고,
+이유는 규칙마다 `neon-glow.js`에 붙여뒀음.
 
 | 켜야 도는 것 | |
 |---|---|
@@ -472,6 +478,7 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.occurrenceGlow` | `10` | 커서가 놓인 심볼이 화면에 나온 자리마다 번지는 폭(px). `0`이면 꺼짐 |
 | `neonGlow.gutterGlow` | `8` | 거터의 변경 막대가 번지는 폭(px). 테마 자신의 `editorGutter` 색을 씀. `0`이면 꺼짐 |
 | `neonGlow.bracketMatchGlow` | `10` | 괄호와 그 짝을 감싸는 상자가 번지는 폭(px). `0`이면 꺼짐 |
+| `neonGlow.squiggleGlow` | `5` | 에러·경고·정보 물결선이 번지는 폭(px). 테마 자신의 색을 씀. `0`이면 꺼짐 |
 | `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지: `arc` `beam` `comet` `flash` |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
 
