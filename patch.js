@@ -33,10 +33,17 @@ function isPatched(file) {
  * Identity of the payload, from its own bytes rather than the release number.
  * Most releases change only the extension, which never touches the bundle, and
  * stamping those with a version would ask for a pointless re-patch every time.
+ *
+ * Line endings are folded to LF before hashing. git on Windows checks the file
+ * out with CRLF, while the VSIX is built on Linux and carries LF, so hashing
+ * the raw bytes gave one payload two stamps: patch from a clone with
+ * `node install.js` and the installed extension called the bundle out of date
+ * forever, over code that was identical. LF is what the released file already
+ * is, so every install stamped so far keeps the stamp it has.
  */
 function payloadStamp(file) {
   return crypto.createHash('sha256')
-    .update(fs.readFileSync(file || payloadPath(), 'utf8'))
+    .update(fs.readFileSync(file || payloadPath(), 'utf8').replace(/\r\n/g, '\n'))
     .digest('hex').slice(0, 12);
 }
 

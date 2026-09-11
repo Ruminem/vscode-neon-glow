@@ -350,6 +350,24 @@ async function main() {
   check('zero removes the squiggle bloom', offCss.indexOf('squiggly') === -1);
   check('and the token glow is untouched', /\.mtk1 \{[^}]*text-shadow:/.test(offCss));
 
+  /* ---- the stamp ---- */
+  /* The stamp is how the extension decides its bundle is out of date, so it
+     has to follow what the payload says and not how the file was checked out.
+     git on Windows writes CRLF; the VSIX, built on Linux, carries LF. */
+  console.log('\nstamp');
+  const { payloadStamp } = require('../patch.js');
+  const lfText = fs.readFileSync(PAYLOAD, 'utf8').replace(/\r\n/g, '\n');
+  const fLF = path.join(require('os').tmpdir(), 'neon-stamp-lf.js');
+  const fCRLF = path.join(require('os').tmpdir(), 'neon-stamp-crlf.js');
+  fs.writeFileSync(fLF, lfText);
+  fs.writeFileSync(fCRLF, lfText.replace(/\n/g, '\r\n'));
+  check('line endings do not change the stamp', payloadStamp(fLF) === payloadStamp(fCRLF),
+    'a clone on Windows would be told its own payload is out of date');
+  check('an LF payload keeps the stamp it always had',
+    payloadStamp(fLF) === require('crypto').createHash('sha256').update(lfText).digest('hex').slice(0, 12),
+    'every install patched from an LF copy would be asked to re-patch for nothing');
+  fs.unlinkSync(fLF); fs.unlinkSync(fCRLF);
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
