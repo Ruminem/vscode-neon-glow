@@ -33,6 +33,7 @@ try {
     occurrenceGlow: 10,  /* px of bloom on the symbol under the caret; 0 = flat  */
     gutterGlow:    8,    /* px of bloom on the gutter's change bars; 0 = flat    */
     bracketMatchGlow: 10, /* px of bloom on the matching bracket box; 0 = flat   */
+    squiggleGlow:   5,   /* px of bloom on error/warning/info squiggles; 0 = flat */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
     caretArcMinJump: 5   /* px of travel before an arc is drawn                  */
   };
@@ -45,6 +46,7 @@ try {
     findGlow: [0, 48], selectionGlow: [0, 32], occurrenceGlow: [0, 32],
     gutterGlow: [0, 24],
     bracketMatchGlow: [0, 32],
+    squiggleGlow: [0, 16],
     caretArcMinJump: [1, 400]
   };
 
@@ -432,6 +434,48 @@ try {
         + ' var(--vscode-editorBracketMatch-border,'
         + ' var(--vscode-editorBracketMatch-background, transparent))'
         + ' !important; }\n';
+    }
+
+    /* The wavy underline under errors, warnings and info, lit in the colours
+       the theme already draws it with.
+
+       Not a box-shadow, unlike every other surface here. VS Code draws the
+       wave as an SVG background - a data URI it builds from the editorError,
+       editorWarning or editorInfo foreground - on an overlay element the width
+       of the flagged range. A box-shadow would light that rectangle, word and
+       all. drop-shadow follows the alpha of what is drawn, which on this
+       element is only the wave, so the line glows and the word above it does
+       not. The border-bottom VS Code also puts on these classes is the
+       high-contrast variant, drawn in the -border colours most themes leave
+       empty; it is not what you normally see.
+
+       Two passes, tight then wide, because a 1px line under a single blur
+       reads as smudged rather than lit: the tight pass keeps the colour on the
+       wave and the wide one is the halo. What the eye reads is the ratio
+       between them, as with the token glow.
+
+       Hints are left out on purpose. They are the three dots under a word that
+       VS Code keeps quiet by design, and lighting them would undo the one thing
+       that tells them apart from a warning.
+
+       The one surface lit with a filter, and a filter is composited per element
+       where a shadow is not. The overlays exist only for rendered lines, so the
+       cost is bounded by the viewport - a screen full of errors is the most it
+       can be. tools/bench.js is the place to measure it in pairs if that ever
+       shows. */
+    var sq = Math.round(KNOBS.squiggleGlow);
+    if (sq > 0) {
+      var sqNear = Math.max(1, Math.round(sq * 0.4));
+      var waves = [
+        ['error', 'editorError'],
+        ['warning', 'editorWarning'],
+        ['info', 'editorInfo']
+      ];
+      for (var wi = 0; wi < waves.length; wi++) {
+        var wc = 'var(--vscode-' + waves[wi][1] + '-foreground)';
+        css += '.monaco-editor .squiggly-' + waves[wi][0] + ' { filter: drop-shadow(0 0 '
+          + sqNear + 'px ' + wc + ') drop-shadow(0 0 ' + sq + 'px ' + wc + ') !important; }\n';
+      }
     }
     return css;
   }
