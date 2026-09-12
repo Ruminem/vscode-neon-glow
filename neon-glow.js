@@ -585,12 +585,20 @@ try {
        element that carries the glow: the blur is rastered once and the frames
        only darken the result, the same bargain saveShake takes with transform.
 
-       Two surfaces, because the cost is the number of elements moving and these
-       are one each. The current find match is already the one place the glow
-       does work rather than decoration, and a pulse is more of that work. The
-       stopped line is the one you are waiting on while everything else is
-       still. The tokens, the gutter and the breakpoints are all many-at-once,
-       which is exactly where this stops being cheap.
+       Three surfaces, because the cost is the number of elements moving and
+       none of these is ever more than a pair. The current find match is already
+       the one place the glow does work rather than decoration, and a pulse is
+       more of that work; the stopped line is the one thing you are waiting on
+       while everything else is still; the bracket box is the two the editor is
+       pointing at.
+
+       The occurrence highlights were the obvious fourth and are deliberately
+       not here, and the reason is not their count. They are on screen whenever
+       the caret is resting on a word, which their own setting describes as most
+       of a working day - so breathing them would mean something is always
+       pulsing, and a mark that never stops is background rather than a signal.
+       These three are each on screen only while you are waiting on them. The
+       tokens, the gutter and the breakpoints fail the count as well.
 
        It dips rather than swells: the rest point is the glow as it already is,
        and the breath takes it down and brings it back, so turning this on never
@@ -603,6 +611,7 @@ try {
       var breathing = [];
       if (Math.round(KNOBS.findGlow) > 0) breathing.push('.monaco-editor .currentFindMatch');
       if (Math.round(KNOBS.lineHighlightGlow) > 0) breathing.push('.monaco-editor .debug-top-stack-frame-line');
+      if (Math.round(KNOBS.bracketMatchGlow) > 0) breathing.push('.monaco-editor .bracket-match');
       if (breathing.length) {
         css += '@media (prefers-reduced-motion: no-preference) {'
           + ' @keyframes neon-glow-breathe {'

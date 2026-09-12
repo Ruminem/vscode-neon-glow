@@ -87,7 +87,7 @@ is why the rules do not match each other, and the reasoning is kept beside each 
 |---|---|
 | **The caret trail** (`cursorTrail`) | the caret gets a duration to cross instead of jumping, so the glow on it smears into a streak. `130` reads as lag; `45` keeps up and still streaks on a jump across a file. How much of a slide that is depends on the display — `45` is under three frames at 60Hz and six or seven at 144Hz, so raise it on a slower panel |
 | **The save jolt** (`saveShake`) | the workbench knocks sideways when a file is saved. A compositor animation on `transform` alone, so the glow is never re-drawn during it |
-| **A breath on two of them** (`breathe`) | a slow swell on the current find match and on the stopped line while debugging. Only those two: the glow is a `text-shadow`, and animating one re-draws its blur every frame — two elements is nothing, every token on screen would hold up typing |
+| **A breath on three of them** (`breathe`) | a slow swell on the current find match, the stopped line while debugging, and the matching bracket box. Only those three: the glow is a `text-shadow`, and animating one re-draws its blur every frame — a pair is nothing, every token on screen would hold up typing |
 | **The caret arc** (`caretArc`) | one of twelve shapes drawn along a caret jump, in the theme's own caret colour, as SVG that lives a few hundred milliseconds. `caretArcDuration` sets how long it takes to cross |
 
 These four move things, and nobody asked for movement, so they ship at `0` and stay
@@ -220,7 +220,7 @@ reading is the preview.
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 | `neonGlow.caretArcDuration` | `300` | ms the arc takes to cross its path — eighteen frames at 60Hz, and it wants raising on a slower panel |
 | `neonGlow.caretArcOnDrag` | `false` | keep drawing while a selection is dragged out; the click that starts the drag draws either way |
-| `neonGlow.breathe` | `0` | ms for one breath on the find match and the stopped line; `0` holds them still, and under `600` is held at `600` |
+| `neonGlow.breathe` | `0` | ms for one breath on the find match, the stopped line and the bracket box; `0` holds them still, and under `600` is held at `600` |
 
 **`glowLayers` is the one that costs.** The editor virtualises, so a 10,000 line file
 is not 10,000 glowing spans and the cost scales with the viewport rather than the
@@ -385,7 +385,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 |---|---|
 | **커서 잔상** (`cursorTrail`) | 커서가 튀는 대신 새 위치까지 건너갈 시간을 줘서 글로우가 꼬리로 끌림. `130`은 렉처럼 읽히고, `45`는 타이핑을 따라가면서도 멀리 뛸 때 꼬리가 남음. 같은 값도 주사율에 따라 다르게 읽힘 — 60Hz에서 `45`는 세 프레임이 안 되고 144Hz에서는 예닐곱 프레임임. 주사율이 낮으면 올려 잡을 것 |
 | **저장 흔들림** (`saveShake`) | 파일을 저장할 때 워크벤치가 옆으로 한 번 얻어맞음. `transform`만 건드리는 컴포지터 애니메이션이라 그동안 글로우가 다시 그려지지 않음 |
-| **둘만 숨쉬기** (`breathe`) | 현재 찾기 결과와 디버그 중 멈춘 줄이 천천히 부풀었다 가라앉음. 그 둘뿐임 — 글로우가 `text-shadow`라 애니메이션하면 매 프레임 블러를 다시 그림. 요소 둘은 공짜지만 화면의 토큰 전부면 타이핑이 밀림 |
+| **셋만 숨쉬기** (`breathe`) | 현재 찾기 결과, 디버그 중 멈춘 줄, 일치하는 괄호 상자가 천천히 부풀었다 가라앉음. 그 셋뿐임 — 글로우가 `text-shadow`라 애니메이션하면 매 프레임 블러를 다시 그림. 한두 개는 공짜지만 화면의 토큰 전부면 타이핑이 밀림 |
 | **커서 아크** (`caretArc`) | 커서가 뛴 길에 열두 모양 중 하나를 그림. 테마 자신의 커서 색을 쓰고, 몇백 밀리초 살다 사라지는 SVG임. 건너는 시간은 `caretArcDuration`이 정함 |
 
 이 넷은 무언가를 움직임. 움직임을 달라고 한 사람은 없으므로 `0`으로 나가고 말하기
@@ -510,7 +510,7 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
 | `neonGlow.caretArcDuration` | `300` | 아크가 경로를 건너는 시간(ms). 60Hz에서 열여덟 프레임이고, 주사율이 낮으면 올려 잡아야 함 |
 | `neonGlow.caretArcOnDrag` | `false` | 마우스로 선택을 끄는 동안에도 계속 그릴지. 드래그를 시작한 클릭은 어느 쪽이든 그림 |
-| `neonGlow.breathe` | `0` | 찾기 결과와 멈춘 줄이 한 번 숨쉬는 시간(ms). `0`이면 가만히 있고, `600` 아래는 `600`으로 붙듦 |
+| `neonGlow.breathe` | `0` | 찾기 결과·멈춘 줄·괄호 상자가 한 번 숨쉬는 시간(ms). `0`이면 가만히 있고, `600` 아래는 `600`으로 붙듦 |
 
 **돈이 드는 것은 `glowLayers`임.** 에디터는 가상화하므로 10,000줄 파일이 곧 10,000개의
 빛나는 span은 아니고, 비용은 파일 크기가 아니라 뷰포트 크기에 비례함. 그런데 가장 넓은
