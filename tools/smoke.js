@@ -286,9 +286,9 @@ async function main() {
   /* A filter rather than the shadow itself: keyframes cannot outrank the
      !important the glow rules carry, and animating a text-shadow would re-raster
      its blur every frame. */
-  check('breathing rides on a filter, on the two surfaces that are one each',
+  check('breathing rides on a filter, on the three that are never more than a pair',
     /@keyframes neon-glow-breathe \{ 0%, 100% \{ filter: none; \} 50% \{ filter: brightness\(0\.55\); \} \}/.test(css)
-    && /\.currentFindMatch, \.monaco-editor \.debug-top-stack-frame-line \{ animation: neon-glow-breathe 2400ms/.test(css));
+    && /\.currentFindMatch, \.monaco-editor \.debug-top-stack-frame-line, \.monaco-editor \.bracket-match \{ animation: neon-glow-breathe 2400ms/.test(css));
   check('and nothing else is asked to breathe',
     (css.match(/neon-glow-breathe/g) || []).length === 2);
   check('the pointed-at line follows the knob',
@@ -332,13 +332,14 @@ async function main() {
   console.log('\ncaret arc');
   /* Nothing to breathe on a surface whose glow is off, and a period under the
      floor is a strobe rather than a breath. */
-  s = run({ knobs: { breathe: 50, findGlow: 18, lineHighlightGlow: 0 } });
+  s = run({ knobs: { breathe: 50, findGlow: 18, lineHighlightGlow: 0, bracketMatchGlow: 0 } });
   await wait(120);
   {
     const c = s.styles();
     check('a breath too fast to be one is held to the floor', /neon-glow-breathe 600ms/.test(c));
     check('and a surface with no glow is not asked to breathe',
-      c.indexOf('debug-top-stack-frame-line { animation') === -1);
+      c.indexOf('debug-top-stack-frame-line { animation') === -1
+      && c.indexOf('bracket-match { animation') === -1);
   }
 
   s = run({ knobs: { caretArc: 'arc' } });
