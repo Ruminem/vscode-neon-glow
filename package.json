@@ -181,6 +181,15 @@
           "scope": "application",
           "markdownDescription": "Bloom on the wavy underline under errors, warnings and info, in pixels, taken from the theme's own `editorError`, `editorWarning` and `editorInfo` colours. On at `5`; `0` leaves them flat. The wave is an image rather than a box, so the glow follows its shape instead of lighting the word above it. Hints are left alone - they are the three dots VS Code keeps quiet on purpose. Each visible squiggle is composited on its own, so a screen full of errors is the most this costs. Applies without a restart."
         },
+        "neonGlow.diffGlow": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0,
+          "maximum": 32,
+          "order": 14,
+          "scope": "application",
+          "markdownDescription": "Bloom on what changed inside a diff, in pixels, taken from the theme's own diff colours. On at `10`; `0` leaves it flat. The word-level highlight only, not the line tint behind it: blurring a full-width block bleeds into the lines above and below, and changed lines usually come in runs, so that reads as a haze over the region rather than a mark on the change. A diff is also the one view `#neonGlow.gutterGlow#` is missing from - VS Code hides the change bars there, and clicking a file in source control opens a diff. Applies without a restart."
+        },
         "neonGlow.caretArc": {
           "type": "string",
           "default": "off",
