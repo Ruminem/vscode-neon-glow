@@ -125,8 +125,14 @@ try {
    */
   var FALLBACK_KEY = { ctrl: true, alt: true, shift: false, key: 'n' };
 
-  /* Filled in by the installer; stays empty when patched with no extension. */
+  /* Filled in when the copy beside state.json is written. A payload imported
+     straight from the extension folder - which the loader does on the first
+     start after an update, before the extension has refreshed the copy - still
+     carries the placeholder, and takes the URL the loader left on window
+     instead. The comparison is split in two so the substitution that fills the
+     placeholder in cannot fill in the test as well. */
   var STATE_URL = '__NEON_STATE_URL__';
+  if (STATE_URL === '__NEON_' + 'STATE_URL__') STATE_URL = window.__NEON_STATE_URL || '';
 
   var STYLE_ID = 'neon-glow-styles';
   var STORE_KEY = 'neonGlow.enabled';

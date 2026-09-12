@@ -164,6 +164,27 @@ function defaultStateFile() {
 }
 
 /**
+ * Where VS Code keeps extensions, and the extensions.json it lists them in.
+ *
+ * Guessed from the home directory, by the extension as well as the CLI. The
+ * extension could ask where its own folder is, but then the two would build
+ * different loaders on any setup where the guess is wrong, and each would call
+ * the other's patch out of date - the drive-letter bug again by another door.
+ * A wrong guess costs nothing worse than the loader finding no list and reading
+ * the copy, which is all it did before it could do anything else.
+ */
+function defaultExtensionsDir() {
+  return path.join(os.homedir(), '.vscode', 'extensions');
+}
+
+/* The first release whose payload can be imported straight out of the
+   extension folder. A payload read from there still has its placeholders, so
+   it has to take the state URL from the loader - and payloads before this one
+   do not know to look, so the loader never reaches for them there. Raise it
+   only, and only if a later payload stops being able to run from the folder. */
+const FOLDER_PAYLOAD_SINCE = '0.16.0';
+
+/**
  * What was patched, recorded beside the state file.
  *
  * The extension knows where the editor lives and never has to guess, but the
@@ -204,10 +225,14 @@ function ensureStateFile(stateFile) {
   } catch (e) { return false; }
 }
 
-function writeState(stateFile, enabled, knobs) {
+/* version is the extension's, recorded so the loader can tell at startup
+   whether the folder extensions.json names is newer than the copy it would
+   otherwise read. */
+function writeState(stateFile, enabled, knobs, version) {
   fs.mkdirSync(path.dirname(stateFile), { recursive: true });
   const body = { enabled: !!enabled, seq: Date.now() };
   if (knobs) body.knobs = knobs;
+  if (version) body.version = version;
   fs.writeFileSync(stateFile, JSON.stringify(body), 'utf8');
 }
 
@@ -229,6 +254,11 @@ function payloadCopyPath(stateFile) {
  * a URL baked into the bundle at patch time would go stale on the next
  * extension update and ask for the re-patch this whole arrangement exists to
  * abolish. globalStorage does not move.
+ *
+ * The loader does reach into the extension folder now, but by asking
+ * extensions.json which folder is current rather than by remembering a path -
+ * see loaderBody. This copy is still what it reads whenever that answer is
+ * missing, or is not newer than what the copy was made from.
  */
 function writePayloadCopy(payload_path, stateFile) {
   const stamp = payloadStamp(payload_path);
@@ -266,26 +296,83 @@ function writePayloadCopy(payload_path, stateFile) {
  * glowing at nothing looks identical to a working one from the extension side.
  * data-neon is where the payload already reports itself, so the stub uses it.
  */
-function loaderBody(payloadUrl) {
+function loaderBody(copyUrl, stateUrl, registryUrl) {
+  /* Which payload to import is decided at startup rather than baked in, and the
+     reason is an update. The copy beside state.json is refreshed by the
+     extension when it activates, which is after the window has already imported
+     whatever copy was there - so the first restart after an update ran the old
+     payload, and it took a second restart to see the new one. extensions.json
+     is rewritten by VS Code when the update installs, before any restart, so it
+     already names the new folder by the time the window comes up.
+
+     Two guards keep that from reaching for the wrong folder. It is taken only
+     when its version is newer than the one state.json last recorded: a window
+     in another profile can find an older install of this extension listed
+     there, and the copy is the right answer for that window. And never below
+     FOLDER_PAYLOAD_SINCE, whose payloads cannot be told where state.json is.
+     Anything that fails along the way - either file unreadable, the folder's
+     import refused - lands on the copy, where the loader looked before.
+
+     Three tries on the copy, because it sits in globalStorage and a window that
+     opened before the extension host first wrote it would otherwise glow at
+     nothing for the rest of the session. */
   return 'try {\n'
     + '(function () {\n'
     + '  if (typeof window === "undefined" || window.__NEON_INSTALLED) { return; }\n'
+    + '  var COPY = ' + JSON.stringify(copyUrl) + ';\n'
+    + '  var STATE = ' + JSON.stringify(stateUrl) + ';\n'
+    + '  var REGISTRY = ' + JSON.stringify(registryUrl) + ';\n'
+    + '  var SINCE = ' + JSON.stringify(FOLDER_PAYLOAD_SINCE) + ';\n'
     + '  function mark(stage, extra) {\n'
     + '    try { document.documentElement.setAttribute("data-neon", stage + (extra ? " " + extra : "")); } catch (e) {}\n'
     + '  }\n'
-    + '  /* Three tries, because the payload sits in globalStorage and a window that\n'
-    + '     opened before the extension host wrote it would otherwise glow at nothing\n'
-    + '     for the rest of the session. */\n'
+    + '  function ver(s) { return String(s || "0").split(".").map(function (n) { return parseInt(n, 10) || 0; }); }\n'
+    + '  function newer(a, b) {\n'
+    + '    a = ver(a); b = ver(b);\n'
+    + '    for (var i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0); }\n'
+    + '    return false;\n'
+    + '  }\n'
+    + '  function json(url) {\n'
+    + '    return fetch(url, { cache: "no-store" })\n'
+    + '      .then(function (r) { return r.ok ? r.json() : null; })\n'
+    + '      .catch(function () { return null; });\n'
+    + '  }\n'
+    + '  function pick() {\n'
+    + '    return Promise.all([json(REGISTRY), json(STATE)]).then(function (got) {\n'
+    + '      var list = got[0], state = got[1], best = null;\n'
+    + '      if (!Array.isArray(list)) return COPY;\n'
+    + '      list.forEach(function (e) {\n'
+    + '        if (e && e.identifier && String(e.identifier.id).toLowerCase() === "ruminem.vscode-neon-glow"\n'
+    + '            && typeof e.relativeLocation === "string" && (!best || newer(e.version, best.version))) best = e;\n'
+    + '      });\n'
+    + '      if (!best || newer(SINCE, best.version)) return COPY;\n'
+    + '      if (state && state.version && !newer(best.version, state.version)) return COPY;\n'
+    + '      return REGISTRY.slice(0, REGISTRY.lastIndexOf("/") + 1)\n'
+    + '        + encodeURIComponent(best.relativeLocation) + "/neon-glow.js";\n'
+    + '    }).catch(function () { return COPY; });\n'
+    + '  }\n'
     + '  var left = 3;\n'
-    + '  function go() {\n'
-    + '    import(' + JSON.stringify(payloadUrl) + ').catch(function (e) {\n'
-    + '      if (--left > 0) { setTimeout(go, 1200); return; }\n'
+    + '  function go(url) {\n'
+    + '    window.__NEON_STATE_URL = STATE;\n'
+    + '    window.__NEON_LOADED_FROM = url;\n'
+    + '    import(url).catch(function (e) {\n'
+    + '      if (url !== COPY) { go(COPY); return; }\n'
+    + '      if (--left > 0) { setTimeout(function () { go(COPY); }, 1200); return; }\n'
     + '      mark("loader-failed", String(e && e.message || e).slice(0, 120));\n'
     + '    });\n'
     + '  }\n'
-    + '  go();\n'
+    + '  pick().then(go);\n'
     + '})();\n'
     + '} catch (e) { try { console.error("[NEON] loader", e); } catch (_) {} }\n';
+}
+
+/** The three places the loader reads, in the order loaderBody takes them. */
+function loaderUrls(stateFile) {
+  return [
+    toVscodeFileUrl(payloadCopyPath(stateFile)),
+    toVscodeFileUrl(stateFile),
+    toVscodeFileUrl(path.join(defaultExtensionsDir(), 'extensions.json')),
+  ];
 }
 
 /**
@@ -320,12 +407,12 @@ function payloadCopyStamp(stateFile) {
  */
 function loaderStamp(stateFile) {
   return crypto.createHash('sha256')
-    .update(loaderBody(toVscodeFileUrl(payloadCopyPath(stateFile))))
+    .update(loaderBody.apply(null, loaderUrls(stateFile)))
     .digest('hex').slice(0, 12);
 }
 
 function loaderSource(stateFile) {
-  const body = loaderBody(toVscodeFileUrl(payloadCopyPath(stateFile)));
+  const body = loaderBody.apply(null, loaderUrls(stateFile));
   return '\n/* ============ ' + MARKER + ' [loader ' + loaderStamp(stateFile) + '] ============ */\n'
     + body
     + '/* ============ /' + MARKER + ' ============ */\n';
@@ -372,4 +459,5 @@ module.exports = {
   rememberTargets, recallTargets, forgetTargets,
   backupOf, payloadPath,
   toVscodeFileUrl, defaultStateFile, ensureStateFile, writeState, readState,
+  defaultExtensionsDir, FOLDER_PAYLOAD_SINCE,
 };

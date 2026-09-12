@@ -279,7 +279,7 @@ function readKnobs() {
 /** Write the whole state - switch and knobs together - and mirror it locally. */
 function publish(enabled) {
   try {
-    writeState(stateFile, enabled, readKnobs());
+    writeState(stateFile, enabled, readKnobs(), VERSION);
   } catch (e) {
     vscode.window.showErrorMessage('Neon Glow: could not write state - ' + e.message);
     return;

@@ -850,6 +850,79 @@ async function main() {
   check('with its placeholders filled in',
     fs.readFileSync(payloadCopyPath(stateFile), 'utf8').indexOf('__NEON_STATE_URL__') === -1);
 
+  /* The copy is the fallback now. On the first start after an update the loader
+     imports the folder extensions.json names, and a payload read from there
+     still has its placeholder - so it takes the state URL off window, and the
+     substitution that fills the copy in must not eat that test. */
+  check('a payload left unfilled takes the state URL from the loader',
+    lfText.indexOf("if (STATE_URL === '__NEON_' + 'STATE_URL__') STATE_URL = window.__NEON_STATE_URL") !== -1
+    && fs.readFileSync(payloadCopyPath(stateFile), 'utf8').indexOf("'__NEON_' + 'STATE_URL__'") !== -1);
+  check('the extension records its version where the loader reads it',
+    /writeState\(stateFile, enabled, readKnobs\(\), VERSION\)/.test(
+      fs.readFileSync(path.join(__dirname, '..', 'extension.js'), 'utf8')));
+
+  /* Which payload the loader imports, run for real in a sandbox: fetch answers
+     from a table and import() is swapped for a recorder. */
+  {
+    const vm = require('vm');
+    const { FOLDER_PAYLOAD_SINCE } = require('../patch.js');
+    const loader = loaderSource(stateFile).split('import(url)').join('__import(url)');
+    const bump = v => v.split('.').map((n, i) => (i === 1 ? String(Number(n) + 1) : n)).join('.');
+    const listed = v => [{ identifier: { id: 'Ruminem.vscode-neon-glow' }, version: v,
+                           relativeLocation: 'ruminem.vscode-neon-glow-' + v }];
+    const inFolder = u => u.indexOf('/.vscode/extensions/ruminem.vscode-neon-glow-') !== -1;
+    const loadFrom = async ({ registry, state, folderFails }) => {
+      const imported = [];
+      const window = {};
+      vm.runInNewContext(loader, {
+        window, console,
+        document: { documentElement: { setAttribute() {} } },
+        setTimeout: fn => setTimeout(fn, 0),
+        fetch: url => {
+          const body = /extensions\.json$/.test(url) ? registry : /state\.json$/.test(url) ? state : undefined;
+          return body === undefined ? Promise.reject(new Error('unreadable'))
+            : Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+        },
+        __import: url => {
+          imported.push(url);
+          return folderFails && inFolder(url) ? Promise.reject(new Error('refused')) : Promise.resolve({});
+        },
+      });
+      await wait(40);
+      return { imported, window };
+    };
+    const next = bump(FOLDER_PAYLOAD_SINCE);
+
+    let r = await loadFrom({ registry: listed(next), state: { enabled: true, version: FOLDER_PAYLOAD_SINCE } });
+    check('a newer install than state.json knows is imported from its own folder',
+      r.imported.length === 1 && inFolder(r.imported[0])
+      && r.imported[0].endsWith('ruminem.vscode-neon-glow-' + next + '/neon-glow.js'),
+      'imported: ' + r.imported.join(', '));
+    check('and is told where state.json is',
+      /state\.json$/.test(r.window.__NEON_STATE_URL || ''));
+
+    r = await loadFrom({ registry: listed(next), state: { enabled: true } });
+    check('a state.json from before versions were recorded still lets it through',
+      r.imported.length === 1 && inFolder(r.imported[0]));
+
+    r = await loadFrom({ registry: listed(FOLDER_PAYLOAD_SINCE), state: { enabled: true, version: FOLDER_PAYLOAD_SINCE } });
+    check('the copy, once the extension has caught it up',
+      r.imported.length === 1 && !inFolder(r.imported[0]),
+      'a window in another profile would take an older install listed there');
+
+    r = await loadFrom({ registry: listed('0.15.0'), state: { enabled: true } });
+    check('never a folder whose payload cannot be told where state.json is',
+      r.imported.length === 1 && !inFolder(r.imported[0]));
+
+    r = await loadFrom({ registry: undefined, state: { enabled: true } });
+    check('the copy when extensions.json cannot be read',
+      r.imported.length === 1 && !inFolder(r.imported[0]));
+
+    r = await loadFrom({ registry: listed(next), state: { enabled: true }, folderFails: true });
+    check('and the copy when the folder refuses the import',
+      r.imported.length === 2 && inFolder(r.imported[0]) && !inFolder(r.imported[1]));
+  }
+
   /* A payload release must not move the loader's stamp - that is what stops it
      from asking for a re-patch it does not need. */
   const before = loaderStamp(stateFile);
