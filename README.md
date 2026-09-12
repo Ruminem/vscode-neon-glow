@@ -16,6 +16,8 @@ under the caret appears, and error, warning and info squiggles:
 
 ![the same editor twice, side by side: plain syntax highlighting on the left, and on the right the same lines with the theme's own colours glowing, the bracket box beside the caret lit, the occurrences of the symbol it is parked on picked out, and three squiggles carrying the theme's diagnostic colours](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/neon-glow.png)
 
+`caretArc` and `caretArcOnDrag` are both on in that clip, and both ship off.
+
 [Which tokens glow](#which-tokens-glow) · [What else can glow](#what-else-can-glow) · [Install](#install) · [Settings](#settings) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
 
 ## Which tokens glow
@@ -308,6 +310,8 @@ VS Code 구문 강조에 네온 글로우를 입힘.
 괄호 상자, 커서가 놓인 심볼의 다른 출현, 에러·경고·정보 물결선까지:
 
 ![같은 에디터를 좌우로 놓은 그림. 왼쪽은 평범한 구문 강조이고, 오른쪽은 같은 줄들이 테마가 준 색 그대로 빛남. 커서 옆 일치하는 괄호 상자가 밝고, 커서가 놓인 심볼의 다른 출현이 드러나며, 물결선 셋이 테마의 진단 색을 띰](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/neon-glow.png)
+
+클립에서는 `caretArc`와 `caretArcOnDrag`를 켜뒀음. 둘 다 기본은 꺼짐임.
 
 [빛나는 토큰](#어떤-토큰이-빛나는가) · [토큰 말고 빛나는 것](#토큰-말고-빛나는-것) · [설치](#설치) · [설정](#설정) · [발목 잡는 것들](#발목-잡는-것들) · [상태](#상태)
 

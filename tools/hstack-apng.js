@@ -239,10 +239,13 @@ function main() {
 
   const W = L.W + R.W, H = L.H;
   const dur = a => a.frames.reduce((s, f) => s + f.delay, 0);
-  /* The shorter clip sets the length. Holding the last frame of one side would
-     freeze exactly the half worth watching, and looping it inside the composite
-     would restart it mid-clip. */
-  const total = Math.min(dur(L), dur(R));
+  /* The longer clip sets the length, and the shorter one holds its last frame
+     to the end. This was the other way round while the two takes were roughly
+     equal, on the reasoning that a frozen half looks broken - but cutting to
+     the shorter one throws away whatever the longer take was recorded to show,
+     which is worse, and it is silent about it. Looping the short side instead
+     would restart it mid-clip, in full view. */
+  const total = Math.max(dur(L), dur(R));
 
   const at = (side, t) => {
     let acc = 0;
