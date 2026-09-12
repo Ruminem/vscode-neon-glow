@@ -156,6 +156,18 @@ function makeStub(opts) {
       cb();
       await wait(40);
       return true;
+    },
+    /* The same with a line to travel as well. Down and Up moved the caret only
+       on this axis, which the arc refused to draw at all until the path stopped
+       being laid along a horizontal line. */
+    async jumpTo(x, y) {
+      const cb = this.callbackFor(this.layer);
+      if (!cb) return false;
+      this.caret.style.left = x + 'px';
+      this.caret.style.top = y + 'px';
+      cb();
+      await wait(40);
+      return true;
     }
   };
 }
@@ -326,6 +338,44 @@ async function main() {
   await wait(120);
   await s.jump(600);
   check('reduced motion draws nothing', s.drawn().length === 0);
+
+  /* Down and Up. The caret starts at 100,50 and a line is about nineteen
+     pixels, so this is the plainest move there is - and it drew nothing at all
+     while anything with a dy was thrown out before the threshold was even
+     consulted. */
+  s = run({ knobs: { caretArc: 'arc' } });
+  await wait(120);
+  await s.jumpTo(100, 69);
+  drawn = s.drawn();
+  check('a move straight down draws', drawn.length === 1,
+    'the vertical guard is back, or the distance is being read off one axis');
+  if (drawn.length) {
+    /* Straight down is a quarter turn. Without the rotation the path would lie
+       along the line it started on, which is the one direction the caret did
+       not go. */
+    check('the path is turned to face the way the caret went',
+      /transform:rotate\(1\.570[0-9]rad\)/.test(drawn[0].style.cssText));
+  }
+
+  s = run({ knobs: { caretArc: 'arc' } });
+  await wait(120);
+  await s.jumpTo(60, 69);
+  drawn = s.drawn();
+  check('a diagonal draws too', drawn.length === 1);
+  if (drawn.length) {
+    /* 40 left and 19 down is 44 of travel, not 40 and not 19: the length has to
+       come from both axes or a mostly-vertical move reads as a short one. */
+    const svg = drawn[0].descendants().filter((n) => n.tag === 'svg')[0];
+    check('and is as long as the way it actually travelled',
+      !!svg && Math.abs(Number(svg.attrs.width) - Math.hypot(40, 19)) < 1);
+  }
+
+  /* A move that only the second axis makes long enough. With the distance read
+     off dx alone this is four pixels and draws nothing. */
+  s = run({ knobs: { caretArc: 'arc', caretArcMinJump: 15 } });
+  await wait(120);
+  await s.jumpTo(104, 69);
+  check('a threshold measures the travel, not one side of it', s.drawn().length === 1);
 
   /* ---- the regression this file was written for ---- */
   console.log('\nmissing document.addEventListener');
