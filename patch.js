@@ -23,7 +23,22 @@ function readTail(file, bytes) {
   } finally { fs.closeSync(fd); }
 }
 
-const TAIL = 65536;
+/**
+ * How far back from the end of the bundle to look for the payload.
+ *
+ * It has to clear the payload itself, because the marker and the stamp both sit
+ * at the top of what was appended. This was 64KB while the payload was 50-something,
+ * and the payload crossing that line was not a slow squeeze - it was a working
+ * install reporting itself unpatched from one release to the next, with the
+ * marker sitting 70KB from the end and the search looking at 65. Re-patching
+ * could not fix it and neither could restarting, because nothing was wrong with
+ * the file.
+ *
+ * A quarter of a megabyte is four times the payload's present size and still a
+ * single read of the end of a file that is measured in megabytes, so there is
+ * no reason to trim this closer to whatever the payload happens to weigh today.
+ */
+const TAIL = 262144;
 
 function isPatched(file) {
   try { return readTail(file, TAIL).includes(MARKER); } catch (e) { return false; }
