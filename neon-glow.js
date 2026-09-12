@@ -35,7 +35,7 @@ try {
     bracketMatchGlow: 10, /* px of bloom on the matching bracket box; 0 = flat   */
     squiggleGlow:   5,   /* px of bloom on error/warning/info squiggles; 0 = flat */
     diffGlow:      10,   /* px of bloom on what changed inside a diff; 0 = flat  */
-    caretArc:    'off',  /* off | arc | beam | comet | flash                     */
+    caretArc:    'off',  /* off | arc | beam | comet | flash | wave | bolt | dots */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
     caretArcDuration: 300, /* ms the arc takes to cross the path it drew         */
     caretArcOnDrag: false /* keep drawing while a selection is being dragged out */
@@ -59,7 +59,7 @@ try {
      dropped the same way a non-number is: the renderer decides what it will
      accept, so a hand-edited settings.json cannot put nonsense in here. */
   var KNOB_ENUM = {
-    caretArc: ['off', 'arc', 'beam', 'comet', 'flash']
+    caretArc: ['off', 'arc', 'beam', 'comet', 'flash', 'wave', 'bolt', 'dots']
   };
 
   /* And knobs that carry a switch. Sorted by type like the other two, so a
@@ -861,16 +861,31 @@ try {
    * that would look cheap.
    */
   function drawPath(style, sx, sy, w, angle, colour, ms) {
-    var jag = (style === 'arc');
     var comet = (style === 'comet');
-    var amp = jag ? Math.max(2.5, Math.min(w * 0.035, 7)) : 0;
+    var dots = (style === 'dots');
+
+    /* How far the path strays from the straight line between the two caret
+       positions, and in how many segments. Everything else about a style is
+       shared, so a new shape is these two numbers and the Y below: beam takes
+       no detour at all and needs one segment, and the rest read as different
+       because they wander differently rather than because they are drawn by
+       different code. */
+    var amp = 0, n = 1;
+    if (style === 'arc')  { amp = Math.max(2.5, Math.min(w * 0.035, 7));  n = Math.max(3, Math.round(w / 20)); }
+    if (style === 'wave') { amp = Math.max(3, Math.min(w * 0.05, 10));    n = Math.max(8, Math.round(w / 8)); }
+    if (style === 'bolt') { amp = Math.max(4, Math.min(w * 0.09, 16));    n = Math.max(2, Math.round(w / 34)); }
     var h = amp * 2 + 14, mid = h / 2;
-    var n = jag ? Math.max(3, Math.round(w / 20)) : 1;
 
     var pts = [], len = 0, px = 0, py = mid;
     for (var i = 0; i <= n; i++) {
       var X = w * i / n;
-      var Y = (i === 0 || i === n) ? mid : mid + (Math.random() * 2 - 1) * amp;
+      var Y;
+      /* Both ends are pinned to the line so the light still leaves the caret it
+         left and arrives at the one it is going to, whatever it does between. */
+      if (i === 0 || i === n) Y = mid;
+      else if (style === 'wave') Y = mid + Math.sin(i / n * Math.PI * 4) * amp;
+      else if (style === 'bolt') Y = mid + (i % 2 ? amp : -amp);
+      else Y = mid + (Math.random() * 2 - 1) * amp;
       if (i) len += Math.sqrt((X - px) * (X - px) + (Y - py) * (Y - py));
       px = X; py = Y;
       pts.push(X.toFixed(1) + ',' + Y.toFixed(1));
@@ -930,11 +945,15 @@ try {
        token glow settled on. */
     for (var j = 0; j < 2; j++) {
       var el = j ? core : glow;
-      el.style.strokeDasharray = head + ' ' + len;
+      /* One lit segment sliding the length of the path, or a repeating pattern
+         of short ones doing the same. The travelling head is the whole point of
+         the dash here: nothing grows or is redrawn, the pattern is simply
+         offset, which is one property for the whole animation. */
+      el.style.strokeDasharray = dots ? '2 7' : (head + ' ' + len);
       el.animate([
         { strokeDashoffset: 0, opacity: 0 },
         { opacity: 1, offset: 0.12 },
-        { strokeDashoffset: -(len - head), opacity: 0 }
+        { strokeDashoffset: dots ? -len : -(len - head), opacity: 0 }
       ], { duration: ms, easing: 'cubic-bezier(.12,.85,.2,1)', fill: 'forwards' });
     }
   }

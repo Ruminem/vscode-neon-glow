@@ -193,13 +193,16 @@
         "neonGlow.caretArc": {
           "type": "string",
           "default": "off",
-          "enum": ["off", "arc", "beam", "comet", "flash"],
+          "enum": ["off", "arc", "beam", "comet", "flash", "wave", "bolt", "dots"],
           "enumDescriptions": [
             "Nothing is drawn when the caret moves.",
             "A jagged bolt runs the way the caret went, lighting the path behind it before it fades. The jitter is rolled fresh every time, so no two are the same shape.",
             "The same thing, drawn straight. Quieter, and the one to reach for if the jitter reads as noise.",
             "A short bright head flies the path and leaves nothing behind it. The most restrained of the four.",
-            "No path at all - a burst where the caret landed. The only one that still reads on a Tab, because it does not need distance to draw."
+            "No path at all - a burst where the caret landed. The only one that still reads on a Tab, because it does not need distance to draw.",
+            "A regular ripple along the way the caret went, where `arc` is a random jitter. The wander is the same every time, which reads calmer over a long jump.",
+            "A sharp zigzag with far fewer, larger turns than `arc` - the widest detour of the set, and the one that still reads at a glance across a whole file.",
+            "A stream of short dashes running the length of the path rather than one lit head. Busier than `comet` and quieter than `bolt`."
           ],
           "order": 16,
           "scope": "application",
