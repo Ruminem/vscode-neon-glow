@@ -85,7 +85,7 @@ is why the rules do not match each other, and the reasoning is kept beside each 
 |---|---|
 | **The caret trail** (`cursorTrail`) | the caret gets a duration to cross instead of jumping, so the glow on it smears into a streak. `130` reads as lag; `45` keeps up and still streaks on a jump across a file. How much of a slide that is depends on the display — `45` is under three frames at 60Hz and six or seven at 144Hz, so raise it on a slower panel |
 | **The save jolt** (`saveShake`) | the workbench knocks sideways when a file is saved. A compositor animation on `transform` alone, so the glow is never re-drawn during it |
-| **The caret arc** (`caretArc`) | `arc`, `beam`, `comet` or `flash` drawn along a caret jump, in the theme's own caret colour, as SVG that lives a few hundred milliseconds |
+| **The caret arc** (`caretArc`) | one of seven shapes drawn along a caret jump, in the theme's own caret colour, as SVG that lives a few hundred milliseconds. `caretArcDuration` sets how long it takes to cross |
 
 These three move things, and nobody asked for movement, so they ship at `0` and stay
 there until you say otherwise. All three are ignored when the system asks for reduced
@@ -211,7 +211,7 @@ reading is the preview.
 | `neonGlow.bracketMatchGlow` | `10` | px of bloom on the box around a bracket and its partner; `0` turns it off |
 | `neonGlow.squiggleGlow` | `5` | px of bloom on error, warning and info squiggles, in the theme's own colours; `0` turns it off |
 | `neonGlow.diffGlow` | `10` | px of bloom on what changed inside a diff, on the word-level highlight only; `0` turns it off |
-| `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
+| `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet`, `flash`, `wave`, `bolt` or `dots` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 | `neonGlow.caretArcDuration` | `300` | ms the arc takes to cross its path — eighteen frames at 60Hz, and it wants raising on a slower panel |
 | `neonGlow.caretArcOnDrag` | `false` | keep drawing while a selection is dragged out; the click that starts the drag draws either way |
@@ -377,7 +377,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 |---|---|
 | **커서 잔상** (`cursorTrail`) | 커서가 튀는 대신 새 위치까지 건너갈 시간을 줘서 글로우가 꼬리로 끌림. `130`은 렉처럼 읽히고, `45`는 타이핑을 따라가면서도 멀리 뛸 때 꼬리가 남음. 같은 값도 주사율에 따라 다르게 읽힘 — 60Hz에서 `45`는 세 프레임이 안 되고 144Hz에서는 예닐곱 프레임임. 주사율이 낮으면 올려 잡을 것 |
 | **저장 흔들림** (`saveShake`) | 파일을 저장할 때 워크벤치가 옆으로 한 번 얻어맞음. `transform`만 건드리는 컴포지터 애니메이션이라 그동안 글로우가 다시 그려지지 않음 |
-| **커서 아크** (`caretArc`) | 커서가 뛴 길에 `arc` `beam` `comet` `flash` 중 하나를 그림. 테마 자신의 커서 색을 쓰고, 몇백 밀리초 살다 사라지는 SVG임 |
+| **커서 아크** (`caretArc`) | 커서가 뛴 길에 일곱 모양 중 하나를 그림. 테마 자신의 커서 색을 쓰고, 몇백 밀리초 살다 사라지는 SVG임. 건너는 시간은 `caretArcDuration`이 정함 |
 
 이 셋은 무언가를 움직임. 움직임을 달라고 한 사람은 없으므로 `0`으로 나가고 말하기
 전까지 그대로 있음. 셋 다 시스템이 모션 줄이기를 요청하면 무시됨.
@@ -495,7 +495,7 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.bracketMatchGlow` | `10` | 괄호와 그 짝을 감싸는 상자가 번지는 폭(px). `0`이면 꺼짐 |
 | `neonGlow.squiggleGlow` | `5` | 에러·경고·정보 물결선이 번지는 폭(px). 테마 자신의 색을 씀. `0`이면 꺼짐 |
 | `neonGlow.diffGlow` | `10` | diff에서 바뀐 단어가 번지는 폭(px). 줄 전체 틴트에는 안 붙음. `0`이면 꺼짐 |
-| `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지: `arc` `beam` `comet` `flash` |
+| `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지: `arc` `beam` `comet` `flash` `wave` `bolt` `dots` |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
 | `neonGlow.caretArcDuration` | `300` | 아크가 경로를 건너는 시간(ms). 60Hz에서 열여덟 프레임이고, 주사율이 낮으면 올려 잡아야 함 |
 | `neonGlow.caretArcOnDrag` | `false` | 마우스로 선택을 끄는 동안에도 계속 그릴지. 드래그를 시작한 클릭은 어느 쪽이든 그림 |

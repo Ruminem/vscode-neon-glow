@@ -390,6 +390,54 @@ async function main() {
   await s.jump(110);
   check('and is held back once the threshold is raised', s.drawn().length === 0);
 
+  /* Each new shape is the same machinery with a different wander, so what
+     separates them is the points list and the dash pattern - which is exactly
+     what these read. A style that fell through to the default would come out
+     with two points and pass nothing here. */
+  s = run({ knobs: { caretArc: 'wave' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('wave bends regularly rather than randomly', drawn.length === 1 && (function () {
+    const pts = drawn[0].descendants().filter((n) => n.tag === 'polyline')[0]
+      .attrs.points.split(' ').map((p) => Number(p.split(',')[1]));
+    /* Two full cycles cross the line three times between the pinned ends,
+       whatever the segment count works out to. Sixty-odd points of random
+       jitter cross it about thirty times, so counting the crossings is what
+       separates a shape from a scatter. */
+    const mid = pts[0];
+    const inner = pts.slice(1, -1);
+    let crossings = 0;
+    for (let i = 1; i < inner.length; i++) {
+      if ((inner[i - 1] - mid) * (inner[i] - mid) < 0) crossings++;
+    }
+    return inner.length > 8 && crossings <= 6
+      && inner.some((y) => y < mid - 1) && inner.some((y) => y > mid + 1);
+  })());
+
+  s = run({ knobs: { caretArc: 'bolt' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('bolt alternates side to side, and strays furthest', drawn.length === 1 && (function () {
+    const pts = drawn[0].descendants().filter((n) => n.tag === 'polyline')[0]
+      .attrs.points.split(' ').map((p) => Number(p.split(',')[1]));
+    const mid = pts[0];
+    const inner = pts.slice(1, -1);
+    return inner.length > 1
+      && inner.every((y, i) => (i % 2 ? y > mid : y < mid) || (i % 2 ? y < mid : y > mid))
+      && Math.max.apply(null, inner.map((y) => Math.abs(y - mid))) >= 10;
+  })());
+
+  s = run({ knobs: { caretArc: 'dots' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('dots repeat a short pattern instead of one lit head',
+    drawn.length === 1 && drawn[0].descendants()
+      .filter((n) => n.tag === 'polyline' && n.style.strokeDasharray)
+      .every((l) => l.style.strokeDasharray === '2 7'));
+
   s = run({ knobs: { caretArc: 'flash' } });
   await wait(120);
   await s.jump(114);
