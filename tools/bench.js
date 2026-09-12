@@ -41,55 +41,10 @@ const PORT = Number(arg('port', 9222));
 const ROUNDS = Number(arg('rounds', 6));
 const WHEELS = Number(arg('wheels', 40));
 
-/* ------------------------------------------------------------------ *
- * A minimal CDP client. One socket to the browser endpoint; page-scoped
- * commands carry a sessionId, browser-scoped ones (Tracing) do not.
- * ------------------------------------------------------------------ */
-function connect(url) {
-  const ws = new WebSocket(url);
-  const pending = new Map();
-  const listeners = new Map();
-  let nextId = 1;
-
-  ws.addEventListener('message', (ev) => {
-    const msg = JSON.parse(ev.data);
-    if (msg.id && pending.has(msg.id)) {
-      const { resolve, reject, method } = pending.get(msg.id);
-      pending.delete(msg.id);
-      /* Name the command in the error. "Invalid parameters" on its own says
-         nothing about which of a dozen calls produced it. */
-      if (msg.error) reject(new Error(method + ': ' + msg.error.message
-        + (msg.error.data ? ' (' + msg.error.data + ')' : '')));
-      else resolve(msg.result);
-      return;
-    }
-    const fns = listeners.get(msg.method);
-    if (fns) for (const fn of fns) fn(msg.params);
-  });
-
-  const ready = new Promise((resolve, reject) => {
-    ws.addEventListener('open', resolve);
-    ws.addEventListener('error', () => reject(new Error('could not open ' + url)));
-  });
-
-  return {
-    ready,
-    send(method, params, sessionId) {
-      const id = nextId++;
-      const payload = { id, method, params: params || {} };
-      if (sessionId) payload.sessionId = sessionId;
-      ws.send(JSON.stringify(payload));
-      return new Promise((resolve, reject) => pending.set(id, { resolve, reject, method }));
-    },
-    on(method, fn) {
-      if (!listeners.has(method)) listeners.set(method, []);
-      listeners.get(method).push(fn);
-    },
-    close() { ws.close(); }
-  };
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* The socket, the workbench target and evaluate() live in tools/cdp.js, which
+   live.js wanted as well. The two traps that cost an afternoon are written
+   down there rather than here. */
+const { attach, sleep } = require('./cdp.js');
 
 /* ------------------------------------------------------------------ *
  * The two formulas, as source that runs inside the renderer.
@@ -149,42 +104,9 @@ const APPLY = String.raw`(function (variant) {
 })`;
 
 async function main() {
-  let targets;
-  try {
-    targets = await (await fetch('http://127.0.0.1:' + PORT + '/json/list')).json();
-  } catch (e) {
-    console.error('No debugger on port ' + PORT + '.');
-    console.error('Launch VS Code with --remote-debugging-port=' + PORT + ' and try again.');
-    process.exit(1);
-  }
-
-  const page = targets.find((t) => t.type === 'page' && /workbench\.html/.test(t.url || ''));
-  if (!page) {
-    console.error('Found ' + targets.length + ' target(s) but no workbench page.');
-    process.exit(1);
-  }
-
-  const version = await (await fetch('http://127.0.0.1:' + PORT + '/json/version')).json();
-  const cdp = connect(version.webSocketDebuggerUrl);
-  await cdp.ready;
-
-  /* The HTTP target list calls it "id"; the protocol command wants "targetId".
-     Same target, two names, and the mismatch only shows up as a deserialize
-     error with no field name in it. */
-  const attached = await cdp.send('Target.attachToTarget',
-    { targetId: page.targetId || page.id, flatten: true });
-  const sid = attached.sessionId;
-  await cdp.send('Runtime.enable', {}, sid);
-
-  const evaluate = async (expr) => {
-    const r = await cdp.send('Runtime.evaluate',
-      { expression: expr, returnByValue: true }, sid);
-    if (r.exceptionDetails) {
-      throw new Error(r.exceptionDetails.text + ' :: ' +
-        ((r.exceptionDetails.exception || {}).description || '').split('\n')[0]);
-    }
-    return r.result.value;
-  };
+  let cdp, sid, evaluate;
+  try { ({ cdp, sid, evaluate } = await attach(PORT)); }
+  catch (e) { console.error(e.message); process.exit(1); }
 
   /* Where to point the wheel. */
   const rect = await evaluate(
