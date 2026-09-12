@@ -37,6 +37,7 @@ try {
     diffGlow:      10,   /* px of bloom on what changed inside a diff; 0 = flat  */
     lineHighlightGlow: 8, /* px of bloom on the line the editor points at; 0 = flat */
     breakpointGlow: 8,   /* px of bloom on breakpoint glyphs; 0 = leave them flat */
+    breathe:        0,   /* ms for one breath on the find match and the stopped line */
     caretArc:    'off',  /* off, or one of twelve shapes; see KNOB_ENUM below  */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
     caretArcDuration: 300, /* ms the arc takes to cross the path it drew         */
@@ -54,6 +55,7 @@ try {
     squiggleGlow: [0, 16],
     diffGlow: [0, 32],
     lineHighlightGlow: [0, 24], breakpointGlow: [0, 24],
+    breathe: [0, 6000],
     caretArcMinJump: [1, 400],
     caretArcDuration: [80, 1200]
   };
@@ -571,6 +573,46 @@ try {
       css += '.monaco-editor [class*="codicon-debug-breakpoint"] { text-shadow: 0 0 '
         + Math.max(1, Math.round(bp * 0.4)) + 'px currentColor, 0 0 ' + bp
         + 'px currentColor !important; }\n';
+    }
+
+    /* A slow swell on the two things that are waiting for you.
+
+       The glow is a text-shadow, and a text-shadow cannot be animated without
+       re-rastering its blur on every frame. On this project's own measurement
+       that is 87ms for one frame of a dense viewport at three passes, against a
+       16ms budget - so breathing the tokens would not drop frames, it would
+       hold up typing. What can be animated instead is a filter on the single
+       element that carries the glow: the blur is rastered once and the frames
+       only darken the result, the same bargain saveShake takes with transform.
+
+       Two surfaces, because the cost is the number of elements moving and these
+       are one each. The current find match is already the one place the glow
+       does work rather than decoration, and a pulse is more of that work. The
+       stopped line is the one you are waiting on while everything else is
+       still. The tokens, the gutter and the breakpoints are all many-at-once,
+       which is exactly where this stops being cheap.
+
+       It dips rather than swells: the rest point is the glow as it already is,
+       and the breath takes it down and brings it back, so turning this on never
+       makes anything brighter than leaving it off did. */
+    var br = Math.round(KNOBS.breathe);
+    if (br > 0) {
+      /* Anything faster than this reads as a strobe rather than a breath, and a
+         hand-edited settings.json is the only thing that can ask for it. */
+      br = Math.max(600, br);
+      var breathing = [];
+      if (Math.round(KNOBS.findGlow) > 0) breathing.push('.monaco-editor .currentFindMatch');
+      if (Math.round(KNOBS.lineHighlightGlow) > 0) breathing.push('.monaco-editor .debug-top-stack-frame-line');
+      if (breathing.length) {
+        css += '@media (prefers-reduced-motion: no-preference) {'
+          + ' @keyframes neon-glow-breathe {'
+          + ' 0%, 100% { filter: none; }'
+          + ' 50% { filter: brightness(0.55); }'
+          + ' }'
+          + ' ' + breathing.join(', ') + ' {'
+          + ' animation: neon-glow-breathe ' + br + 'ms ease-in-out infinite; }'
+          + ' }\n';
+      }
     }
 
     var dif = Math.round(KNOBS.diffGlow);

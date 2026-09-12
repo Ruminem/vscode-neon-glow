@@ -240,6 +240,8 @@ async function main() {
   check('breakpoints glow in their own colour, on the glyph rather than its box',
     /codicon-debug-breakpoint[^{]*\{ text-shadow: 0 0 3px currentColor, 0 0 8px currentColor/.test(css)
     && css.indexOf('debugIcon') === -1);
+  /* It moves, so it waits to be asked like the other three that do. */
+  check('breathing is off by default', css.indexOf('neon-glow-breathe') === -1);
   check('diff bloom is on by default, on the word-level highlight',
     /\.char-insert \{ box-shadow: 0 0 10px 3px var\(--vscode-diffEditor-insertedTextBackground\)/.test(css));
   /* The line tint is deliberately left alone: a blurred full-width block bleeds
@@ -255,7 +257,7 @@ async function main() {
      shipped at 0 and any output at all proved the wire worked. */
   s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 30, selectionGlow: 20,
             occurrenceGlow: 20, gutterGlow: 16, bracketMatchGlow: 24,
-            squiggleGlow: 10, diffGlow: 24, lineHighlightGlow: 18 } });
+            squiggleGlow: 10, diffGlow: 24, lineHighlightGlow: 18, breathe: 2400 } });
   await wait(120);
   css = s.styles();
 
@@ -281,13 +283,21 @@ async function main() {
     /\.squiggly-warning \{ filter: drop-shadow\(0 0 4px var\(--vscode-editorWarning-foreground\)\) drop-shadow\(0 0 10px/.test(css)
     && /\.squiggly-info \{ filter:/.test(css));
   check('hints are left alone', css.indexOf('.squiggly-hint') === -1);
+  /* A filter rather than the shadow itself: keyframes cannot outrank the
+     !important the glow rules carry, and animating a text-shadow would re-raster
+     its blur every frame. */
+  check('breathing rides on a filter, on the two surfaces that are one each',
+    /@keyframes neon-glow-breathe \{ 0%, 100% \{ filter: none; \} 50% \{ filter: brightness\(0\.55\); \} \}/.test(css)
+    && /\.currentFindMatch, \.monaco-editor \.debug-top-stack-frame-line \{ animation: neon-glow-breathe 2400ms/.test(css));
+  check('and nothing else is asked to breathe',
+    (css.match(/neon-glow-breathe/g) || []).length === 2);
   check('the pointed-at line follows the knob',
     /.rangeHighlight { box-shadow: 0 0 18px 6px/.test(css));
   check('diff bloom follows the knob, both sides in their own colours',
     /\.char-insert \{ box-shadow: 0 0 24px 8px var\(--vscode-diffEditor-insertedTextBackground\)/.test(css)
     && /\.char-delete \{ box-shadow: 0 0 24px 8px var\(--vscode-diffEditor-removedTextBackground\)/.test(css));
   check('moving effects respect reduced motion',
-    (css.match(/prefers-reduced-motion/g) || []).length === 2);
+    (css.match(/prefers-reduced-motion/g) || []).length === 3);
 
 
   /* ---- a save, carried on the status bar label ---- */
@@ -320,6 +330,17 @@ async function main() {
 
   /* ---- the caret arc, which builds elements rather than a stylesheet ---- */
   console.log('\ncaret arc');
+  /* Nothing to breathe on a surface whose glow is off, and a period under the
+     floor is a strobe rather than a breath. */
+  s = run({ knobs: { breathe: 50, findGlow: 18, lineHighlightGlow: 0 } });
+  await wait(120);
+  {
+    const c = s.styles();
+    check('a breath too fast to be one is held to the floor', /neon-glow-breathe 600ms/.test(c));
+    check('and a surface with no glow is not asked to breathe',
+      c.indexOf('debug-top-stack-frame-line { animation') === -1);
+  }
+
   s = run({ knobs: { caretArc: 'arc' } });
   await wait(120);
   check('a word knob is accepted', !!s.callbackFor(s.layer),
