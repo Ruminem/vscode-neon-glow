@@ -232,7 +232,90 @@ function deflateRect(rgba, W, r, prevFrame) {
   return zlib.deflateSync(raw, { level: 9 });
 }
 
+/**
+ * Cut a composite back into the two takes it was made from.
+ *
+ * The recordings are not committed - they are large, and re-recording produces
+ * new ones anyway - so the composite is the only copy of either half that
+ * survives. Twice in one afternoon a half had to be replaced and the other one
+ * was already gone; both times it came back out of here losslessly, because
+ * stacking only ever copied rows. Without this the rule against committing the
+ * sources would cost a re-record every time one side changes.
+ */
+function split(inFile, leftFile, rightFile) {
+  const A = decode(inFile);
+  if (A.W % 2) throw new Error(inFile + ': 폭이 홀수라 반으로 못 나눔');
+  const half = A.W / 2;
+
+  for (const [file, x0] of [[leftFile, 0], [rightFile, half]]) {
+    const frames = A.frames.map(function (f) {
+      const rgba = Buffer.alloc(half * A.H * 4);
+      for (let y = 0; y < A.H; y++) {
+        f.rgba.copy(rgba, y * half * 4, (y * A.W + x0) * 4, (y * A.W + x0 + half) * 4);
+      }
+      return { rgba: rgba, delay: f.delay };
+    });
+    write(file, frames, half, A.H);
+    console.log(file + '  ' + half + 'x' + A.H + '  ' + frames.length + ' frames  '
+      + (fs.statSync(file).size / 1048576).toFixed(2) + ' MB');
+  }
+}
+
+/* Shared by both directions: the frame list is already full-canvas RGBA either
+   way, so only the size it is written at differs. */
+function write(outFile, out, W, H) {
+  const parts = [Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])];
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8; ihdr[9] = 6;
+  parts.push(chunk('IHDR', ihdr));
+
+  const actl = Buffer.alloc(8);
+  actl.writeUInt32BE(out.length, 0); actl.writeUInt32BE(0, 4);
+  parts.push(chunk('acTL', actl));
+
+  let seq = 0;
+  const fctl = (r, delay, blend) => {
+    const d = Buffer.alloc(26);
+    d.writeUInt32BE(seq++, 0);
+    d.writeUInt32BE(r.w, 4); d.writeUInt32BE(r.h, 8);
+    d.writeUInt32BE(r.x, 12); d.writeUInt32BE(r.y, 16);
+    d.writeUInt16BE(Math.max(1, Math.round(delay * 1000)), 20);
+    d.writeUInt16BE(1000, 22);
+    d[24] = 0; d[25] = blend;
+    return chunk('fcTL', d);
+  };
+
+  let prev = null;
+  for (const f of out) {
+    if (!prev) {
+      parts.push(fctl({ x: 0, y: 0, w: W, h: H }, f.delay, 0));
+      parts.push(chunk('IDAT', deflateRect(f.rgba, W, { x: 0, y: 0, w: W, h: H }, null)));
+    } else {
+      const r = bbox(prev, f.rgba, W, H) || { x: 0, y: 0, w: 1, h: 1 };
+      parts.push(fctl(r, f.delay, 1));
+      const body = deflateRect(f.rgba, W, r, prev);
+      const withSeq = Buffer.alloc(4 + body.length);
+      withSeq.writeUInt32BE(seq++, 0); body.copy(withSeq, 4);
+      parts.push(chunk('fdAT', withSeq));
+    }
+    prev = f.rgba;
+  }
+  parts.push(chunk('IEND', Buffer.alloc(0)));
+  fs.writeFileSync(outFile, Buffer.concat(parts));
+}
+
 function main() {
+  if (process.argv[2] === '--split') {
+    const [inFile, leftFile, rightFile] = process.argv.slice(3);
+    if (!inFile || !leftFile || !rightFile) {
+      console.error('쓰기: node tools/hstack-apng.js --split combined.png left.png right.png');
+      process.exit(1);
+    }
+    split(inFile, leftFile, rightFile);
+    return;
+  }
+
   const [leftFile, rightFile, outFile] = process.argv.slice(2);
   const L = decode(leftFile), R = decode(rightFile);
   if (L.H !== R.H) throw new Error('높이가 다름: ' + L.H + ' vs ' + R.H);
@@ -271,46 +354,7 @@ function main() {
     out.push({ rgba, delay: (i + 1 < times.length ? times[i + 1] : total) - t });
   }
 
-  const parts = [Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])];
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4);
-  ihdr[8] = 8; ihdr[9] = 6;
-  parts.push(chunk('IHDR', ihdr));
-
-  const actl = Buffer.alloc(8);
-  actl.writeUInt32BE(out.length, 0); actl.writeUInt32BE(0, 4);
-  parts.push(chunk('acTL', actl));
-
-  let seq = 0;
-  const fctl = (r, delay, dispose, blend) => {
-    const d = Buffer.alloc(26);
-    d.writeUInt32BE(seq++, 0);
-    d.writeUInt32BE(r.w, 4); d.writeUInt32BE(r.h, 8);
-    d.writeUInt32BE(r.x, 12); d.writeUInt32BE(r.y, 16);
-    d.writeUInt16BE(Math.max(1, Math.round(delay * 1000)), 20);
-    d.writeUInt16BE(1000, 22);
-    d[24] = dispose; d[25] = blend;
-    return chunk('fcTL', d);
-  };
-
-  let prev = null;
-  for (const f of out) {
-    if (!prev) {
-      parts.push(fctl({ x: 0, y: 0, w: W, h: H }, f.delay, 0, 0));
-      parts.push(chunk('IDAT', deflateRect(f.rgba, W, { x: 0, y: 0, w: W, h: H }, null)));
-    } else {
-      const r = bbox(prev, f.rgba, W, H) || { x: 0, y: 0, w: 1, h: 1 };
-      parts.push(fctl(r, f.delay, 0, 1));
-      const body = deflateRect(f.rgba, W, r, prev);
-      const withSeq = Buffer.alloc(4 + body.length);
-      withSeq.writeUInt32BE(seq++, 0); body.copy(withSeq, 4);
-      parts.push(chunk('fdAT', withSeq));
-    }
-    prev = f.rgba;
-  }
-  parts.push(chunk('IEND', Buffer.alloc(0)));
-
-  fs.writeFileSync(outFile, Buffer.concat(parts));
+  write(outFile, out, W, H);
   console.log(outFile + '  ' + W + 'x' + H + '  ' + out.length + ' frames  '
     + total.toFixed(1) + 's  ' + (fs.statSync(outFile).size / 1048576).toFixed(2) + ' MB');
 }
