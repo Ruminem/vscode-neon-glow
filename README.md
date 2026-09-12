@@ -52,7 +52,7 @@ Bracket pair colouring is left to VS Code: brackets get a rule of their own in
 
 ## What else can glow
 
-The token glow is not the only thing on. Seven more surfaces light with it, and three
+The token glow is not the only thing on. Nine more surfaces light with it, and three
 effects wait to be asked for. The line between them is one sentence — **a setting
 that only decides what colour lands where is on, and a setting that changes what the
 editor does while you work is off.**
@@ -70,6 +70,8 @@ chosen.
 | **The matching bracket box** (`bracketMatchGlow`) | brackets already glow; the box that marks the pair did not, which left the moment the editor points at something as the dimmest thing on the line |
 | **Error, warning and info squiggles** (`squiggleGlow`) | the glow follows the wave itself, so an error is visible from across the screen without the word above it blooming. Hints are left alone — VS Code keeps them quiet on purpose |
 | **What changed in a diff** (`diffGlow`) | the word-level highlight, not the line tint behind it — and a diff is the one view the gutter bars are missing from, because VS Code hides them there |
+| **The line the editor points at** (`lineHighlightGlow`) | the stopped line while debugging, and the range that lights when you jump to a definition or peek a result. A full-width band, which the diff tint is not allowed — these come one at a time, so they mark a line instead of washing a region |
+| **Breakpoints** (`breakpointGlow`) | in whatever colour the glyph was painted, since this one is not published as a theme colour a rule could name |
 
 Find, selection, occurrence and diff colours are semi-transparent, because they sit behind
 text and must not hide it, so those rules take a `spread` — the weak colour is carried
@@ -211,6 +213,8 @@ reading is the preview.
 | `neonGlow.bracketMatchGlow` | `10` | px of bloom on the box around a bracket and its partner; `0` turns it off |
 | `neonGlow.squiggleGlow` | `5` | px of bloom on error, warning and info squiggles, in the theme's own colours; `0` turns it off |
 | `neonGlow.diffGlow` | `10` | px of bloom on what changed inside a diff, on the word-level highlight only; `0` turns it off |
+| `neonGlow.lineHighlightGlow` | `8` | px of bloom on the line the editor points at — the debug stop, a jump, a peek; `0` turns it off |
+| `neonGlow.breakpointGlow` | `8` | px of bloom on breakpoint glyphs, in the colour they were painted; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump — twelve shapes, from a straight `beam` to a `ring` that needs no distance |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 | `neonGlow.caretArcDuration` | `300` | ms the arc takes to cross its path — eighteen frames at 60Hz, and it wants raising on a slower panel |
@@ -348,7 +352,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 
 ### 토큰 말고 빛나는 것
 
-켜져 있는 것이 토큰 글로우만은 아님. 표면 일곱 개가 같이 빛나고, 효과 셋은 부를 때까지
+켜져 있는 것이 토큰 글로우만은 아님. 표면 아홉 개가 같이 빛나고, 효과 셋은 부를 때까지
 기다림. 그 경계는 한 문장임 — **어떤 색이 어디에 놓이는지만 정하는 설정은 켜져 나가고,
 일하는 동안 에디터가 하는 일을 바꾸는 설정은 꺼져 나감.**
 
@@ -364,6 +368,8 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 | **일치하는 괄호 상자** (`bracketMatchGlow`) | 괄호 자체는 이미 빛나는데 짝을 표시하는 상자는 안 빛났음. 에디터가 무언가를 가리키는 그 순간이 줄에서 제일 어두운 자리였음 |
 | **에러·경고·정보 물결선** (`squiggleGlow`) | 물결 모양을 그대로 따라 빛나서, 그 위 단어는 번지지 않은 채로 에러가 멀리서도 보임. 힌트는 건드리지 않음 — VS Code가 일부러 조용하게 두는 표시임 |
 | **diff에서 바뀐 것** (`diffGlow`) | 줄 전체 틴트가 아니라 단어 단위 강조에만 붙음. 그리고 diff는 거터 막대가 없는 유일한 화면임 — VS Code가 거기서 숨김 |
+| **에디터가 가리키는 줄** (`lineHighlightGlow`) | 디버그 중 멈춘 줄, 그리고 정의로 뛰거나 결과를 미리볼 때 켜지는 범위. 폭 전체를 덮는데 diff 틴트에는 허락되지 않은 것임 — 이쪽은 한 번에 하나만 떠서 영역을 흐리지 않고 줄을 짚음 |
+| **중단점** (`breakpointGlow`) | 글리프가 칠해진 그 색 그대로. 이 색은 규칙이 이름으로 부를 수 있는 테마 색으로 공개돼 있지 않음 |
 
 찾기·선택·심볼·diff 색은 글자 뒤에 깔리는 색이라 테마가 반투명으로 잡아둠. 그래서 그 넷에는
 `spread`가 붙음 — 약한 색을 원래 폭만큼 먼저 밀어낸 다음에 번지게 함. 거터 막대에도
@@ -495,6 +501,8 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.bracketMatchGlow` | `10` | 괄호와 그 짝을 감싸는 상자가 번지는 폭(px). `0`이면 꺼짐 |
 | `neonGlow.squiggleGlow` | `5` | 에러·경고·정보 물결선이 번지는 폭(px). 테마 자신의 색을 씀. `0`이면 꺼짐 |
 | `neonGlow.diffGlow` | `10` | diff에서 바뀐 단어가 번지는 폭(px). 줄 전체 틴트에는 안 붙음. `0`이면 꺼짐 |
+| `neonGlow.lineHighlightGlow` | `8` | 에디터가 가리키는 줄이 번지는 폭(px) — 디버그 정지, 점프, 미리보기. `0`이면 꺼짐 |
+| `neonGlow.breakpointGlow` | `8` | 중단점 글리프가 번지는 폭(px). 칠해진 색 그대로 씀. `0`이면 꺼짐 |
 | `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지. 열두 모양 — 곧은 `beam`부터 거리가 필요 없는 `ring`까지 |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
 | `neonGlow.caretArcDuration` | `300` | 아크가 경로를 건너는 시간(ms). 60Hz에서 열여덟 프레임이고, 주사율이 낮으면 올려 잡아야 함 |

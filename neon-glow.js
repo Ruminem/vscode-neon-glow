@@ -35,6 +35,8 @@ try {
     bracketMatchGlow: 10, /* px of bloom on the matching bracket box; 0 = flat   */
     squiggleGlow:   5,   /* px of bloom on error/warning/info squiggles; 0 = flat */
     diffGlow:      10,   /* px of bloom on what changed inside a diff; 0 = flat  */
+    lineHighlightGlow: 8, /* px of bloom on the line the editor points at; 0 = flat */
+    breakpointGlow: 8,   /* px of bloom on breakpoint glyphs; 0 = leave them flat */
     caretArc:    'off',  /* off, or one of twelve shapes; see KNOB_ENUM below  */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
     caretArcDuration: 300, /* ms the arc takes to cross the path it drew         */
@@ -51,6 +53,7 @@ try {
     bracketMatchGlow: [0, 32],
     squiggleGlow: [0, 16],
     diffGlow: [0, 32],
+    lineHighlightGlow: [0, 24], breakpointGlow: [0, 24],
     caretArcMinJump: [1, 400],
     caretArcDuration: [80, 1200]
   };
@@ -520,6 +523,56 @@ try {
        display:none once .modified-in-monaco-diff-editor is on the editor, and
        clicking a file in source control opens a diff. So the view people reach
        for most had the least lit in it, which is what this is for. */
+    /* The line the editor is pointing at.
+
+       Four of them, all the same shape: a full-width tint behind one line,
+       semi-transparent because text sits on it, so they take a spread like find
+       and selection do. The stopped line while debugging, the one below it when
+       you click up the call stack, the range that lights when you jump to a
+       symbol or peek a result, and the symbol highlight VS Code paints on the
+       same occasions.
+
+       The objection that kept the glow off the diff line tint does not reach
+       here. That one is a run - changed lines come in blocks, and blurring each
+       of them washes the region rather than marking anything. These are one at
+       a time, which is the same reason the bracket box is allowed through a
+       threshold built to keep body text out. */
+    var lh = Math.round(KNOBS.lineHighlightGlow);
+    if (lh > 0) {
+      var lSpread = Math.round(lh / 3);
+      var lines = [
+        ['debug-top-stack-frame-line', 'stackFrameHighlightBackground'],
+        ['debug-focused-stack-frame-line', 'focusedStackFrameHighlightBackground'],
+        ['rangeHighlight', 'rangeHighlightBackground'],
+        ['symbolHighlight', 'symbolHighlightBackground']
+      ];
+      for (var li = 0; li < lines.length; li++) {
+        css += '.monaco-editor .' + lines[li][0] + ' { box-shadow: 0 0 ' + lh + 'px '
+          + lSpread + 'px var(--vscode-editor-' + lines[li][1] + ') !important; }\n';
+      }
+    }
+
+    /* Breakpoints, in whatever colour they were painted.
+
+       currentColor rather than a named theme variable, the way the bracket rule
+       works. The colour for these does not arrive as one: searching the whole
+       installation for debugIcon.breakpoint.foreground finds nothing, so a rule
+       written against that name would have been a no-op that looked fine in the
+       source. currentColor cannot be wrong about it - it is whatever VS Code
+       settled on, including a theme that overrode it and including the dimmer
+       shade a disabled breakpoint gets.
+
+       text-shadow, not box-shadow: a codicon is a font glyph, so the light has
+       to follow the letterform rather than the box around it. That is the same
+       reason the squiggles use a filter - the shape being lit is not a
+       rectangle. It inherits into the ::before that carries the glyph. */
+    var bp = Math.round(KNOBS.breakpointGlow);
+    if (bp > 0) {
+      css += '.monaco-editor [class*="codicon-debug-breakpoint"] { text-shadow: 0 0 '
+        + Math.max(1, Math.round(bp * 0.4)) + 'px currentColor, 0 0 ' + bp
+        + 'px currentColor !important; }\n';
+    }
+
     var dif = Math.round(KNOBS.diffGlow);
     if (dif > 0) {
       var dSpread = Math.round(dif / 3);
