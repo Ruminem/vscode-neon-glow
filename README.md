@@ -10,16 +10,11 @@ along — no reload needed.
 
 ![requires VS Code 1.70 or newer](https://img.shields.io/badge/VS%20Code-1.70%2B-blue)
 
-The same file with the glow off, then on:
-
-![syntax highlighting as the theme paints it, with no glow](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-off.png)
-
-![the same lines with the glow on: keywords, strings and numbers lit in the colours the theme already gave them](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-on.png)
-
-And the rest of it in motion — the matching bracket box, every other place the symbol
+The same file at the same moment, without the glow on the left and with it on the
+right — the token colours, the matching bracket box, every other place the symbol
 under the caret appears, and error, warning and info squiggles:
 
-![the editor with the glow on: the bracket box beside the caret, the occurrences of the symbol it is parked on, and three squiggles lit in the theme's own diagnostic colours](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/neon-glow.png)
+![the same editor twice, side by side: plain syntax highlighting on the left, and on the right the same lines with the theme's own colours glowing, the bracket box beside the caret lit, the occurrences of the symbol it is parked on picked out, and three squiggles carrying the theme's diagnostic colours](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/neon-glow.png)
 
 [Which tokens glow](#which-tokens-glow) · [What else can glow](#what-else-can-glow) · [Install](#install) · [Settings](#settings) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
 
