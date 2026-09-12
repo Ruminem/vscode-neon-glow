@@ -213,6 +213,7 @@ reading is the preview.
 | `neonGlow.diffGlow` | `10` | px of bloom on what changed inside a diff, on the word-level highlight only; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
+| `neonGlow.caretArcDuration` | `300` | ms the arc takes to cross its path — eighteen frames at 60Hz, and it wants raising on a slower panel |
 | `neonGlow.caretArcOnDrag` | `false` | keep drawing while a selection is dragged out; the click that starts the drag draws either way |
 
 **`glowLayers` is the one that costs.** The editor virtualises, so a 10,000 line file
@@ -496,6 +497,7 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.diffGlow` | `10` | diff에서 바뀐 단어가 번지는 폭(px). 줄 전체 틴트에는 안 붙음. `0`이면 꺼짐 |
 | `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지: `arc` `beam` `comet` `flash` |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
+| `neonGlow.caretArcDuration` | `300` | 아크가 경로를 건너는 시간(ms). 60Hz에서 열여덟 프레임이고, 주사율이 낮으면 올려 잡아야 함 |
 | `neonGlow.caretArcOnDrag` | `false` | 마우스로 선택을 끄는 동안에도 계속 그릴지. 드래그를 시작한 클릭은 어느 쪽이든 그림 |
 
 **돈이 드는 것은 `glowLayers`임.** 에디터는 가상화하므로 10,000줄 파일이 곧 10,000개의

@@ -238,7 +238,7 @@ const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
                 'glowLayers', 'maxBlur', 'cursorTrail', 'saveShake',
                 'findGlow', 'selectionGlow', 'occurrenceGlow', 'gutterGlow',
                 'bracketMatchGlow', 'squiggleGlow', 'diffGlow',
-                'caretArc', 'caretArcMinJump', 'caretArcOnDrag'];
+                'caretArc', 'caretArcMinJump', 'caretArcDuration', 'caretArcOnDrag'];
 
 function readKnobs() {
   const c = vscode.workspace.getConfiguration('neonGlow');
