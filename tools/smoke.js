@@ -843,6 +843,19 @@ async function main() {
   check('a pre-loader bundle does not pass for a current one',
     isPatched(fake) && patchedStamp(fake) === null);
 
+  /* The same folder reaches here spelled two ways on Windows - "c:\..." from
+     VS Code's globalStorageUri, "C:\..." from %APPDATA% in the CLI. With the
+     stamp hashed from a URL built on that path, the two spellings gave one
+     bundle two stamps, and whichever side had not patched it last asked for it
+     to be patched again. */
+  {
+    const upper = 'C:\\Users\\someone\\AppData\\Roaming\\Code\\User\\globalStorage\\x\\state.json';
+    const lower = 'c' + upper.slice(1);
+    check('the drive letter\'s case does not change the loader stamp',
+      loaderStamp(upper) === loaderStamp(lower),
+      'the extension and the CLI would each call the other\'s patch out of date');
+  }
+
   fs.rmSync(tmp, { recursive: true, force: true });
 
   if (PRINT) {

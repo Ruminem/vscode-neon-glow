@@ -130,9 +130,21 @@ function writeBlocker(file) {
   }
 }
 
-/** Absolute fs path -> the vscode-file URL the renderer can fetch. */
+/**
+ * Absolute fs path -> the vscode-file URL the renderer can fetch.
+ *
+ * The drive letter is folded to lower case, because the same folder arrives
+ * spelled two ways: VS Code's globalStorageUri gives "c:\Users\...", while
+ * %APPDATA%, which the CLI reads, gives "C:\Users\...". Harmless while this URL
+ * only told the payload where state.json was. Once the loader's stamp was
+ * hashed from a URL built on it, the two spellings produced two stamps for one
+ * bundle - the extension called a CLI patch out of date, re-patched it, and the
+ * CLI would have called that one out of date in turn. The filesystem does not
+ * care about the case of a drive letter, so the URL does not have to either.
+ */
 function toVscodeFileUrl(fsPath) {
   let p = String(fsPath).split('\\').join('/');
+  p = p.replace(/^([A-Za-z]):/, (m, d) => d.toLowerCase() + ':');
   if (p.charAt(0) !== '/') p = '/' + p;
   return 'vscode-file://vscode-app' + encodeURI(p);
 }
