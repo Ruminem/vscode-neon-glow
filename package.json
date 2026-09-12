@@ -48,13 +48,13 @@
           "default": 3,
           "enum": [3, 2, 1],
           "enumDescriptions": [
-            "Near halo, mid halo and wide bloom, over the edge pass. The look this was designed around.",
-            "Drops the wide bloom. Measured at roughly a fifth of the raster time of three passes on a dense C++ file, and the one to reach for there.",
-            "The near halo only. Marginally cheaper again than two passes; past the edge pass the glow becomes a thin rim."
+            "%neonGlow.glowLayers.enum.3%",
+            "%neonGlow.glowLayers.enum.2%",
+            "%neonGlow.glowLayers.enum.1%"
           ],
           "order": 0,
           "scope": "application",
-          "markdownDescription": "How many shadow passes each token gets. **This is the expensive setting, not `#neonGlow.brightness#`.** Measured over a real scroll on a dense C++ viewport: 12ms of raster with the glow off, 16ms at two passes, 87ms at three. Blur time climbs far faster than radius, and at the widest pass the blurs of neighbouring tokens overlap heavily. A tight 1-2px edge pass always runs and is not counted here: at that radius it costs a rounding error, while dropping it would take the letterform back out of the glow. Applies without a restart."
+          "markdownDescription": "%neonGlow.glowLayers.markdownDescription%"
         },
         "neonGlow.maxBlur": {
           "type": "number",
@@ -63,7 +63,7 @@
           "maximum": 64,
           "order": 1,
           "scope": "application",
-          "markdownDescription": "Ceiling on any single blur radius, in pixels. The formula stops at `26` on its own at `#neonGlow.brightness#` `1`, so the default binds nothing until you lower it past that - or raise brightness, which scales every radius. Raster time climbs steeply with radius: measured on a dense C++ file, `32` is about a tenth cheaper, `30` a fifth, `28` a third, `26` nearly half, and the bloom narrows to match. A gentler trade than `#neonGlow.glowLayers#`, which drops the outer pass outright."
+          "markdownDescription": "%neonGlow.maxBlur.markdownDescription%"
         },
         "neonGlow.brightness": {
           "type": "number",
@@ -72,7 +72,7 @@
           "maximum": 3,
           "order": 2,
           "scope": "application",
-          "markdownDescription": "Overall glow strength. `0` turns the glow off while leaving the colours alone; `1` is the default. Applies without a restart."
+          "markdownDescription": "%neonGlow.brightness.markdownDescription%"
         },
         "neonGlow.minChroma": {
           "type": "number",
@@ -81,7 +81,7 @@
           "maximum": 1,
           "order": 3,
           "scope": "application",
-          "markdownDescription": "Colours flatter than this do not glow. Chroma is `max(r,g,b) - min(r,g,b)`, so raising this is what keeps body text and comments out of it."
+          "markdownDescription": "%neonGlow.minChroma.markdownDescription%"
         },
         "neonGlow.chromaSpan": {
           "type": "number",
@@ -90,7 +90,7 @@
           "maximum": 2,
           "order": 4,
           "scope": "application",
-          "markdownDescription": "How much chroma above `#neonGlow.minChroma#` it takes to reach full strength. Smaller means the difference between token colours is more abrupt."
+          "markdownDescription": "%neonGlow.chromaSpan.markdownDescription%"
         },
         "neonGlow.floor": {
           "type": "number",
@@ -99,7 +99,7 @@
           "maximum": 1,
           "order": 5,
           "scope": "application",
-          "markdownDescription": "Strength given to a colour that only just passes `#neonGlow.minChroma#`. Raise it to flatten the difference between token colours, lower it to exaggerate it."
+          "markdownDescription": "%neonGlow.floor.markdownDescription%"
         },
         "neonGlow.minLightness": {
           "type": "number",
@@ -108,7 +108,7 @@
           "maximum": 1,
           "order": 6,
           "scope": "application",
-          "markdownDescription": "Colours darker than this are skipped, however saturated they are. Keeps a dark theme's dim accents from glowing."
+          "markdownDescription": "%neonGlow.minLightness.markdownDescription%"
         },
         "neonGlow.cursorTrail": {
           "type": "number",
@@ -117,7 +117,7 @@
           "maximum": 400,
           "order": 7,
           "scope": "application",
-          "markdownDescription": "Milliseconds for the caret to slide to a new position, so the glow on it leaves a short streak behind. `0` keeps the instant jump. Typing restarts the slide on every keystroke, so a long duration reads as the caret lagging the text being entered: `45` keeps up while still streaking on a jump across the file, and much past `100` feels behind. Ignored when the system asks for reduced motion. VS Code has its own `#editor.cursorSmoothCaretAnimation#`, fixed at 80ms; whatever you set here wins over it. How much of a slide that is depends on the display: at 60Hz `45` is under three frames and arrives as a step or two rather than a glide, where the same value is six or seven frames at 144Hz - raise it on a slower panel. Applies without a restart."
+          "markdownDescription": "%neonGlow.cursorTrail.markdownDescription%"
         },
         "neonGlow.saveShake": {
           "type": "number",
@@ -126,7 +126,7 @@
           "maximum": 24,
           "order": 8,
           "scope": "application",
-          "markdownDescription": "How far, in pixels, the workbench jolts when a file is saved. `0` holds it still; `5` is a knock, `12` is theatrical. It runs as a compositor animation on `transform` alone, so the glow is not re-drawn during it. **Turn this off if you use `#files.autoSave#`** - on a delay or a focus change, every one of those saves is a save, and the screen will not stop moving. Ignored when the system asks for reduced motion. Applies without a restart."
+          "markdownDescription": "%neonGlow.saveShake.markdownDescription%"
         },
         "neonGlow.findGlow": {
           "type": "number",
@@ -135,7 +135,7 @@
           "maximum": 48,
           "order": 9,
           "scope": "application",
-          "markdownDescription": "Bloom on find results, in pixels, taken from the theme's own find colours. On at `18`; `0` leaves them flat. The current match is lit harder than the rest, so it still stands out among them. This is the one place the glow does work rather than decoration - matches become visible without hunting the scrollbar. Applies without a restart."
+          "markdownDescription": "%neonGlow.findGlow.markdownDescription%"
         },
         "neonGlow.selectionGlow": {
           "type": "number",
@@ -144,7 +144,7 @@
           "maximum": 32,
           "order": 10,
           "scope": "application",
-          "markdownDescription": "Bloom on selected text, in pixels, taken from the theme's own selection colour. On at `12`; `0` leaves it flat. Only rendered lines carry a selection span, so selecting a whole file costs the screenful in front of you and nothing beyond it. Applies without a restart."
+          "markdownDescription": "%neonGlow.selectionGlow.markdownDescription%"
         },
         "neonGlow.occurrenceGlow": {
           "type": "number",
@@ -153,7 +153,7 @@
           "maximum": 32,
           "order": 11,
           "scope": "application",
-          "markdownDescription": "Bloom on the symbol under the caret and every other place it appears on screen, in pixels, taken from the theme's own highlight colours. A word selected with the mouse is marked by VS Code with a colour of its own and is lit the same way, so the effect does not come and go with how you landed on the word. On at `10`; `0` leaves them flat. It sits lower than `#neonGlow.findGlow#` because these are on screen whenever the caret rests on a word rather than only while you are searching. Where the theme gives writes a different colour from reads, a write is lit wider. Needs VS Code's `#editor.occurrencesHighlight#` to be on, which it is by default. Applies without a restart."
+          "markdownDescription": "%neonGlow.occurrenceGlow.markdownDescription%"
         },
         "neonGlow.gutterGlow": {
           "type": "number",
@@ -162,7 +162,7 @@
           "maximum": 24,
           "order": 12,
           "scope": "application",
-          "markdownDescription": "Bloom on the change bars in the gutter - added, modified, deleted - in pixels, taken from the theme's own `editorGutter` colours. On at `8`; `0` leaves them flat. The bar is 3px wide and the box the glow hangs on has no width at all, so this one is carried by its spread rather than its blur; a large number widens the light rather than softening it. Only shows in a file under source control, and only on the lines you have changed. Applies without a restart."
+          "markdownDescription": "%neonGlow.gutterGlow.markdownDescription%"
         },
         "neonGlow.bracketMatchGlow": {
           "type": "number",
@@ -171,7 +171,7 @@
           "maximum": 32,
           "order": 13,
           "scope": "application",
-          "markdownDescription": "Bloom on the box VS Code draws around a bracket and its partner while the caret is on one, in pixels. On at `10`; `0` leaves it flat. The colour is the theme's `editorBracketMatch.border`, falling back to the background where a theme sets only that. Brackets themselves already glow in whatever colour they are painted; this lights the box that marks the pair, which otherwise stays dark at the one moment the editor is pointing at something. Needs `#editor.matchBrackets#`. Applies without a restart."
+          "markdownDescription": "%neonGlow.bracketMatchGlow.markdownDescription%"
         },
         "neonGlow.squiggleGlow": {
           "type": "number",
@@ -180,7 +180,7 @@
           "maximum": 16,
           "order": 14,
           "scope": "application",
-          "markdownDescription": "Bloom on the wavy underline under errors, warnings and info, in pixels, taken from the theme's own `editorError`, `editorWarning` and `editorInfo` colours. On at `5`; `0` leaves them flat. The wave is an image rather than a box, so the glow follows its shape instead of lighting the word above it. Hints are left alone - they are the three dots VS Code keeps quiet on purpose. Each visible squiggle is composited on its own, so a screen full of errors is the most this costs. Applies without a restart."
+          "markdownDescription": "%neonGlow.squiggleGlow.markdownDescription%"
         },
         "neonGlow.diffGlow": {
           "type": "number",
@@ -189,7 +189,7 @@
           "maximum": 32,
           "order": 15,
           "scope": "application",
-          "markdownDescription": "Bloom on what changed inside a diff, in pixels, taken from the theme's own diff colours. On at `10`; `0` leaves it flat. The word-level highlight only, not the line tint behind it: blurring a full-width block bleeds into the lines above and below, and changed lines usually come in runs, so that reads as a haze over the region rather than a mark on the change. A diff is also the one view `#neonGlow.gutterGlow#` is missing from - VS Code hides the change bars there, and clicking a file in source control opens a diff. Applies without a restart."
+          "markdownDescription": "%neonGlow.diffGlow.markdownDescription%"
         },
         "neonGlow.lineHighlightGlow": {
           "type": "number",
@@ -198,7 +198,7 @@
           "maximum": 24,
           "order": 16,
           "scope": "application",
-          "markdownDescription": "Bloom on the line the editor is pointing at, in pixels, in the theme's own colours. On at `8`; `0` leaves it flat. Four surfaces share this: the stopped line while debugging, the one below it when you walk up the call stack, and the range and symbol highlights that light when you jump to a definition or peek a result. Unlike the line tint in a diff, which `#neonGlow.diffGlow#` deliberately leaves alone, these appear one at a time - so blurring a full-width band marks a line rather than washing a region. Applies without a restart."
+          "markdownDescription": "%neonGlow.lineHighlightGlow.markdownDescription%"
         },
         "neonGlow.breakpointGlow": {
           "type": "number",
@@ -207,7 +207,7 @@
           "maximum": 24,
           "order": 17,
           "scope": "application",
-          "markdownDescription": "Bloom on breakpoint glyphs in the gutter, in pixels. On at `8`; `0` leaves them flat. The colour is taken as `currentColor` - whatever VS Code painted the glyph, including a theme that overrode it and the dimmer shade a disabled breakpoint gets - because this one is not published as a theme colour a rule could name. It is a `text-shadow` rather than a `box-shadow`: a codicon is a font glyph, so the light follows the letterform instead of the box around it. Applies without a restart."
+          "markdownDescription": "%neonGlow.breakpointGlow.markdownDescription%"
         },
         "neonGlow.snippetGlow": {
           "type": "number",
@@ -216,7 +216,7 @@
           "maximum": 24,
           "order": 18,
           "scope": "application",
-          "markdownDescription": "Bloom on a snippet's tabstops while you are filling one in, in pixels - the stops still to visit, and the last one, where the caret lands when you are done. Taken from the theme's own `editor.snippetTabstopHighlightBackground` and `editor.snippetFinalTabstopHighlightBorder`. On at `8`; `0` leaves them flat. VS Code's defaults for both are a faint grey that does not read once it is blurred, so they are lifted to a lightness a glow can show before they are used; hue and transparency stay the theme's. Only on screen between inserting a snippet and leaving it. Applies without a restart."
+          "markdownDescription": "%neonGlow.snippetGlow.markdownDescription%"
         },
         "neonGlow.renameGlow": {
           "type": "number",
@@ -225,7 +225,7 @@
           "maximum": 32,
           "order": 19,
           "scope": "application",
-          "markdownDescription": "Bloom around the rename box that `F2` opens, in pixels, in the theme's `focusBorder` colour - the one it draws a focused field with. On at `12`; `0` leaves it flat. A `drop-shadow` filter rather than a `box-shadow`: VS Code writes the box's own shadow inline, which a stylesheet can only beat by forcing it, and a forced shadow is one `#neonGlow.breathe#` could not move. The filter sits on top of VS Code's shadow instead of replacing it, and leaves the name you are typing alone. Applies without a restart."
+          "markdownDescription": "%neonGlow.renameGlow.markdownDescription%"
         },
         "neonGlow.breathe": {
           "type": "number",
@@ -234,30 +234,30 @@
           "maximum": 6000,
           "order": 20,
           "scope": "application",
-          "markdownDescription": "Milliseconds for one slow swell on whatever the editor is waiting on you for: the current find match, the stopped line while debugging, the matching bracket box, a snippet's tabstops, and the rename box. `0` holds them still; `2400` is a breath. **Only those**, and what lets one in is when it is on screen rather than how few of it there are - each is there only while the editor waits on you. Count still bounds the rest: the glow is a `text-shadow`, its blur has to be re-drawn on every frame that changes it, and one frame of a dense viewport at three passes was measured at 87ms against a 16ms budget, so breathing every token would hold up typing. The occurrence highlights are left out because they are on screen whenever the caret rests on a word, so breathing them would mean something is always pulsing, and a mark that never stops reads as background rather than as a signal. It dips rather than swells, so turning this on never makes anything brighter than leaving it off did. The rename box dims its glow rather than itself, so the name you are typing stays lit; that re-draws one box's blur on each frame, which has not been measured. Anything under `600` is held there - faster reads as a strobe. Needs the glow on the surface it rides: `#neonGlow.findGlow#`, `#neonGlow.lineHighlightGlow#`, `#neonGlow.bracketMatchGlow#`, `#neonGlow.snippetGlow#` and `#neonGlow.renameGlow#`. Ignored when the system asks for reduced motion. Applies without a restart."
+          "markdownDescription": "%neonGlow.breathe.markdownDescription%"
         },
         "neonGlow.caretArc": {
           "type": "string",
           "default": "off",
           "enum": ["off", "arc", "beam", "comet", "flash", "wave", "bolt", "dots", "coil", "square", "zip", "pulse", "ring"],
           "enumDescriptions": [
-            "Nothing is drawn when the caret moves.",
-            "A jagged bolt runs the way the caret went, lighting the path behind it before it fades. The jitter is rolled fresh every time, so no two are the same shape.",
-            "The same thing, drawn straight. Quieter, and the one to reach for if the jitter reads as noise.",
-            "A short bright head flies the path and leaves nothing behind it. The most restrained of the four.",
-            "No path at all - a burst where the caret landed. The only one that still reads on a Tab, because it does not need distance to draw.",
-            "A regular ripple along the way the caret went, where `arc` is a random jitter. The wander is the same every time, which reads calmer over a long jump.",
-            "A sharp zigzag with far fewer, larger turns than `arc` - the widest detour of the set, and the one that still reads at a glance across a whole file.",
-            "A stream of short dashes running the length of the path rather than one lit head. Busier than `comet` and quieter than `bolt`.",
-            "`wave` wound six times tighter - a spring rather than a ripple. The one that reads as speed on a long jump and as a knot on a short one.",
-            "A crenellation: it holds a level, jumps, and holds the other. Squarer than `bolt`, which turns at every point it has.",
-            "The line draws itself on from the caret it left to the caret it reached, and stays whole while it fades. Nothing runs along it.",
-            "The whole route lights at once and goes out. The only path style with no travel in it at all, and the quietest of them.",
-            "`flash` drawn as an edge instead of a fill - a ring pushed outwards from where the caret landed. Like `flash`, it needs no distance."
+            "%neonGlow.caretArc.enum.off%",
+            "%neonGlow.caretArc.enum.arc%",
+            "%neonGlow.caretArc.enum.beam%",
+            "%neonGlow.caretArc.enum.comet%",
+            "%neonGlow.caretArc.enum.flash%",
+            "%neonGlow.caretArc.enum.wave%",
+            "%neonGlow.caretArc.enum.bolt%",
+            "%neonGlow.caretArc.enum.dots%",
+            "%neonGlow.caretArc.enum.coil%",
+            "%neonGlow.caretArc.enum.square%",
+            "%neonGlow.caretArc.enum.zip%",
+            "%neonGlow.caretArc.enum.pulse%",
+            "%neonGlow.caretArc.enum.ring%"
           ],
           "order": 21,
           "scope": "application",
-          "markdownDescription": "What to draw when the caret jumps: a key, a click, find-next, go-to-definition - anything that moves it, not only a keystroke. Off by default. The colour is the theme's own caret colour rather than one of ours, and each shape is SVG that lives a few hundred milliseconds and is then removed. `#neonGlow.caretArcMinJump#` decides how far the caret has to travel first. Ignored when the system asks for reduced motion. Applies without a restart."
+          "markdownDescription": "%neonGlow.caretArc.markdownDescription%"
         },
         "neonGlow.caretArcMinJump": {
           "type": "number",
@@ -266,7 +266,7 @@
           "maximum": 400,
           "order": 22,
           "scope": "application",
-          "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. Travel is the distance actually covered, across both axes, so a line up or down is about nineteen of it where a character is seven. The default of `5` is under one character, so a single arrow key clears it and holding one reads as light running along beside the caret - which is what the effect is for. It also means a held key draws one animation per repeat, and that is the only place this costs anything, so raise it if it ever shows. At `40` only real jumps qualify: End, Ctrl+arrow, a click across the file."
+          "markdownDescription": "%neonGlow.caretArcMinJump.markdownDescription%"
         },
         "neonGlow.caretArcDuration": {
           "type": "number",
@@ -275,14 +275,14 @@
           "maximum": 1200,
           "order": 23,
           "scope": "application",
-          "markdownDescription": "How long `#neonGlow.caretArc#` takes to cross the path it drew, in milliseconds. A duration is not what anyone sees; frames are. At 60Hz the default of `300` is eighteen of them and the spark is only lit for the middle - it fades in over the first eighth and back out at the end - so the floor is `80`, below which the whole thing happens in three or four frames and reads as a flicker where the caret landed rather than as anything travelling. If that is what you want, `flash` asks for it directly and is cheaper. The same value is half as many frames at 60Hz as at 144Hz, so it wants raising on a slower panel. `flash` keeps its own shorter life at a fixed fraction of this rather than taking a setting of its own. Applies without a restart."
+          "markdownDescription": "%neonGlow.caretArcDuration.markdownDescription%"
         },
         "neonGlow.caretArcOnDrag": {
           "type": "boolean",
           "default": false,
           "order": 24,
           "scope": "application",
-          "markdownDescription": "Keep drawing `#neonGlow.caretArc#` while a selection is being dragged out with the mouse. Off, because a drag moves the caret at mouse rate and one gesture then draws a whole run of arcs, which reads as noise rather than as light following the caret. **The click that starts the drag still draws either way** - it is the moving that is held back, not the press. Applies without a restart."
+          "markdownDescription": "%neonGlow.caretArcOnDrag.markdownDescription%"
         }
       }
     }

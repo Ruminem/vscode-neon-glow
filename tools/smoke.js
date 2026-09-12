@@ -958,6 +958,39 @@ async function main() {
 
   fs.rmSync(tmp, { recursive: true, force: true });
 
+  /* ---- settings descriptions, one file per language ---- */
+  /* package.json names a key and the text lives in package.nls.json (English)
+     and package.nls.ko.json (Korean). A key with no text shows up in the
+     Settings UI as the raw %key%, and a translation that dropped a value or a
+     setting link sends someone to the wrong number or a dead link - so the two
+     are held to the same backticked spans, description for description. */
+  console.log('\nsettings descriptions');
+  {
+    const root = path.join(__dirname, '..');
+    const en = JSON.parse(fs.readFileSync(path.join(root, 'package.nls.json'), 'utf8'));
+    const ko = JSON.parse(fs.readFileSync(path.join(root, 'package.nls.ko.json'), 'utf8'));
+    const refs = [];
+    for (const [name, spec] of Object.entries(pkg.contributes.configuration.properties)) {
+      refs.push([name, spec.markdownDescription]);
+      (spec.enumDescriptions || []).forEach(d => refs.push([name, d]));
+    }
+    const unkeyed = refs.filter(([, s]) => !/^%[^%]+%$/.test(s || ''));
+    check('every setting description in package.json is a key', unkeyed.length === 0,
+      'still inline: ' + unkeyed.map(r => r[0]).join(', '));
+    const keys = refs.map(([, s]) => String(s).slice(1, -1));
+    const missing = lang => keys.filter(k => typeof lang[k] !== 'string' || !lang[k].trim());
+    check('and every key has English text', missing(en).length === 0, missing(en).join(', '));
+    check('and Korean text', missing(ko).length === 0, missing(ko).join(', '));
+    const extra = Object.keys(en).filter(k => !(k in ko)).concat(Object.keys(ko).filter(k => !(k in en)));
+    check('the two languages carry the same keys', extra.length === 0, extra.join(', '));
+    const spans = s => (s.match(/`[^`]*`/g) || []).slice().sort().join(' ');
+    const drift = Object.keys(en).filter(k => k in ko && spans(en[k]) !== spans(ko[k]));
+    check('and the same values and setting links in each', drift.length === 0,
+      drift.map(k => k + '\n            en: ' + spans(en[k]) + '\n            ko: ' + spans(ko[k])).join('\n          '));
+    check('command names stay in English, untranslated',
+      pkg.contributes.commands.every(c => c.title.indexOf('%') === -1));
+  }
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
