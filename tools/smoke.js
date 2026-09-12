@@ -389,20 +389,34 @@ async function main() {
      still draws; the rest of the gesture is held back unless asked for. */
   s = run({ knobs: { caretArc: 'arc' } });
   await wait(120);
-  s.mouse('mousedown');
+  s.mouse('pointerdown');
   await s.jump(300);
   check('the click that starts a drag still draws', s.drawn().length === 1);
   await s.jump(400);
   await s.jump(500);
   check('the drag after it does not', s.drawn().length === 1,
     'every step of a drag is drawing, which is the noise this knob exists for');
-  s.mouse('mouseup');
+  s.mouse('pointerup');
   await s.jump(600);
   check('and the button coming up ends the drag', s.drawn().length === 2);
 
+  /* A drag that ends somewhere this document never hears about - released
+     outside the window, or alt-tabbed away from - would otherwise leave the
+     button held down for good, and every caret move after it, keyboard
+     included, would be read as part of that drag. */
+  s = run({ knobs: { caretArc: 'arc' } });
+  await wait(120);
+  s.mouse('pointerdown');
+  await s.jump(300);
+  await s.jump(400);
+  s.mouse('blur');
+  await s.jump(500);
+  check('losing the window ends the drag too', s.drawn().length === 2,
+    'the button stays down forever and the arc never draws again');
+
   s = run({ knobs: { caretArc: 'arc', caretArcOnDrag: true } });
   await wait(120);
-  s.mouse('mousedown');
+  s.mouse('pointerdown');
   await s.jump(300);
   await s.jump(400);
   check('caretArcOnDrag keeps drawing through the drag', s.drawn().length === 2);
@@ -411,7 +425,7 @@ async function main() {
      is still a string, and the renderer sorts by type. */
   s = run({ knobs: { caretArc: 'arc', caretArcOnDrag: 'true' } });
   await wait(120);
-  s.mouse('mousedown');
+  s.mouse('pointerdown');
   await s.jump(300);
   await s.jump(400);
   check('a knob that is not really a boolean is dropped', s.drawn().length === 1,

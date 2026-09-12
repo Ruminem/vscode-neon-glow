@@ -713,12 +713,22 @@ try {
   var arcPointer = { down: false, moved: 0 };
 
   function attachArcPointer() {
-    window.addEventListener('mousedown', function (e) {
+    window.addEventListener('pointerdown', function (e) {
       /* The primary button only. A middle-click paste moves the caret once and
          is not a drag, and the context menu does not move it at all. */
       if (!e || !e.button) { arcPointer.down = true; arcPointer.moved = 0; }
     }, true);
-    window.addEventListener('mouseup', function () { arcPointer.down = false; }, true);
+    /* Pointer events rather than mouse ones for the sake of this release:
+       a drag that ends outside the window never delivers a mouseup, and the
+       button would then be held down forever - which suppresses every caret
+       move after it, keyboard included, until the next complete click. Monaco
+       takes pointer capture for its drags, so the pointerup is delivered to the
+       capturing element and passes through here on the way.
+       blur is the backstop for the rest: alt-tab away mid-drag and the release
+       happens somewhere this document never hears about. */
+    window.addEventListener('pointerup', function () { arcPointer.down = false; }, true);
+    window.addEventListener('pointercancel', function () { arcPointer.down = false; }, true);
+    window.addEventListener('blur', function () { arcPointer.down = false; });
   }
 
   function arcStyle() {
