@@ -220,6 +220,11 @@ async function main() {
   check('find bloom is on by default', /\.findMatch \{ box-shadow: 0 0 18px 6px/.test(css));
   check('selection bloom is on by default', /\.selected-text \{ box-shadow: 0 0 12px/.test(css));
   check('occurrence bloom is on by default', /\.wordHighlight \{ box-shadow: 0 0 10px 3px/.test(css));
+  /* The same idea reached by the mouse rather than by the caret. This went
+     unlit for as long as the rule existed, so whether the effect appeared
+     depended on how you had landed on the word. */
+  check('and on the word a mouse selection marks, not only the caret one',
+    /\.selectionHighlight \{ box-shadow: 0 0 10px 3px var\(--vscode-editor-selectionHighlightBackground\)/.test(css));
   check('gutter bloom is on by default', /dirty-diff-added:before \{ box-shadow: 0 0 8px 2px/.test(css));
   check('bracket-match bloom is on by default', /\.bracket-match \{ box-shadow: 0 0 10px var/.test(css));
   check('squiggle bloom is on by default, two passes',
@@ -624,7 +629,8 @@ async function main() {
 
   check('zero removes the find bloom', offCss.indexOf('.findMatch') === -1);
   check('zero removes the selection bloom', offCss.indexOf('.selected-text') === -1);
-  check('zero removes the occurrence bloom', offCss.indexOf('.wordHighlight') === -1);
+  check('zero removes the occurrence bloom', offCss.indexOf('.wordHighlight') === -1
+    && offCss.indexOf('.selectionHighlight') === -1);
   check('zero removes the gutter bloom', offCss.indexOf('dirty-diff') === -1);
   check('zero removes the bracket-match bloom', offCss.indexOf('.bracket-match') === -1);
   check('zero removes the squiggle bloom', offCss.indexOf('squiggly') === -1);

@@ -379,6 +379,16 @@ try {
       css += '.monaco-editor .wordHighlightStrong { box-shadow: 0 0 '
         + Math.round(occ * 1.25) + 'px ' + Math.round(occ / 2.2) + 'px'
         + ' var(--vscode-editor-wordHighlightStrongBackground) !important; }\n';
+      /* The fourth one, and the reason this rule was half a feature until it was
+         added. The three above are what a language server answers when the caret
+         rests on a symbol; this is what VS Code marks on its own when a word is
+         selected with the mouse or by double-click. Same idea - here is this
+         thing again, elsewhere on screen - and the same semi-transparent kind of
+         colour, so it takes the same radius and the same spread. Without it the
+         effect appeared and disappeared depending on which hand you had used to
+         land on the word, which reads as a bug rather than as a rule. */
+      css += '.monaco-editor .selectionHighlight { box-shadow: 0 0 ' + occ + 'px '
+        + oSpread + 'px var(--vscode-editor-selectionHighlightBackground) !important; }\n';
     }
 
     /* The change bars in the gutter - added, modified, deleted - lit from the

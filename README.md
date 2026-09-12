@@ -65,7 +65,7 @@ chosen.
 |---|---|
 | **Find results** (`findGlow`) | the one place the glow does work rather than decoration — a match is visible without hunting the scrollbar for its mark |
 | **The selection** (`selectionGlow`) | only rendered lines carry a selection span, so selecting a whole file costs the screenful in front of you and nothing beyond it |
-| **The symbol under the caret** (`occurrenceGlow`) | every place it appears on screen. Where a theme paints a write in a different colour from a read, the write is lit wider |
+| **The symbol under the caret** (`occurrenceGlow`) | every place it appears on screen — and the same for a word selected with the mouse, which VS Code marks differently. Where a theme paints a write in a different colour from a read, the write is lit wider |
 | **The gutter's change bars** (`gutterGlow`) | added, modified and deleted marks from source control — bounded by how many lines you have changed, not by the viewport |
 | **The matching bracket box** (`bracketMatchGlow`) | brackets already glow; the box that marks the pair did not, which left the moment the editor points at something as the dimmest thing on the line |
 | **Error, warning and info squiggles** (`squiggleGlow`) | the glow follows the wave itself, so an error is visible from across the screen without the word above it blooming. Hints are left alone — VS Code keeps them quiet on purpose |
@@ -359,7 +359,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 |---|---|
 | **찾기 결과** (`findGlow`) | 글로우가 장식이 아니라 실제로 일을 하는 유일한 자리임. 스크롤바의 표시를 뒤지지 않아도 매치가 보임 |
 | **선택 영역** (`selectionGlow`) | 화면에 그려진 줄만 선택 span을 가지므로, 파일 전체를 선택해도 눈앞의 한 화면만큼만 듦 |
-| **커서가 놓인 심볼** (`occurrenceGlow`) | 그 심볼이 화면에 나온 자리 전부. 테마가 읽기와 쓰기를 다른 색으로 칠하면 쓰기를 더 넓게 밝힘 |
+| **커서가 놓인 심볼** (`occurrenceGlow`) | 그 심볼이 화면에 나온 자리 전부. 마우스로 고른 단어도 같음 — VS Code가 그 둘을 다른 표시로 칠함. 테마가 읽기와 쓰기를 다른 색으로 칠하면 쓰기를 더 넓게 밝힘 |
 | **거터의 변경 막대** (`gutterGlow`) | 소스 관리가 남기는 추가·수정·삭제 표시. 뷰포트가 아니라 고친 줄 수에 비용이 묶임 |
 | **일치하는 괄호 상자** (`bracketMatchGlow`) | 괄호 자체는 이미 빛나는데 짝을 표시하는 상자는 안 빛났음. 에디터가 무언가를 가리키는 그 순간이 줄에서 제일 어두운 자리였음 |
 | **에러·경고·정보 물결선** (`squiggleGlow`) | 물결 모양을 그대로 따라 빛나서, 그 위 단어는 번지지 않은 채로 에러가 멀리서도 보임. 힌트는 건드리지 않음 — VS Code가 일부러 조용하게 두는 표시임 |
