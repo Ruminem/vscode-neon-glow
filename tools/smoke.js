@@ -730,17 +730,58 @@ async function main() {
      That is not a slow squeeze either - it arrives whole, between one release
      and the next, the first time the payload crosses the line. */
   console.log('\npatched bundle');
-  const { isPatched, patchedStamp } = require('../patch.js');
-  const fake = path.join(require('os').tmpdir(), 'neon-bundle.js');
+  const { isPatched, patchedStamp, loaderStamp, loaderSource,
+          writePayloadCopy, payloadCopyPath, payloadCopyStamp, applyPatch } = require('../patch.js');
+  const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'neon-loader-'));
+  const stateFile = path.join(tmp, 'state.json');
+  const fake = path.join(tmp, 'workbench.js');
   /* A megabyte of something else first, the way a real workbench.js is. */
-  fs.writeFileSync(fake, '/* filler */\n'.repeat(80000)
-    + lfText.replace('__NEON_STAMP__', payloadStamp(PAYLOAD)));
+  fs.writeFileSync(fake, '/* filler */\n'.repeat(80000));
+  applyPatch(fake, PAYLOAD, stateFile);
+
   check('a patched bundle reads as patched', isPatched(fake),
-    'the payload has outgrown the window the marker is looked for in');
+    'the marker is outside the window it is looked for in');
   check('and the stamp in it can still be read back',
-    patchedStamp(fake) === payloadStamp(PAYLOAD),
+    patchedStamp(fake) === loaderStamp(stateFile),
     'the extension would ask for a re-patch on every launch');
-  fs.unlinkSync(fake);
+
+  /* The point of the whole arrangement: the bundle carries a stub, the payload
+     lives beside state.json, and the two are independent. */
+  const patchedText = fs.readFileSync(fake, 'utf8');
+  check('the bundle carries the loader, not the payload',
+    patchedText.indexOf('import(') !== -1
+    && patchedText.indexOf('.vscode-tokens-styles') === -1,
+    'the payload went into the bundle, so a payload release still wants a re-patch');
+  /* The copy is the payload with its placeholders filled in, so its own bytes
+     never match the source. What ties them together is the stamp written into
+     it on the way past. */
+  check('and the payload was written where the loader will look',
+    fs.existsSync(payloadCopyPath(stateFile))
+    && payloadCopyStamp(stateFile) === payloadStamp(PAYLOAD));
+  check('with its placeholders filled in',
+    fs.readFileSync(payloadCopyPath(stateFile), 'utf8').indexOf('__NEON_STATE_URL__') === -1);
+
+  /* A payload release must not move the loader's stamp - that is what stops it
+     from asking for a re-patch it does not need. */
+  const before = loaderStamp(stateFile);
+  const grown = path.join(tmp, 'bigger-payload.js');
+  fs.writeFileSync(grown, lfText + '\n/* one more line */\n');
+  writePayloadCopy(grown, stateFile);
+  check('a new payload leaves the loader stamp alone',
+    loaderStamp(stateFile) === before && patchedStamp(fake) === before,
+    'every payload release would tell every install to re-patch');
+  check('and only the copy beside state.json moved',
+    payloadCopyStamp(stateFile) === payloadStamp(grown)
+    && payloadCopyStamp(stateFile) !== payloadStamp(PAYLOAD));
+
+  /* A bundle patched before the loader says "payload", and reading that as a
+     loader stamp would call it current when it is one re-patch behind. */
+  fs.writeFileSync(fake, '/* old */\n' + '/* ' + require('../locate.js').MARKER
+    + ' [payload abc123abc123] */\n');
+  check('a pre-loader bundle does not pass for a current one',
+    isPatched(fake) && patchedStamp(fake) === null);
+
+  fs.rmSync(tmp, { recursive: true, force: true });
 
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({

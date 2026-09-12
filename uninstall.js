@@ -5,7 +5,8 @@
  *   node uninstall.js [--target <path to resources/app>]
  */
 const { resolveTargets } = require('./locate');
-const { removePatch, recallTargets, forgetTargets, defaultStateFile } = require('./patch');
+const { removePatch, recallTargets, forgetTargets, defaultStateFile,
+        payloadCopyPath } = require('./patch');
 
 /* Prefer what installing wrote down; the guess is for older installs that
    were patched before there was a record. */
@@ -36,4 +37,7 @@ for (const file of targets) {
 if (failed) process.exit(1);
 if (!restored) { console.log('Nothing to restore; the bundle is already original.'); process.exit(0); }
 forgetTargets(stateFile);
+/* The loader reads this; with the bundle restored nothing does. Left behind it
+   is a stale copy of a payload for an extension that is going away. */
+try { require('fs').unlinkSync(payloadCopyPath(stateFile)); } catch (e) { /* never written, or already gone */ }
 console.log('\nDone. Quit VS Code completely and start it again.');
