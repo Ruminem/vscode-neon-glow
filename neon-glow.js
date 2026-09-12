@@ -332,11 +332,24 @@ try {
 
        Cost stays bounded by the viewport. Only rendered lines carry a
        .selected-text span, so selecting a whole file lights the screenful in
-       front of you and nothing beyond it. */
+       front of you and nothing beyond it.
+
+       Find's two colours are lifted to a lightness of at least 0.6 on the way
+       in, keeping their hue, chroma and alpha. A theme can hand over a colour
+       that cannot glow at all: Hyper Dracula sets the highlight to opaque
+       #000000, and a black shadow on a dark editor is no shadow - every match
+       but the current one went dark, and the current one fell back to VS Code's
+       own #515c6a, a grey that barely showed. The floor turns black into a grey
+       halo and leaves anything already lighter exactly as the theme drew it,
+       Dark Modern's orange included. It is done in CSS rather than by reading
+       the colour in JS because a theme swap rewrites the token stylesheet and
+       the colour variables separately, and a read in between would judge the new
+       tokens by the old theme's colour. An unset variable still drops the rule,
+       as it did before. */
     var find = Math.round(KNOBS.findGlow);
     if (find > 0) {
-      var fh = 'var(--vscode-editor-findMatchHighlightBackground)';
-      var fc = 'var(--vscode-editor-findMatchBackground)';
+      var fh = 'oklch(from var(--vscode-editor-findMatchHighlightBackground) max(l, 0.6) c h / alpha)';
+      var fc = 'oklch(from var(--vscode-editor-findMatchBackground) max(l, 0.6) c h / alpha)';
       css += '.monaco-editor .findMatch { box-shadow:'
         + ' 0 0 ' + find + 'px ' + Math.round(find / 3) + 'px ' + fh + ','
         + ' 0 0 ' + Math.round(find * 1.9) + 'px ' + Math.round(find / 4) + 'px ' + fh

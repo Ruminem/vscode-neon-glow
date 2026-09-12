@@ -219,6 +219,9 @@ async function main() {
   check('no caret transition', css.indexOf('transition: transform') === -1);
   check('no jolt keyframes', css.indexOf('neon-glow-shake') === -1);
   check('find bloom is on by default', /\.findMatch \{ box-shadow: 0 0 18px 6px/.test(css));
+  check('find bloom lifts a theme colour too dark to glow',
+    /\.findMatch \{[^}]*oklch\(from var\(--vscode-editor-findMatchHighlightBackground\) max\(l, 0\.6\) c h \/ alpha\)/.test(css)
+    && /\.currentFindMatch \{[^}]*oklch\(from var\(--vscode-editor-findMatchBackground\) max\(l, 0\.6\) c h \/ alpha\)/.test(css));
   check('selection bloom is on by default', /\.selected-text \{ box-shadow: 0 0 12px/.test(css));
   check('occurrence bloom is on by default', /\.wordHighlight \{ box-shadow: 0 0 10px 3px/.test(css));
   /* The same idea reached by the mouse rather than by the caret. This went
