@@ -959,11 +959,32 @@ try {
     if (!r.width && !r.height) return;
 
     var colour = arcColour(w.caret);
-    var midY = r.top + r.height / 2;
-    /* The leading edge of the caret: where it arrived, and where the light has
-       to land. A move with no horizontal part has no leading side, so it takes
-       the middle rather than an arbitrary one. */
-    var ex = dx > 0 ? r.left : dx < 0 ? r.left + r.width : r.left + r.width / 2;
+
+    /* Where the caret is going, not where it is currently being painted.
+       cursorTrail puts a CSS transition on left and top, and this observer runs
+       the moment the inline style changes - which is the moment that transition
+       starts, with the caret still drawn at the position it is leaving. A rect
+       read there answers with the old position, and the whole arc lands one
+       full move behind the caret: it appears to set out from somewhere behind
+       where the caret was and to stop short of where it now is. With no trail
+       the rect is already the new position and nothing looked wrong, which is
+       why this survived.
+       The inline values are the destination whatever is animating towards it,
+       so the offset parent's own corner plus those is where the caret will be.
+       The rect is still what answers for width and height, which no transition
+       touches. offsetParent is asked rather than assumed to be the layer; when
+       there is none to ask, the old reading is the only one available. */
+    var op = w.caret.offsetParent;
+    var base = op ? op.getBoundingClientRect() : null;
+    var cx = base ? base.left + nx : r.left;
+    var cy = base ? base.top + ny : r.top;
+
+    var midY = cy + r.height / 2;
+    /* The trailing edge: the light runs up to the back of the caret rather than
+       through it, so both ends of the path sit on the same side of it and the
+       path is exactly as long as the caret travelled. A move with no horizontal
+       part has no back, so it takes the middle. */
+    var ex = dx > 0 ? cx : dx < 0 ? cx + r.width : cx + r.width / 2;
     if (style === 'flash') { drawFlash(ex, midY, colour, 260); return; }
     /* Not "w": that is the watch this was handed, and shadowing it here worked
        only because nothing below touched it again. */

@@ -89,6 +89,12 @@ function makeStub(opts) {
   caret.style.top = '50px';
   const layer = node('div');
   layer.querySelector = (s) => (s === '.cursor' ? caret : null);
+  /* The caret's inline left/top are relative to this, and the arc has to read
+     them rather than the caret's own rect: a cursorTrail transition leaves that
+     rect showing the position being left, not the one being arrived at. A
+     corner well away from the caret's rect is what makes the two tell apart. */
+  layer.getBoundingClientRect = () => ({ left: 60, top: 50, width: 800, height: 400 });
+  caret.offsetParent = layer;
 
   const document = {
     hidden: false,
@@ -316,6 +322,22 @@ async function main() {
     check('the spark travels rather than grows',
       lines.every((l) => l.anims.length === 1)
       && lines[1].anims[0].frames.some((f) => 'strokeDashoffset' in f));
+  }
+
+  /* The caret starts at 100,50 inside a layer whose corner is at 100,50, so a
+     move to 300 ends at 360 and the path sets out from 160 - a full move back
+     from there. The caret's own rect says 400, which is the number to miss. The
+     wrapper's own corner is the start, lifted by half the box the path is drawn
+     in (7px of jag either side of a 14px band, so 14). */
+  s = run({ knobs: { caretArc: 'arc' } });
+  await wait(120);
+  await s.jump(300);
+  drawn = s.drawn();
+  check('the path starts where the caret was, not where it is being painted',
+    drawn.length === 1 && /left:160px/.test(drawn[0].style.cssText),
+    'the arc is reading the caret rect mid-transition and lands a move behind');
+  if (drawn.length) {
+    check('and on the line the caret is on', /top:95px/.test(drawn[0].style.cssText));
   }
 
   /* An arrow key is about seven pixels, and the default threshold is under a
