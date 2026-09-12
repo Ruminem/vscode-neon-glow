@@ -38,6 +38,29 @@ let statusBase = '';
 let savePulse = 0;
 
 /**
+ * The settings nudge, on the same wire and for the same reason.
+ *
+ * A knob reaches the renderer through state.json, which it polls - and that
+ * poll backs off to 15 seconds while you are only reading, so a slider could
+ * sit there doing nothing for long enough to look broken. Marking the label
+ * makes the renderer re-read the file within a frame instead.
+ *
+ * A different character from the save pulse, and it sits in front of it: over
+ * there the pulse is counted as the label's trailing run, so anything appended
+ * after it would read as that count falling to zero and jolt the workbench
+ * every time a setting changed. U+2060 is a word joiner - zero width, not
+ * whitespace, so trim() leaves it alone. The count cycles 0-3 like the pulse,
+ * so consecutive changes always differ and the label never grows.
+ */
+const NUDGE = String.fromCharCode(0x2060);
+let knobPulse = 0;
+
+/** The label is the wire. Both markers ride it, in this order. */
+function labelText() {
+  return statusBase + NUDGE.repeat(knobPulse) + PULSE.repeat(savePulse);
+}
+
+/**
  * Whether the bundle actually carries the payload. Cached on purpose: isPatched
  * reads the whole multi-megabyte workbench.js, and the answer can only change
  * through the install/remove commands or a VS Code update, which needs a
@@ -177,7 +200,7 @@ function reflect(enabled) {
      so an unpatched bundle is reported through colour and tooltip instead.
      Otherwise the item would keep claiming ON with nothing there to glow. */
   statusBase = 'NEON:' + (enabled ? 'ON' : 'OFF');
-  statusItem.text = statusBase + PULSE.repeat(savePulse);
+  statusItem.text = labelText();
 
   const warn = new vscode.ThemeColor('statusBarItem.warningBackground');
 
@@ -315,6 +338,9 @@ function activate(context) {
 
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
     if (KNOBS.some(k => e.affectsConfiguration('neonGlow.' + k))) {
+      /* Bumped before publish, so the label the renderer sees changes only
+         after the file it is about to read already carries the new value. */
+      knobPulse = (knobPulse + 1) % 4;
       publish(readState(stateFile).enabled);
     }
   }));
@@ -328,7 +354,7 @@ function activate(context) {
     const amp = vscode.workspace.getConfiguration('neonGlow').get('saveShake');
     if (!(typeof amp === 'number' && amp > 0)) return;
     savePulse = (savePulse + 1) % 4;
-    statusItem.text = statusBase + PULSE.repeat(savePulse);
+    statusItem.text = labelText();
   }));
 
   /* One state file serves every window, because one workbench.js does. A toggle

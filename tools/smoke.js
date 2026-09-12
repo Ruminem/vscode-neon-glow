@@ -74,6 +74,7 @@ function makeStub(opts) {
   const appended = [];
   const observers = [];
   const classes = new Set();
+  let fetches = 0;          /* how many times the payload has read the state file */
 
   const tokens = { textContent: opts.tokens || '.mtk1 { color: #ff2f92; }\n.mtk2 { color: #808080; }' };
   const workbench = {
@@ -123,14 +124,18 @@ function makeStub(opts) {
     requestAnimationFrame: (f) => realSetTimeout(f, 0),
     setTimeout: (f, ms) => { const t = realSetTimeout(f, ms); if (t.unref) t.unref(); return t; },
     setInterval: (f, ms) => { const t = realSetInterval(f, ms); if (t.unref) t.unref(); return t; },
-    fetch: () => Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ enabled: true, seq: 1, knobs: opts.knobs || {} })
-    })
+    fetch: () => {
+      fetches++;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ enabled: true, seq: 1, knobs: opts.knobs || {} })
+      });
+    }
   };
 
   return {
     globals, appended, observers, classes, statusEl, tokens, workbench, caret, layer,
+    fetches: () => fetches,
     styles() {
       const s = appended.find((n) => n.id === 'neon-glow-styles');
       return s ? s.textContent : '';
@@ -349,6 +354,35 @@ async function main() {
   check('zero removes the bracket-match bloom', offCss.indexOf('.bracket-match') === -1);
   check('zero removes the squiggle bloom', offCss.indexOf('squiggly') === -1);
   check('and the token glow is untouched', /\.mtk1 \{[^}]*text-shadow:/.test(offCss));
+
+  /* ---- a settings nudge on the fast channel ---- */
+  /* A knob used to ride the file poll alone, which backs off to 15s while you
+     are only reading - a long time to watch a slider do nothing. The extension
+     now marks the label, and the marker has to wake a read without being taken
+     for a save. */
+  console.log('\nsettings nudge');
+  const nz = run({ knobs: { saveShake: 6 } });
+  await wait(120);
+  const ncb = nz.callbackFor(nz.statusEl);
+  check('the status bar item is watched', !!ncb);
+  if (ncb) {
+    nz.classes.clear();
+    const before = nz.fetches();
+    nz.statusEl.textContent = 'NEON:ON' + String.fromCharCode(0x2060);
+    ncb();
+    await wait(60);
+    check('a settings nudge re-reads the state file', nz.fetches() > before,
+      'the knob would wait for the poll instead');
+    check('and does not play the save jolt', !nz.classes.has('neon-glow-shaking'),
+      'the nudge must not read as a save');
+
+    nz.statusEl.textContent = 'NEON:ON' + String.fromCharCode(0x2060)
+      + String.fromCharCode(0x200b);
+    ncb();
+    await wait(60);
+    check('a save still jolts with a nudge in the label', nz.classes.has('neon-glow-shaking'),
+      'the trailing pulse count must survive the new marker');
+  }
 
   /* ---- the stamp ---- */
   /* The stamp is how the extension decides its bundle is out of date, so it

@@ -186,8 +186,9 @@ distance fields and the PNG is assembled on top of `zlib`.
 
 ## Settings
 
-Open Settings (`Ctrl+,`) and search `Neon Glow`. Changes apply to the open editor
-within a second or so — no re-patch, no restart.
+Open Settings (`Ctrl+,`) and search `Neon Glow`. Changes apply to the open editor as
+you make them — no re-patch, no restart, and nothing to open first: the file you were
+reading is the preview.
 
 | Setting | Default | |
 |---------|---------|--|
@@ -459,8 +460,8 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 
 ### 설정
 
-설정(`Ctrl+,`)에서 `Neon Glow`로 검색. 열려 있는 에디터에 1초 안쪽으로 반영됨. 재패치도
-재시작도 없음.
+설정(`Ctrl+,`)에서 `Neon Glow`로 검색. 값을 바꾸는 즉시 열려 있는 에디터에 반영됨.
+재패치도 재시작도 없고, 먼저 열어둘 것도 없음 — 읽고 있던 그 파일이 미리보기임.
 
 | 설정 | 기본값 | |
 |------|--------|--|

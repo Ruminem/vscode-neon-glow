@@ -934,6 +934,26 @@ try {
   var PULSE_CODE = 0x200b;
   var lastPulse = null;
 
+  /* A second invisible marker, counted wherever it sits in the label rather
+     than at the end. That is what keeps it out of the save pulse's way:
+     pulseOf reads the trailing run, so a character appended after it would
+     read as the count dropping to zero and fire a jolt nobody asked for.
+
+     The extension bumps this when a setting changes, so a knob lands in the
+     frame the label is painted rather than waiting for the file poll - which
+     backs off to 15s while you are only reading, and that is a long time to
+     watch a slider do nothing. */
+  var NUDGE_CODE = 0x2060;
+  var lastNudge = null;
+
+  function nudgeOf(text) {
+    var n = 0;
+    for (var i = 0; i < text.length; i++) {
+      if (text.charCodeAt(i) === NUDGE_CODE) n++;
+    }
+    return n;
+  }
+
   function pulseOf(text) {
     var n = 0;
     while (n < text.length && text.charCodeAt(text.length - 1 - n) === PULSE_CODE) n++;
@@ -959,6 +979,13 @@ try {
     var pulse = pulseOf(text);
     if (lastPulse === null) lastPulse = pulse;
     else if (pulse !== lastPulse) { lastPulse = pulse; shake(); }
+
+    /* Same first-sighting guard as the pulse. pollState does not schedule
+       anything - schedulePoll owns the timer - so calling it here reads once
+       and leaves the loop alone, exactly as the visibility listener does. */
+    var nudge = nudgeOf(text);
+    if (lastNudge === null) lastNudge = nudge;
+    else if (nudge !== lastNudge) { lastNudge = nudge; quiet = 0; pollState(); }
 
     if (lastStatus === null) { lastStatus = v; return; }
     if (v !== lastStatus) { lastStatus = v; setEnabled(v); }
