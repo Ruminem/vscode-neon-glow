@@ -152,7 +152,7 @@
           "maximum": 32,
           "order": 11,
           "scope": "application",
-          "markdownDescription": "Bloom on the symbol under the caret and every other place it appears on screen, in pixels, taken from the theme's own highlight colours. On at `10`; `0` leaves them flat. It sits lower than `#neonGlow.findGlow#` because these are on screen whenever the caret rests on a word rather than only while you are searching. Where the theme gives writes a different colour from reads, a write is lit wider. Needs VS Code's `#editor.occurrencesHighlight#` to be on, which it is by default. Applies without a restart."
+          "markdownDescription": "Bloom on the symbol under the caret and every other place it appears on screen, in pixels, taken from the theme's own highlight colours. A word selected with the mouse is marked by VS Code with a colour of its own and is lit the same way, so the effect does not come and go with how you landed on the word. On at `10`; `0` leaves them flat. It sits lower than `#neonGlow.findGlow#` because these are on screen whenever the caret rests on a word rather than only while you are searching. Where the theme gives writes a different colour from reads, a write is lit wider. Needs VS Code's `#editor.occurrencesHighlight#` to be on, which it is by default. Applies without a restart."
         },
         "neonGlow.gutterGlow": {
           "type": "number",
