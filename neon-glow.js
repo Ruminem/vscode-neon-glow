@@ -34,6 +34,7 @@ try {
     gutterGlow:    8,    /* px of bloom on the gutter's change bars; 0 = flat    */
     bracketMatchGlow: 10, /* px of bloom on the matching bracket box; 0 = flat   */
     squiggleGlow:   5,   /* px of bloom on error/warning/info squiggles; 0 = flat */
+    diffGlow:      10,   /* px of bloom on what changed inside a diff; 0 = flat  */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
     caretArcOnDrag: false /* keep drawing while a selection is being dragged out */
@@ -48,6 +49,7 @@ try {
     gutterGlow: [0, 24],
     bracketMatchGlow: [0, 32],
     squiggleGlow: [0, 16],
+    diffGlow: [0, 32],
     caretArcMinJump: [1, 400]
   };
 
@@ -483,6 +485,36 @@ try {
         var wc = 'var(--vscode-' + waves[wi][1] + '-foreground)';
         css += '.monaco-editor .squiggly-' + waves[wi][0] + ' { filter: drop-shadow(0 0 '
           + sqNear + 'px ' + wc + ') drop-shadow(0 0 ' + sq + 'px ' + wc + ') !important; }\n';
+      }
+    }
+
+    /* What changed, inside a diff.
+
+       Semi-transparent theme colours behind text again, so this takes a spread
+       for the same reason find and selection do.
+
+       The word-level highlight only, not the line tint. VS Code paints both:
+       .char-insert marks the run of characters that actually differ, and
+       .line-insert washes the whole line width behind it. Blurring a full-width
+       block bleeds a radius above and below into its neighbours, and a diff
+       usually has changed lines next to each other, so what comes out is a haze
+       over the region rather than a mark on the change. It is the same line the
+       token glow draws when it keeps body text out of it - light on what you
+       are looking for, not on everything around it. The line tint is already
+       doing the job of saying which side of the diff you are on.
+
+       This is also where the gutter bars are not: VS Code hides them with
+       display:none once .modified-in-monaco-diff-editor is on the editor, and
+       clicking a file in source control opens a diff. So the view people reach
+       for most had the least lit in it, which is what this is for. */
+    var dif = Math.round(KNOBS.diffGlow);
+    if (dif > 0) {
+      var dSpread = Math.round(dif / 3);
+      var sides = [['insert', 'inserted'], ['delete', 'removed']];
+      for (var di = 0; di < sides.length; di++) {
+        css += '.monaco-editor .char-' + sides[di][0] + ' { box-shadow: 0 0 ' + dif + 'px '
+          + dSpread + 'px var(--vscode-diffEditor-' + sides[di][1]
+          + 'TextBackground) !important; }\n';
       }
     }
     return css;

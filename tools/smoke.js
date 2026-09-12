@@ -218,6 +218,11 @@ async function main() {
   check('bracket-match bloom is on by default', /\.bracket-match \{ box-shadow: 0 0 10px var/.test(css));
   check('squiggle bloom is on by default, two passes',
     /\.squiggly-error \{ filter: drop-shadow\(0 0 2px var\(--vscode-editorError-foreground\)\) drop-shadow\(0 0 5px/.test(css));
+  check('diff bloom is on by default, on the word-level highlight',
+    /\.char-insert \{ box-shadow: 0 0 10px 3px var\(--vscode-diffEditor-insertedTextBackground\)/.test(css));
+  /* The line tint is deliberately left alone: a blurred full-width block bleeds
+     into the lines above and below, and changed lines come in runs. */
+  check('and not on the line tint behind it', css.indexOf('.line-insert') === -1);
   await s.jump(600);
   check('no arc on a jump', s.drawn().length === 0);
 
@@ -228,7 +233,7 @@ async function main() {
      shipped at 0 and any output at all proved the wire worked. */
   s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 30, selectionGlow: 20,
             occurrenceGlow: 20, gutterGlow: 16, bracketMatchGlow: 24,
-            squiggleGlow: 10 } });
+            squiggleGlow: 10, diffGlow: 24 } });
   await wait(120);
   css = s.styles();
 
@@ -254,6 +259,9 @@ async function main() {
     /\.squiggly-warning \{ filter: drop-shadow\(0 0 4px var\(--vscode-editorWarning-foreground\)\) drop-shadow\(0 0 10px/.test(css)
     && /\.squiggly-info \{ filter:/.test(css));
   check('hints are left alone', css.indexOf('.squiggly-hint') === -1);
+  check('diff bloom follows the knob, both sides in their own colours',
+    /\.char-insert \{ box-shadow: 0 0 24px 8px var\(--vscode-diffEditor-insertedTextBackground\)/.test(css)
+    && /\.char-delete \{ box-shadow: 0 0 24px 8px var\(--vscode-diffEditor-removedTextBackground\)/.test(css));
   check('moving effects respect reduced motion',
     (css.match(/prefers-reduced-motion/g) || []).length === 2);
 
@@ -447,7 +455,7 @@ async function main() {
      stub built here reaches back and kills every earlier one - which shows up
      as two unrelated sections failing rather than as anything about this. */
   const off = run({ knobs: { findGlow: 0, selectionGlow: 0, occurrenceGlow: 0,
-            gutterGlow: 0, bracketMatchGlow: 0, squiggleGlow: 0 } });
+            gutterGlow: 0, bracketMatchGlow: 0, squiggleGlow: 0, diffGlow: 0 } });
   await wait(120);
   const offCss = off.styles();
 
@@ -457,6 +465,7 @@ async function main() {
   check('zero removes the gutter bloom', offCss.indexOf('dirty-diff') === -1);
   check('zero removes the bracket-match bloom', offCss.indexOf('.bracket-match') === -1);
   check('zero removes the squiggle bloom', offCss.indexOf('squiggly') === -1);
+  check('zero removes the diff bloom', offCss.indexOf('char-insert') === -1);
   check('and the token glow is untouched', /\.mtk1 \{[^}]*text-shadow:/.test(offCss));
 
   /* ---- a settings nudge on the fast channel ---- */

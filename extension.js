@@ -237,7 +237,7 @@ function reflect(enabled) {
 const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
                 'glowLayers', 'maxBlur', 'cursorTrail', 'saveShake',
                 'findGlow', 'selectionGlow', 'occurrenceGlow', 'gutterGlow',
-                'bracketMatchGlow', 'squiggleGlow',
+                'bracketMatchGlow', 'squiggleGlow', 'diffGlow',
                 'caretArc', 'caretArcMinJump', 'caretArcOnDrag'];
 
 function readKnobs() {
