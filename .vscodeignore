@@ -31,3 +31,8 @@ images/**
 # not something the extension reads, and it would arrive looking like a source
 # file of ours inside someone else's installation.
 samples/**
+
+# Local agent settings. Not committed, so a CI build never sees them - but vsce
+# packages the working directory, so a build made here would carry them into
+# someone else's installation.
+.claude/**
