@@ -37,7 +37,9 @@ try {
     diffGlow:      10,   /* px of bloom on what changed inside a diff; 0 = flat  */
     lineHighlightGlow: 8, /* px of bloom on the line the editor points at; 0 = flat */
     breakpointGlow: 8,   /* px of bloom on breakpoint glyphs; 0 = leave them flat */
-    breathe:        0,   /* ms for one breath on the find match and the stopped line */
+    snippetGlow:    8,   /* px of bloom on a snippet's tabstops; 0 = leave them flat */
+    renameGlow:    12,   /* px of bloom around the rename box; 0 = leave it flat  */
+    breathe:        0,   /* ms for one breath on whatever is waiting for you     */
     caretArc:    'off',  /* off, or one of twelve shapes; see KNOB_ENUM below  */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
     caretArcDuration: 300, /* ms the arc takes to cross the path it drew         */
@@ -55,6 +57,7 @@ try {
     squiggleGlow: [0, 16],
     diffGlow: [0, 32],
     lineHighlightGlow: [0, 24], breakpointGlow: [0, 24],
+    snippetGlow: [0, 24], renameGlow: [0, 32],
     breathe: [0, 6000],
     caretArcMinJump: [1, 400],
     caretArcDuration: [80, 1200]
@@ -588,7 +591,62 @@ try {
         + 'px currentColor !important; }\n';
     }
 
-    /* A slow swell on the two things that are waiting for you.
+    /* A snippet's tabstops, while you are filling one in.
+
+       The stops still to visit share one colour and the last one - where the
+       caret lands when you are done - has its own. VS Code draws the first as a
+       semi-transparent fill and the last as an outline around a box with no
+       width, so both take a spread: the fill for the reason find does, the last
+       stop for the reason the gutter bars do.
+
+       Both are lifted to a lightness of at least 0.6 on the way in, the floor
+       find takes. Here it is not a theme's mistake being covered but VS Code's
+       own defaults: a 30% grey fill and a #525252 outline, neither of which reads
+       as light once it is blurred. The last stop falls back to its fill for a
+       theme that sets only that, the way the bracket box does.
+
+       A snippet's stops exist only between inserting it and leaving it, so this
+       costs nothing the rest of the time and a handful of boxes while it runs. */
+    var snip = Math.round(KNOBS.snippetGlow);
+    if (snip > 0) {
+      var sSpread = Math.max(1, Math.round(snip / 3));
+      css += '.monaco-editor .snippet-placeholder { box-shadow: 0 0 ' + snip + 'px ' + sSpread + 'px'
+        + ' oklch(from var(--vscode-editor-snippetTabstopHighlightBackground) max(l, 0.6) c h / alpha)'
+        + ' !important; }\n';
+      css += '.monaco-editor .finish-snippet-placeholder { box-shadow: 0 0 ' + snip + 'px ' + sSpread + 'px'
+        + ' oklch(from var(--vscode-editor-snippetFinalTabstopHighlightBorder,'
+        + ' var(--vscode-editor-snippetFinalTabstopHighlightBackground)) max(l, 0.6) c h / alpha)'
+        + ' !important; }\n';
+    }
+
+    /* The box F2 opens, in the colour the theme draws a focused field with.
+
+       A filter rather than a box-shadow, and without !important, both for one
+       reason: VS Code writes this box's own shadow and border as inline styles
+       on every theme change, and an inline style beats any stylesheet that does
+       not force its way past it - while a forced declaration is one no animation
+       can move, which would leave the breath below with nothing to do. Nothing
+       writes a filter here, so a plain rule is enough, and the widget's own
+       shadow stays underneath. drop-shadow follows the alpha of what is drawn,
+       which on this box is the box - rounded corners included - and it leaves
+       the text inside alone.
+
+       .monaco-editor on the box itself, not only above it: the widget carries
+       that class, and the candidate list inside it is also a .rename-box that
+       must not grow a halo of its own.
+
+       Two passes, tight then wide, for the reason the squiggles take two. */
+    function renameFilter(colour) {
+      var n = Math.round(KNOBS.renameGlow);
+      return 'drop-shadow(0 0 ' + Math.max(1, Math.round(n * 0.4)) + 'px ' + colour + ')'
+        + ' drop-shadow(0 0 ' + n + 'px ' + colour + ')';
+    }
+    if (Math.round(KNOBS.renameGlow) > 0) {
+      css += '.monaco-editor .monaco-editor.rename-box { filter: '
+        + renameFilter('var(--vscode-focusBorder)') + '; }\n';
+    }
+
+    /* A slow swell on what is waiting for you.
 
        The glow is a text-shadow, and a text-shadow cannot be animated without
        re-rastering its blur on every frame. On this project's own measurement
@@ -598,20 +656,36 @@ try {
        element that carries the glow: the blur is rastered once and the frames
        only darken the result, the same bargain saveShake takes with transform.
 
-       Three surfaces, because the cost is the number of elements moving and
-       none of these is ever more than a pair. The current find match is already
-       the one place the glow does work rather than decoration, and a pulse is
-       more of that work; the stopped line is the one thing you are waiting on
-       while everything else is still; the bracket box is the two the editor is
-       pointing at.
+       Five surfaces, and what lets one in is when it is on screen rather than
+       how few of it there are: each is there only while the editor is waiting
+       on you. The current find match is already the one place the glow does
+       work rather than decoration, and a pulse is more of that work; the
+       stopped line is the one thing you are waiting on while everything else is
+       still; the bracket box is the two the editor is pointing at; a snippet's
+       tabstops are the gaps it is holding open for you; and the rename box is a
+       question that stays until it is answered. Count still bounds the cost,
+       and none of these is more than a handful.
 
-       The occurrence highlights were the obvious fourth and are deliberately
+       The occurrence highlights were the obvious sixth and are deliberately
        not here, and the reason is not their count. They are on screen whenever
        the caret is resting on a word, which their own setting describes as most
        of a working day - so breathing them would mean something is always
        pulsing, and a mark that never stops is background rather than a signal.
-       These three are each on screen only while you are waiting on them. The
-       tokens, the gutter and the breakpoints fail the count as well.
+       The tokens, the gutter and the breakpoints fail the count as well.
+
+       The rename box breathes its own way. The others dim under a brightness
+       filter, which is safe on them because they are decorations drawn behind
+       the text; the rename box holds the name you are typing, and dimming it
+       would dim that too. So its keyframes move the drop-shadow's colour
+       instead, down to the same 55%, and the name stays lit. Both ends are
+       written as the same kind of colour, a relative oklch that differs only in
+       alpha, and that is not style. With the plain variable at one end and a
+       color-mix at the other, Chromium interpolated between them into nonsense:
+       in a real VS Code the blue went yellow-green at mid-breath, and the
+       computed colour read back with oklab a and b in the teens. That re-draws one
+       box's blur on every frame of the breath - not the bargain the filter
+       strikes for the others, and not measured, but bounded to one widget that
+       exists only while you are renaming.
 
        It dips rather than swells: the rest point is the glow as it already is,
        and the breath takes it down and brings it back, so turning this on never
@@ -625,15 +699,31 @@ try {
       if (Math.round(KNOBS.findGlow) > 0) breathing.push('.monaco-editor .currentFindMatch');
       if (Math.round(KNOBS.lineHighlightGlow) > 0) breathing.push('.monaco-editor .debug-top-stack-frame-line');
       if (Math.round(KNOBS.bracketMatchGlow) > 0) breathing.push('.monaco-editor .bracket-match');
-      if (breathing.length) {
-        css += '@media (prefers-reduced-motion: no-preference) {'
-          + ' @keyframes neon-glow-breathe {'
-          + ' 0%, 100% { filter: none; }'
-          + ' 50% { filter: brightness(0.55); }'
-          + ' }'
-          + ' ' + breathing.join(', ') + ' {'
-          + ' animation: neon-glow-breathe ' + br + 'ms ease-in-out infinite; }'
-          + ' }\n';
+      if (Math.round(KNOBS.snippetGlow) > 0) {
+        breathing.push('.monaco-editor .snippet-placeholder', '.monaco-editor .finish-snippet-placeholder');
+      }
+      var renameBreathes = Math.round(KNOBS.renameGlow) > 0;
+      if (breathing.length || renameBreathes) {
+        css += '@media (prefers-reduced-motion: no-preference) {';
+        if (breathing.length) {
+          css += ' @keyframes neon-glow-breathe {'
+            + ' 0%, 100% { filter: none; }'
+            + ' 50% { filter: brightness(0.55); }'
+            + ' }'
+            + ' ' + breathing.join(', ') + ' {'
+            + ' animation: neon-glow-breathe ' + br + 'ms ease-in-out infinite; }';
+        }
+        if (renameBreathes) {
+          css += ' @keyframes neon-glow-breathe-rename {'
+            + ' 0%, 100% { filter: '
+            + renameFilter('oklch(from var(--vscode-focusBorder) l c h / alpha)') + '; }'
+            + ' 50% { filter: '
+            + renameFilter('oklch(from var(--vscode-focusBorder) l c h / calc(alpha * 0.55))') + '; }'
+            + ' }'
+            + ' .monaco-editor .monaco-editor.rename-box {'
+            + ' animation: neon-glow-breathe-rename ' + br + 'ms ease-in-out infinite; }';
+        }
+        css += ' }\n';
       }
     }
 

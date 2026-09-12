@@ -72,6 +72,8 @@ chosen.
 | **What changed in a diff** (`diffGlow`) | the word-level highlight, not the line tint behind it — and a diff is the one view the gutter bars are missing from, because VS Code hides them there |
 | **The line the editor points at** (`lineHighlightGlow`) | the stopped line while debugging, and the range that lights when you jump to a definition or peek a result. A full-width band, which the diff tint is not allowed — these come one at a time, so they mark a line instead of washing a region |
 | **Breakpoints** (`breakpointGlow`) | in whatever colour the glyph was painted, since this one is not published as a theme colour a rule could name |
+| **A snippet's tabstops** (`snippetGlow`) | the stops a snippet is holding open for you, and the last one it lands on. VS Code's default colours for them are a faint grey, so they are lifted to a lightness a glow can show first |
+| **The rename box** (`renameGlow`) | the field `F2` opens, in the theme's `focusBorder` colour. A `drop-shadow` rather than a `box-shadow`, because VS Code writes the box's own shadow inline |
 
 Find, selection, occurrence and diff colours are semi-transparent, because they sit behind
 text and must not hide it, so those rules take a `spread` — the weak colour is carried
@@ -87,7 +89,7 @@ is why the rules do not match each other, and the reasoning is kept beside each 
 |---|---|
 | **The caret trail** (`cursorTrail`) | the caret gets a duration to cross instead of jumping, so the glow on it smears into a streak. `130` reads as lag; `45` keeps up and still streaks on a jump across a file. How much of a slide that is depends on the display — `45` is under three frames at 60Hz and six or seven at 144Hz, so raise it on a slower panel |
 | **The save jolt** (`saveShake`) | the workbench knocks sideways when a file is saved. A compositor animation on `transform` alone, so the glow is never re-drawn during it |
-| **A breath on three of them** (`breathe`) | a slow swell on the current find match, the stopped line while debugging, and the matching bracket box. Only those three: the glow is a `text-shadow`, and animating one re-draws its blur every frame — a pair is nothing, every token on screen would hold up typing |
+| **A breath on what is waiting for you** (`breathe`) | a slow swell on the current find match, the stopped line while debugging, the matching bracket box, a snippet's tabstops and the rename box — each on screen only while the editor waits on you. Only those: the glow is a `text-shadow`, and animating one re-draws its blur every frame — a handful is nothing, every token on screen would hold up typing |
 | **The caret arc** (`caretArc`) | one of twelve shapes drawn along a caret jump, in the theme's own caret colour, as SVG that lives a few hundred milliseconds. `caretArcDuration` sets how long it takes to cross |
 
 These four move things, and nobody asked for movement, so they ship at `0` and stay
@@ -217,11 +219,13 @@ reading is the preview.
 | `neonGlow.diffGlow` | `10` | px of bloom on what changed inside a diff, on the word-level highlight only; `0` turns it off |
 | `neonGlow.lineHighlightGlow` | `8` | px of bloom on the line the editor points at — the debug stop, a jump, a peek; `0` turns it off |
 | `neonGlow.breakpointGlow` | `8` | px of bloom on breakpoint glyphs, in the colour they were painted; `0` turns it off |
+| `neonGlow.snippetGlow` | `8` | px of bloom on a snippet's tabstops while you fill them in; `0` turns it off |
+| `neonGlow.renameGlow` | `12` | px of bloom around the rename box, in the theme's `focusBorder` colour; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump — twelve shapes, from a straight `beam` to a `ring` that needs no distance |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 | `neonGlow.caretArcDuration` | `300` | ms the arc takes to cross its path — eighteen frames at 60Hz, and it wants raising on a slower panel |
 | `neonGlow.caretArcOnDrag` | `false` | keep drawing while a selection is dragged out; the click that starts the drag draws either way |
-| `neonGlow.breathe` | `0` | ms for one breath on the find match, the stopped line and the bracket box; `0` holds them still, and under `600` is held at `600` |
+| `neonGlow.breathe` | `0` | ms for one breath on whatever waits for you — the find match, the stopped line, the bracket box, snippet tabstops, the rename box; `0` holds them still, and under `600` is held at `600` |
 
 **`glowLayers` is the one that costs.** The editor virtualises, so a 10,000 line file
 is not 10,000 glowing spans and the cost scales with the viewport rather than the
@@ -374,6 +378,8 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 | **diff에서 바뀐 것** (`diffGlow`) | 줄 전체 틴트가 아니라 단어 단위 강조에만 붙음. 그리고 diff는 거터 막대가 없는 유일한 화면임 — VS Code가 거기서 숨김 |
 | **에디터가 가리키는 줄** (`lineHighlightGlow`) | 디버그 중 멈춘 줄, 그리고 정의로 뛰거나 결과를 미리볼 때 켜지는 범위. 폭 전체를 덮는데 diff 틴트에는 허락되지 않은 것임 — 이쪽은 한 번에 하나만 떠서 영역을 흐리지 않고 줄을 짚음 |
 | **중단점** (`breakpointGlow`) | 글리프가 칠해진 그 색 그대로. 이 색은 규칙이 이름으로 부를 수 있는 테마 색으로 공개돼 있지 않음 |
+| **스니펫 탭 정지 자리** (`snippetGlow`) | 스니펫이 채워주길 기다리는 자리들과 마지막에 떨어질 자리. VS Code 기본 색이 흐린 회색이라, 글로우가 보일 만큼 밝기를 먼저 끌어올림 |
+| **이름 바꾸기 상자** (`renameGlow`) | `F2`가 여는 입력 상자. 테마의 `focusBorder` 색을 씀. VS Code가 상자 자체 그림자를 인라인으로 박아 두므로 `box-shadow` 대신 `drop-shadow`를 씀 |
 
 찾기·선택·심볼·diff 색은 글자 뒤에 깔리는 색이라 테마가 반투명으로 잡아둠. 그래서 그 넷에는
 `spread`가 붙음 — 약한 색을 원래 폭만큼 먼저 밀어낸 다음에 번지게 함. 거터 막대에도
@@ -387,7 +393,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 |---|---|
 | **커서 잔상** (`cursorTrail`) | 커서가 튀는 대신 새 위치까지 건너갈 시간을 줘서 글로우가 꼬리로 끌림. `130`은 렉처럼 읽히고, `45`는 타이핑을 따라가면서도 멀리 뛸 때 꼬리가 남음. 같은 값도 주사율에 따라 다르게 읽힘 — 60Hz에서 `45`는 세 프레임이 안 되고 144Hz에서는 예닐곱 프레임임. 주사율이 낮으면 올려 잡을 것 |
 | **저장 흔들림** (`saveShake`) | 파일을 저장할 때 워크벤치가 옆으로 한 번 얻어맞음. `transform`만 건드리는 컴포지터 애니메이션이라 그동안 글로우가 다시 그려지지 않음 |
-| **셋만 숨쉬기** (`breathe`) | 현재 찾기 결과, 디버그 중 멈춘 줄, 일치하는 괄호 상자가 천천히 부풀었다 가라앉음. 그 셋뿐임 — 글로우가 `text-shadow`라 애니메이션하면 매 프레임 블러를 다시 그림. 한두 개는 공짜지만 화면의 토큰 전부면 타이핑이 밀림 |
+| **기다리는 것만 숨쉬기** (`breathe`) | 현재 찾기 결과, 디버그 중 멈춘 줄, 일치하는 괄호 상자, 스니펫 탭 정지 자리, 이름 바꾸기 상자가 천천히 부풀었다 가라앉음. 전부 에디터가 나를 기다리는 동안에만 화면에 있는 것임. 그것뿐임 — 글로우가 `text-shadow`라 애니메이션하면 매 프레임 블러를 다시 그림. 몇 개는 공짜지만 화면의 토큰 전부면 타이핑이 밀림 |
 | **커서 아크** (`caretArc`) | 커서가 뛴 길에 열두 모양 중 하나를 그림. 테마 자신의 커서 색을 쓰고, 몇백 밀리초 살다 사라지는 SVG임. 건너는 시간은 `caretArcDuration`이 정함 |
 
 이 넷은 무언가를 움직임. 움직임을 달라고 한 사람은 없으므로 `0`으로 나가고 말하기
@@ -509,11 +515,13 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.diffGlow` | `10` | diff에서 바뀐 단어가 번지는 폭(px). 줄 전체 틴트에는 안 붙음. `0`이면 꺼짐 |
 | `neonGlow.lineHighlightGlow` | `8` | 에디터가 가리키는 줄이 번지는 폭(px) — 디버그 정지, 점프, 미리보기. `0`이면 꺼짐 |
 | `neonGlow.breakpointGlow` | `8` | 중단점 글리프가 번지는 폭(px). 칠해진 색 그대로 씀. `0`이면 꺼짐 |
+| `neonGlow.snippetGlow` | `8` | 스니펫 탭 정지 자리가 번지는 폭(px). 채우는 동안에만 보임. `0`이면 꺼짐 |
+| `neonGlow.renameGlow` | `12` | 이름 바꾸기 상자가 번지는 폭(px). 테마의 `focusBorder` 색을 씀. `0`이면 꺼짐 |
 | `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지. 열두 모양 — 곧은 `beam`부터 거리가 필요 없는 `ring`까지 |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
 | `neonGlow.caretArcDuration` | `300` | 아크가 경로를 건너는 시간(ms). 60Hz에서 열여덟 프레임이고, 주사율이 낮으면 올려 잡아야 함 |
 | `neonGlow.caretArcOnDrag` | `false` | 마우스로 선택을 끄는 동안에도 계속 그릴지. 드래그를 시작한 클릭은 어느 쪽이든 그림 |
-| `neonGlow.breathe` | `0` | 찾기 결과·멈춘 줄·괄호 상자가 한 번 숨쉬는 시간(ms). `0`이면 가만히 있고, `600` 아래는 `600`으로 붙듦 |
+| `neonGlow.breathe` | `0` | 기다리는 것들(찾기 결과·멈춘 줄·괄호 상자·스니펫 자리·이름 바꾸기 상자)이 한 번 숨쉬는 시간(ms). `0`이면 가만히 있고, `600` 아래는 `600`으로 붙듦 |
 
 **돈이 드는 것은 `glowLayers`임.** 에디터는 가상화하므로 10,000줄 파일이 곧 10,000개의
 빛나는 span은 아니고, 비용은 파일 크기가 아니라 뷰포트 크기에 비례함. 그런데 가장 넓은

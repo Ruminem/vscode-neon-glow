@@ -209,14 +209,32 @@
           "scope": "application",
           "markdownDescription": "Bloom on breakpoint glyphs in the gutter, in pixels. On at `8`; `0` leaves them flat. The colour is taken as `currentColor` - whatever VS Code painted the glyph, including a theme that overrode it and the dimmer shade a disabled breakpoint gets - because this one is not published as a theme colour a rule could name. It is a `text-shadow` rather than a `box-shadow`: a codicon is a font glyph, so the light follows the letterform instead of the box around it. Applies without a restart."
         },
+        "neonGlow.snippetGlow": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 24,
+          "order": 18,
+          "scope": "application",
+          "markdownDescription": "Bloom on a snippet's tabstops while you are filling one in, in pixels - the stops still to visit, and the last one, where the caret lands when you are done. Taken from the theme's own `editor.snippetTabstopHighlightBackground` and `editor.snippetFinalTabstopHighlightBorder`. On at `8`; `0` leaves them flat. VS Code's defaults for both are a faint grey that does not read once it is blurred, so they are lifted to a lightness a glow can show before they are used; hue and transparency stay the theme's. Only on screen between inserting a snippet and leaving it. Applies without a restart."
+        },
+        "neonGlow.renameGlow": {
+          "type": "number",
+          "default": 12,
+          "minimum": 0,
+          "maximum": 32,
+          "order": 19,
+          "scope": "application",
+          "markdownDescription": "Bloom around the rename box that `F2` opens, in pixels, in the theme's `focusBorder` colour - the one it draws a focused field with. On at `12`; `0` leaves it flat. A `drop-shadow` filter rather than a `box-shadow`: VS Code writes the box's own shadow inline, which a stylesheet can only beat by forcing it, and a forced shadow is one `#neonGlow.breathe#` could not move. The filter sits on top of VS Code's shadow instead of replacing it, and leaves the name you are typing alone. Applies without a restart."
+        },
         "neonGlow.breathe": {
           "type": "number",
           "default": 0,
           "minimum": 0,
           "maximum": 6000,
-          "order": 18,
+          "order": 20,
           "scope": "application",
-          "markdownDescription": "Milliseconds for one slow swell on the current find match, on the stopped line while debugging, and on the matching bracket box. `0` holds them still; `2400` is a breath. **Only those three**, because the cost of animating a glow is the number of things doing it: the glow is a `text-shadow`, its blur has to be re-drawn on every frame that changes it, and one frame of a dense viewport at three passes was measured at 87ms against a 16ms budget. Two elements is nothing; every token on screen would hold up typing. It dips rather than swells, so turning this on never makes anything brighter than leaving it off did. Anything under `600` is held there - faster reads as a strobe. The occurrence highlights are left out for a different reason than count: they are on screen whenever the caret rests on a word, so breathing them would mean something is always pulsing, and a mark that never stops reads as background rather than as a signal. Needs the glow on the surface it rides: `#neonGlow.findGlow#`, `#neonGlow.lineHighlightGlow#` and `#neonGlow.bracketMatchGlow#` respectively. Ignored when the system asks for reduced motion. Applies without a restart."
+          "markdownDescription": "Milliseconds for one slow swell on whatever the editor is waiting on you for: the current find match, the stopped line while debugging, the matching bracket box, a snippet's tabstops, and the rename box. `0` holds them still; `2400` is a breath. **Only those**, and what lets one in is when it is on screen rather than how few of it there are - each is there only while the editor waits on you. Count still bounds the rest: the glow is a `text-shadow`, its blur has to be re-drawn on every frame that changes it, and one frame of a dense viewport at three passes was measured at 87ms against a 16ms budget, so breathing every token would hold up typing. The occurrence highlights are left out because they are on screen whenever the caret rests on a word, so breathing them would mean something is always pulsing, and a mark that never stops reads as background rather than as a signal. It dips rather than swells, so turning this on never makes anything brighter than leaving it off did. The rename box dims its glow rather than itself, so the name you are typing stays lit; that re-draws one box's blur on each frame, which has not been measured. Anything under `600` is held there - faster reads as a strobe. Needs the glow on the surface it rides: `#neonGlow.findGlow#`, `#neonGlow.lineHighlightGlow#`, `#neonGlow.bracketMatchGlow#`, `#neonGlow.snippetGlow#` and `#neonGlow.renameGlow#`. Ignored when the system asks for reduced motion. Applies without a restart."
         },
         "neonGlow.caretArc": {
           "type": "string",
@@ -237,7 +255,7 @@
             "The whole route lights at once and goes out. The only path style with no travel in it at all, and the quietest of them.",
             "`flash` drawn as an edge instead of a fill - a ring pushed outwards from where the caret landed. Like `flash`, it needs no distance."
           ],
-          "order": 19,
+          "order": 21,
           "scope": "application",
           "markdownDescription": "What to draw when the caret jumps: a key, a click, find-next, go-to-definition - anything that moves it, not only a keystroke. Off by default. The colour is the theme's own caret colour rather than one of ours, and each shape is SVG that lives a few hundred milliseconds and is then removed. `#neonGlow.caretArcMinJump#` decides how far the caret has to travel first. Ignored when the system asks for reduced motion. Applies without a restart."
         },
@@ -246,7 +264,7 @@
           "default": 5,
           "minimum": 1,
           "maximum": 400,
-          "order": 20,
+          "order": 22,
           "scope": "application",
           "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. Travel is the distance actually covered, across both axes, so a line up or down is about nineteen of it where a character is seven. The default of `5` is under one character, so a single arrow key clears it and holding one reads as light running along beside the caret - which is what the effect is for. It also means a held key draws one animation per repeat, and that is the only place this costs anything, so raise it if it ever shows. At `40` only real jumps qualify: End, Ctrl+arrow, a click across the file."
         },
@@ -255,14 +273,14 @@
           "default": 300,
           "minimum": 80,
           "maximum": 1200,
-          "order": 21,
+          "order": 23,
           "scope": "application",
           "markdownDescription": "How long `#neonGlow.caretArc#` takes to cross the path it drew, in milliseconds. A duration is not what anyone sees; frames are. At 60Hz the default of `300` is eighteen of them and the spark is only lit for the middle - it fades in over the first eighth and back out at the end - so the floor is `80`, below which the whole thing happens in three or four frames and reads as a flicker where the caret landed rather than as anything travelling. If that is what you want, `flash` asks for it directly and is cheaper. The same value is half as many frames at 60Hz as at 144Hz, so it wants raising on a slower panel. `flash` keeps its own shorter life at a fixed fraction of this rather than taking a setting of its own. Applies without a restart."
         },
         "neonGlow.caretArcOnDrag": {
           "type": "boolean",
           "default": false,
-          "order": 22,
+          "order": 24,
           "scope": "application",
           "markdownDescription": "Keep drawing `#neonGlow.caretArc#` while a selection is being dragged out with the mouse. Off, because a drag moves the caret at mouse rate and one gesture then draws a whole run of arcs, which reads as noise rather than as light following the caret. **The click that starts the drag still draws either way** - it is the moving that is held back, not the press. Applies without a restart."
         }

@@ -258,7 +258,7 @@ const KNOBS = ['brightness', 'minChroma', 'chromaSpan', 'floor', 'minLightness',
                 'glowLayers', 'maxBlur', 'cursorTrail', 'saveShake',
                 'findGlow', 'selectionGlow', 'occurrenceGlow', 'gutterGlow',
                 'bracketMatchGlow', 'squiggleGlow', 'diffGlow',
-                'lineHighlightGlow', 'breakpointGlow', 'breathe',
+                'lineHighlightGlow', 'breakpointGlow', 'snippetGlow', 'renameGlow', 'breathe',
                 'caretArc', 'caretArcMinJump', 'caretArcDuration', 'caretArcOnDrag'];
 
 function readKnobs() {

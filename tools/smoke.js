@@ -244,6 +244,15 @@ async function main() {
   check('breakpoints glow in their own colour, on the glyph rather than its box',
     /codicon-debug-breakpoint[^{]*\{ text-shadow: 0 0 3px currentColor, 0 0 8px currentColor/.test(css)
     && css.indexOf('debugIcon') === -1);
+  /* VS Code's own defaults for these are a faint grey fill and a dark outline,
+     so the floor find takes is what lets them show at all. */
+  check('snippet tabstops glow by default, lifted and spread',
+    /\.snippet-placeholder \{ box-shadow: 0 0 8px 3px oklch\(from var\(--vscode-editor-snippetTabstopHighlightBackground\) max\(l, 0\.6\) c h \/ alpha\)/.test(css)
+    && /\.finish-snippet-placeholder \{ box-shadow: 0 0 8px 3px oklch\(from var\(--vscode-editor-snippetFinalTabstopHighlightBorder, var\(--vscode-editor-snippetFinalTabstopHighlightBackground\)\) max\(l, 0\.6\)/.test(css));
+  /* A filter, and not forced: VS Code writes the box's shadow inline, and a
+     forced declaration is one the breath could not move. */
+  check('the rename box glows by default, on a filter it is free to animate',
+    /\.monaco-editor \.monaco-editor\.rename-box \{ filter: drop-shadow\(0 0 5px var\(--vscode-focusBorder\)\) drop-shadow\(0 0 12px var\(--vscode-focusBorder\)\); \}/.test(css));
   /* It moves, so it waits to be asked like the other three that do. */
   check('breathing is off by default', css.indexOf('neon-glow-breathe') === -1);
   check('diff bloom is on by default, on the word-level highlight',
@@ -261,7 +270,8 @@ async function main() {
      shipped at 0 and any output at all proved the wire worked. */
   s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 30, selectionGlow: 20,
             occurrenceGlow: 20, gutterGlow: 16, bracketMatchGlow: 24,
-            squiggleGlow: 10, diffGlow: 24, lineHighlightGlow: 18, breathe: 2400 } });
+            squiggleGlow: 10, diffGlow: 24, lineHighlightGlow: 18, snippetGlow: 16,
+            renameGlow: 20, breathe: 2400 } });
   await wait(120);
   css = s.styles();
 
@@ -290,11 +300,20 @@ async function main() {
   /* A filter rather than the shadow itself: keyframes cannot outrank the
      !important the glow rules carry, and animating a text-shadow would re-raster
      its blur every frame. */
-  check('breathing rides on a filter, on the three that are never more than a pair',
+  check('breathing rides on a filter, on the surfaces that are waiting for you',
     /@keyframes neon-glow-breathe \{ 0%, 100% \{ filter: none; \} 50% \{ filter: brightness\(0\.55\); \} \}/.test(css)
-    && /\.currentFindMatch, \.monaco-editor \.debug-top-stack-frame-line, \.monaco-editor \.bracket-match \{ animation: neon-glow-breathe 2400ms/.test(css));
+    && /\.currentFindMatch, \.monaco-editor \.debug-top-stack-frame-line, \.monaco-editor \.bracket-match, \.monaco-editor \.snippet-placeholder, \.monaco-editor \.finish-snippet-placeholder \{ animation: neon-glow-breathe 2400ms/.test(css));
+  /* The rename box holds the name being typed, so a brightness filter on it
+     would dim the name too; it breathes its glow's colour instead. */
+  check('the rename box breathes its glow rather than itself',
+    /@keyframes neon-glow-breathe-rename \{ 0%, 100% \{ filter: drop-shadow\(0 0 8px oklch\(from var\(--vscode-focusBorder\) l c h \/ alpha\)\)[^}]*\} 50% \{ filter: drop-shadow\(0 0 8px oklch\(from var\(--vscode-focusBorder\) l c h \/ calc\(alpha \* 0\.55\)\)\)/.test(css)
+    && /\.monaco-editor\.rename-box \{ animation: neon-glow-breathe-rename 2400ms/.test(css));
   check('and nothing else is asked to breathe',
-    (css.match(/neon-glow-breathe/g) || []).length === 2);
+    (css.match(/neon-glow-breathe(?!-)/g) || []).length === 2
+    && (css.match(/neon-glow-breathe-rename/g) || []).length === 2);
+  check('snippet bloom follows the knob', /\.snippet-placeholder \{ box-shadow: 0 0 16px 5px/.test(css));
+  check('rename bloom follows the knob',
+    /rename-box \{ filter: drop-shadow\(0 0 8px var\(--vscode-focusBorder\)\) drop-shadow\(0 0 20px/.test(css));
   check('the pointed-at line follows the knob',
     /.rangeHighlight { box-shadow: 0 0 18px 6px/.test(css));
   check('diff bloom follows the knob, both sides in their own colours',
@@ -336,14 +355,17 @@ async function main() {
   console.log('\ncaret arc');
   /* Nothing to breathe on a surface whose glow is off, and a period under the
      floor is a strobe rather than a breath. */
-  s = run({ knobs: { breathe: 50, findGlow: 18, lineHighlightGlow: 0, bracketMatchGlow: 0 } });
+  s = run({ knobs: { breathe: 50, findGlow: 18, lineHighlightGlow: 0, bracketMatchGlow: 0,
+            snippetGlow: 0, renameGlow: 0 } });
   await wait(120);
   {
     const c = s.styles();
     check('a breath too fast to be one is held to the floor', /neon-glow-breathe 600ms/.test(c));
     check('and a surface with no glow is not asked to breathe',
       c.indexOf('debug-top-stack-frame-line { animation') === -1
-      && c.indexOf('bracket-match { animation') === -1);
+      && c.indexOf('bracket-match { animation') === -1
+      && c.indexOf('snippet-placeholder') === -1
+      && c.indexOf('neon-glow-breathe-rename') === -1);
   }
 
   s = run({ knobs: { caretArc: 'arc' } });
@@ -663,9 +685,11 @@ async function main() {
      as two unrelated sections failing rather than as anything about this. */
   const off = run({ knobs: { findGlow: 0, selectionGlow: 0, occurrenceGlow: 0,
             gutterGlow: 0, bracketMatchGlow: 0, squiggleGlow: 0, diffGlow: 0,
-            lineHighlightGlow: 0, breakpointGlow: 0 } });
+            lineHighlightGlow: 0, breakpointGlow: 0, snippetGlow: 0, renameGlow: 0 } });
   await wait(120);
   const offCss = off.styles();
+  check('zero removes the snippet and rename bloom',
+    offCss.indexOf('snippet-placeholder') === -1 && offCss.indexOf('rename-box') === -1);
 
   check('zero removes the find bloom', offCss.indexOf('.findMatch') === -1);
   check('zero removes the selection bloom', offCss.indexOf('.selected-text') === -1);

@@ -30,7 +30,7 @@ const PRESETS = {
       brightness: 0.7, glowLayers: 2, maxBlur: 26,
       findGlow: 12, selectionGlow: 8, occurrenceGlow: 6, gutterGlow: 6,
       bracketMatchGlow: 6, squiggleGlow: 4, diffGlow: 6,
-      lineHighlightGlow: 5, breakpointGlow: 5,
+      lineHighlightGlow: 5, breakpointGlow: 5, snippetGlow: 5, renameGlow: 8,
       cursorTrail: 0, saveShake: 0, breathe: 0, caretArc: 'off',
     },
   },
@@ -50,7 +50,7 @@ const PRESETS = {
       brightness: 1, glowLayers: 3, maxBlur: 36,
       findGlow: 18, selectionGlow: 12, occurrenceGlow: 10, gutterGlow: 8,
       bracketMatchGlow: 10, squiggleGlow: 5, diffGlow: 10,
-      lineHighlightGlow: 8, breakpointGlow: 8,
+      lineHighlightGlow: 8, breakpointGlow: 8, snippetGlow: 8, renameGlow: 12,
       cursorTrail: 45, saveShake: 5, breathe: 2400,
       caretArc: 'arc', caretArcMinJump: 5, caretArcDuration: 300,
       /* Left off on purpose even here: a drag moves the caret at mouse rate and
