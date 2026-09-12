@@ -16,6 +16,11 @@ The same file with the glow off, then on:
 
 ![the same lines with the glow on: keywords, strings and numbers lit in the colours the theme already gave them](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/glow-on.png)
 
+And the rest of it in motion — the matching bracket box, every other place the symbol
+under the caret appears, and error, warning and info squiggles:
+
+![the editor with the glow on: the bracket box beside the caret, the occurrences of the symbol it is parked on, and three squiggles lit in the theme's own diagnostic colours](https://raw.githubusercontent.com/Ruminem/vscode-neon-glow/main/images/neon-glow.png)
+
 [Which tokens glow](#which-tokens-glow) · [What else can glow](#what-else-can-glow) · [Install](#install) · [Settings](#settings) · [Things that will bite you](#things-that-will-bite-you) · [Status](#status)
 
 ## Which tokens glow
