@@ -24,6 +24,7 @@ const path = require('path');
 
 const PRINT = process.argv.includes('--print');
 const PAYLOAD = path.join(__dirname, '..', 'neon-glow.js');
+const pkg = require('../package.json');
 
 /* Keep the real timers: the stubs below hand the payload unref'd ones so its
    own polling loop cannot hold this process open. */
@@ -721,6 +722,67 @@ async function main() {
     payloadStamp(fLF) === require('crypto').createHash('sha256').update(lfText).digest('hex').slice(0, 12),
     'every install patched from an LF copy would be asked to re-patch for nothing');
   fs.unlinkSync(fLF); fs.unlinkSync(fCRLF);
+
+  /* ---- the presets ---- */
+  /* Read from presets.js rather than scraped back out of extension.js. The
+     scraping version reported the word "here" as a setting, having found it in
+     a comment followed by a colon. */
+  console.log('\npresets');
+  {
+    const { PRESETS, PRESET_ORDER } = require('../presets.js');
+    const extSrc = fs.readFileSync(path.join(__dirname, '..', 'extension.js'), 'utf8');
+    const names = Object.keys(pkg.contributes.configuration.properties)
+      .map(k => k.replace(/^neonGlow[.]/, ''));
+
+    check('the knob list and the settings schema agree',
+      (extSrc.match(/const KNOBS = \[([^]*?)\];/) || ['', ''])[1]
+        .split(',').map(x => x.trim().replace(/'/g, '')).filter(Boolean)
+        .sort().join() === names.slice().sort().join(),
+      'a setting exists that the extension never sends, or the reverse');
+
+    check('every preset is offered', PRESET_ORDER.length === Object.keys(PRESETS).length
+      && PRESET_ORDER.every(k => PRESETS[k]));
+
+    /* A knob a preset leaves out is cleared by the applier, which is a choice
+       rather than an omission - so what has to hold is that the applier walks
+       the knob list. Otherwise the same preset would land somewhere different
+       depending on what happened to be set before it. */
+    check('applying a preset walks the knob list, not the preset',
+      /for [(]const k of KNOBS[)][^]{0,260}config[.]update/.test(extSrc),
+      'a knob a preset omits would keep its old value instead of clearing');
+
+    for (const k of PRESET_ORDER) {
+      const v = PRESETS[k].values;
+      if (!v) continue;
+      const strays = Object.keys(v).filter(n => names.indexOf(n) === -1);
+      check(PRESETS[k].label + ' names only knobs that exist', strays.length === 0,
+        'not a setting: ' + strays.join(', '));
+      const bad = Object.keys(v).filter(n => {
+        const spec = pkg.contributes.configuration.properties['neonGlow.' + n];
+        if (!spec) return true;
+        if (spec.enum) return spec.enum.indexOf(v[n]) === -1;
+        if (spec.type === 'number') return typeof v[n] !== 'number'
+          || v[n] < spec.minimum || v[n] > spec.maximum;
+        if (spec.type === 'boolean') return typeof v[n] !== 'boolean';
+        return false;
+      });
+      check(PRESETS[k].label + ' stays inside what the schema allows', bad.length === 0,
+        'out of range or wrong type: ' + bad.join(', '));
+    }
+
+    /* The one a stale preset really would get wrong: everything-on is the only
+       place the four that ship off are turned on, so an effect added without
+       touching it would silently stay dark there. */
+    const all = PRESETS.everything.values;
+    for (const off of ['cursorTrail', 'saveShake', 'breathe', 'caretArc']) {
+      check('everything-on actually turns on ' + off,
+        all[off] !== 0 && all[off] !== 'off' && all[off] !== undefined,
+        'it ships off and this preset leaves it off, so nothing there would move');
+    }
+
+    check('the command is contributed',
+      pkg.contributes.commands.some(c => c.command === 'neonGlow.preset'));
+  }
 
   /* ---- the payload is still findable once it is in a bundle ---- */
   /* The marker and the stamp sit at the top of what gets appended, and both are

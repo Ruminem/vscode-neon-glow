@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
+const { PRESETS, PRESET_ORDER } = require('./presets');
 const {
   applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
   loaderStamp, writePayloadCopy, payloadCopyStamp,
@@ -397,11 +398,40 @@ function activate(context) {
                              stateWatcher.onDidChange(follow),
                              stateWatcher.onDidCreate(follow));
 
+
+async function applyPreset(key) {
+  const preset = PRESETS[key];
+  const config = vscode.workspace.getConfiguration('neonGlow');
+  /* Every knob, not only the ones this preset names - what a preset does not
+     set, it clears, so the result does not depend on what was there before. */
+  for (const k of KNOBS) {
+    const v = preset.values ? preset.values[k] : undefined;
+    await config.update(k, v === undefined ? undefined : v, vscode.ConfigurationTarget.Global);
+  }
+}
+
   const cmd = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
   cmd('neonGlow.toggle',  () => setGlow(!readState(stateFile).enabled));
   cmd('neonGlow.enable',  () => setGlow(true));
   cmd('neonGlow.disable', () => setGlow(false));
+
+  cmd('neonGlow.preset', async () => {
+    const pick = await vscode.window.showQuickPick(
+      PRESET_ORDER.map(k => ({ label: PRESETS[k].icon + ' ' + PRESETS[k].label,
+                               detail: PRESETS[k].detail, key: k })),
+      { title: 'Neon Glow', placeHolder: 'Pick a starting point - settings apply at once' });
+    if (!pick) return;
+    try {
+      await applyPreset(pick.key);
+      /* No restart, no re-patch: these ride state.json to the renderer, which is
+         the whole reason a preset is worth having rather than a paragraph of
+         instructions. */
+      vscode.window.showInformationMessage('Neon Glow: ' + PRESETS[pick.key].label + ' applied.');
+    } catch (err) {
+      vscode.window.showErrorMessage('Neon Glow: could not write the settings - ' + err.message);
+    }
+  });
 
   cmd('neonGlow.install', () => installPatch(context));
 

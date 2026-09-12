@@ -20,7 +20,7 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 | `samples/demo.js` | README 클립을 찍는 파일. 에러·경고·정보 물결선과 괄호 짝이 한 화면에 오게 짜여 있음. VSIX에는 안 들어감 |
 | `NEXT.md` | 세션 인수인계 노트. VSIX에는 안 들어감 |
 
-명령: `neonGlow.toggle` `enable` `disable` `install` `remove` `status`
+명령: `neonGlow.toggle` `enable` `disable` `install` `remove` `status` `preset`
 설정: `glowLayers` `maxBlur` `brightness` `minChroma` `chromaSpan` `floor` `minLightness` `cursorTrail` `saveShake` `findGlow` `selectionGlow` `occurrenceGlow` `gutterGlow` `bracketMatchGlow` `squiggleGlow` `diffGlow` `lineHighlightGlow` `breakpointGlow` `breathe` `caretArc` `caretArcMinJump` `caretArcDuration` `caretArcOnDrag`
 
 설정 값은 `state.json`을 타고 렌더러로 가므로 **재패치 없이 즉시** 반영됨.
