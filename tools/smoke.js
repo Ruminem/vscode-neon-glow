@@ -229,6 +229,17 @@ async function main() {
   check('bracket-match bloom is on by default', /\.bracket-match \{ box-shadow: 0 0 10px var/.test(css));
   check('squiggle bloom is on by default, two passes',
     /\.squiggly-error \{ filter: drop-shadow\(0 0 2px var\(--vscode-editorError-foreground\)\) drop-shadow\(0 0 5px/.test(css));
+  check('the pointed-at line glows, all four of them',
+    /\.debug-top-stack-frame-line \{ box-shadow: 0 0 8px 3px var\(--vscode-editor-stackFrameHighlightBackground\)/.test(css)
+    && /\.debug-focused-stack-frame-line \{ box-shadow:/.test(css)
+    && /\.rangeHighlight \{ box-shadow:/.test(css)
+    && /\.symbolHighlight \{ box-shadow:/.test(css));
+  /* A font glyph, so the light has to follow the letterform, and in whatever
+     colour it was painted - the theme does not publish one under a name this
+     could ask for. */
+  check('breakpoints glow in their own colour, on the glyph rather than its box',
+    /codicon-debug-breakpoint[^{]*\{ text-shadow: 0 0 3px currentColor, 0 0 8px currentColor/.test(css)
+    && css.indexOf('debugIcon') === -1);
   check('diff bloom is on by default, on the word-level highlight',
     /\.char-insert \{ box-shadow: 0 0 10px 3px var\(--vscode-diffEditor-insertedTextBackground\)/.test(css));
   /* The line tint is deliberately left alone: a blurred full-width block bleeds
@@ -244,7 +255,7 @@ async function main() {
      shipped at 0 and any output at all proved the wire worked. */
   s = run({ knobs: { cursorTrail: 45, saveShake: 6, findGlow: 30, selectionGlow: 20,
             occurrenceGlow: 20, gutterGlow: 16, bracketMatchGlow: 24,
-            squiggleGlow: 10, diffGlow: 24 } });
+            squiggleGlow: 10, diffGlow: 24, lineHighlightGlow: 18 } });
   await wait(120);
   css = s.styles();
 
@@ -270,6 +281,8 @@ async function main() {
     /\.squiggly-warning \{ filter: drop-shadow\(0 0 4px var\(--vscode-editorWarning-foreground\)\) drop-shadow\(0 0 10px/.test(css)
     && /\.squiggly-info \{ filter:/.test(css));
   check('hints are left alone', css.indexOf('.squiggly-hint') === -1);
+  check('the pointed-at line follows the knob',
+    /.rangeHighlight { box-shadow: 0 0 18px 6px/.test(css));
   check('diff bloom follows the knob, both sides in their own colours',
     /\.char-insert \{ box-shadow: 0 0 24px 8px var\(--vscode-diffEditor-insertedTextBackground\)/.test(css)
     && /\.char-delete \{ box-shadow: 0 0 24px 8px var\(--vscode-diffEditor-removedTextBackground\)/.test(css));
@@ -623,7 +636,8 @@ async function main() {
      stub built here reaches back and kills every earlier one - which shows up
      as two unrelated sections failing rather than as anything about this. */
   const off = run({ knobs: { findGlow: 0, selectionGlow: 0, occurrenceGlow: 0,
-            gutterGlow: 0, bracketMatchGlow: 0, squiggleGlow: 0, diffGlow: 0 } });
+            gutterGlow: 0, bracketMatchGlow: 0, squiggleGlow: 0, diffGlow: 0,
+            lineHighlightGlow: 0, breakpointGlow: 0 } });
   await wait(120);
   const offCss = off.styles();
 
@@ -635,6 +649,8 @@ async function main() {
   check('zero removes the bracket-match bloom', offCss.indexOf('.bracket-match') === -1);
   check('zero removes the squiggle bloom', offCss.indexOf('squiggly') === -1);
   check('zero removes the diff bloom', offCss.indexOf('char-insert') === -1);
+  check('zero removes the line and breakpoint bloom',
+    offCss.indexOf('rangeHighlight') === -1 && offCss.indexOf('codicon-debug') === -1);
   check('and the token glow is untouched', /\.mtk1 \{[^}]*text-shadow:/.test(offCss));
 
   /* ---- a settings nudge on the fast channel ---- */

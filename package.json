@@ -190,6 +190,24 @@
           "scope": "application",
           "markdownDescription": "Bloom on what changed inside a diff, in pixels, taken from the theme's own diff colours. On at `10`; `0` leaves it flat. The word-level highlight only, not the line tint behind it: blurring a full-width block bleeds into the lines above and below, and changed lines usually come in runs, so that reads as a haze over the region rather than a mark on the change. A diff is also the one view `#neonGlow.gutterGlow#` is missing from - VS Code hides the change bars there, and clicking a file in source control opens a diff. Applies without a restart."
         },
+        "neonGlow.lineHighlightGlow": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 24,
+          "order": 16,
+          "scope": "application",
+          "markdownDescription": "Bloom on the line the editor is pointing at, in pixels, in the theme's own colours. On at `8`; `0` leaves it flat. Four surfaces share this: the stopped line while debugging, the one below it when you walk up the call stack, and the range and symbol highlights that light when you jump to a definition or peek a result. Unlike the line tint in a diff, which `#neonGlow.diffGlow#` deliberately leaves alone, these appear one at a time - so blurring a full-width band marks a line rather than washing a region. Applies without a restart."
+        },
+        "neonGlow.breakpointGlow": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 24,
+          "order": 17,
+          "scope": "application",
+          "markdownDescription": "Bloom on breakpoint glyphs in the gutter, in pixels. On at `8`; `0` leaves them flat. The colour is taken as `currentColor` - whatever VS Code painted the glyph, including a theme that overrode it and the dimmer shade a disabled breakpoint gets - because this one is not published as a theme colour a rule could name. It is a `text-shadow` rather than a `box-shadow`: a codicon is a font glyph, so the light follows the letterform instead of the box around it. Applies without a restart."
+        },
         "neonGlow.caretArc": {
           "type": "string",
           "default": "off",
@@ -209,7 +227,7 @@
             "The whole route lights at once and goes out. The only path style with no travel in it at all, and the quietest of them.",
             "`flash` drawn as an edge instead of a fill - a ring pushed outwards from where the caret landed. Like `flash`, it needs no distance."
           ],
-          "order": 16,
+          "order": 18,
           "scope": "application",
           "markdownDescription": "What to draw when the caret jumps: a key, a click, find-next, go-to-definition - anything that moves it, not only a keystroke. Off by default. The colour is the theme's own caret colour rather than one of ours, and each shape is SVG that lives a few hundred milliseconds and is then removed. `#neonGlow.caretArcMinJump#` decides how far the caret has to travel first. Ignored when the system asks for reduced motion. Applies without a restart."
         },
@@ -218,7 +236,7 @@
           "default": 5,
           "minimum": 1,
           "maximum": 400,
-          "order": 17,
+          "order": 19,
           "scope": "application",
           "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. Travel is the distance actually covered, across both axes, so a line up or down is about nineteen of it where a character is seven. The default of `5` is under one character, so a single arrow key clears it and holding one reads as light running along beside the caret - which is what the effect is for. It also means a held key draws one animation per repeat, and that is the only place this costs anything, so raise it if it ever shows. At `40` only real jumps qualify: End, Ctrl+arrow, a click across the file."
         },
@@ -227,14 +245,14 @@
           "default": 300,
           "minimum": 80,
           "maximum": 1200,
-          "order": 18,
+          "order": 20,
           "scope": "application",
           "markdownDescription": "How long `#neonGlow.caretArc#` takes to cross the path it drew, in milliseconds. A duration is not what anyone sees; frames are. At 60Hz the default of `300` is eighteen of them and the spark is only lit for the middle - it fades in over the first eighth and back out at the end - so the floor is `80`, below which the whole thing happens in three or four frames and reads as a flicker where the caret landed rather than as anything travelling. If that is what you want, `flash` asks for it directly and is cheaper. The same value is half as many frames at 60Hz as at 144Hz, so it wants raising on a slower panel. `flash` keeps its own shorter life at a fixed fraction of this rather than taking a setting of its own. Applies without a restart."
         },
         "neonGlow.caretArcOnDrag": {
           "type": "boolean",
           "default": false,
-          "order": 19,
+          "order": 21,
           "scope": "application",
           "markdownDescription": "Keep drawing `#neonGlow.caretArc#` while a selection is being dragged out with the mouse. Off, because a drag moves the caret at mouse rate and one gesture then draws a whole run of arcs, which reads as noise rather than as light following the caret. **The click that starts the drag still draws either way** - it is the moving that is held back, not the press. Applies without a restart."
         }
