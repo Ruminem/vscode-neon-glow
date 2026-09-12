@@ -357,6 +357,34 @@ async function main() {
       a.frames.every((f) => !('strokeDashoffset' in f) || f.strokeDashoffset <= 0)));
   })());
 
+  /* The duration reaches the animation rather than sitting in the knobs unused,
+     and flash rides along at its fixed fraction instead of taking a knob of its
+     own. 600 * 260/300 is 520. */
+  s = run({ knobs: { caretArc: 'arc', caretArcDuration: 600 } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('the arc duration follows the knob', drawn.length === 1
+    && drawn[0].descendants().filter((n) => n.tag === 'polyline')
+        .every((l) => l.anims.every((a) => a.opts.duration === 600)));
+
+  s = run({ knobs: { caretArc: 'flash', caretArcDuration: 600 } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('and flash keeps its shorter life as a fraction of it',
+    drawn.length === 1 && drawn[0].anims[0].opts.duration === 520);
+
+  /* Out of range on the way in, not on the way out: a hand-edited settings.json
+     is the only thing that can send it. */
+  s = run({ knobs: { caretArc: 'arc', caretArcDuration: 5 } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('a duration under the floor is clamped rather than drawn',
+    drawn.length === 1 && drawn[0].descendants()
+      .filter((n) => n.tag === 'polyline')[0].anims[0].opts.duration === 80);
+
   s = run({ knobs: { caretArc: 'arc', caretArcMinJump: 40 } });
   await wait(120);
   await s.jump(110);

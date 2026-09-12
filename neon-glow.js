@@ -37,6 +37,7 @@ try {
     diffGlow:      10,   /* px of bloom on what changed inside a diff; 0 = flat  */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
+    caretArcDuration: 300, /* ms the arc takes to cross the path it drew         */
     caretArcOnDrag: false /* keep drawing while a selection is being dragged out */
   };
 
@@ -50,7 +51,8 @@ try {
     bracketMatchGlow: [0, 32],
     squiggleGlow: [0, 16],
     diffGlow: [0, 32],
-    caretArcMinJump: [1, 400]
+    caretArcMinJump: [1, 400],
+    caretArcDuration: [80, 1200]
   };
 
   /* Knobs that carry a word rather than a number. A value outside the list is
@@ -785,6 +787,28 @@ try {
   }
 
   /**
+   * How long the light takes to cross the path it was given.
+   *
+   * A duration is not what anyone sees; frames are. At 60Hz the default of 300
+   * is eighteen of them, and the spark is only lit for the middle of that - the
+   * animation fades in over the first eighth and back out at the end - so the
+   * floor is 80 rather than something smaller. Below about that the whole thing
+   * happens inside three or four frames and reads as a flicker where the caret
+   * landed rather than as anything travelling, which is what `flash` is for and
+   * is a better way to ask for it. The same value is half as many frames on a
+   * 60Hz panel as on a 144Hz one, the lesson cursorTrail already paid for.
+   *
+   * flash keeps its own shorter life at a fixed ratio of this. The two were 300
+   * and 260 when they were written, and there is no reason in the code for the
+   * difference beyond a burst wanting to be over sooner than a journey - so it
+   * rides along rather than becoming a nineteenth setting.
+   */
+  function arcDuration() {
+    return Math.max(80, Math.min(1200, Math.round(KNOBS.caretArcDuration)));
+  }
+  var FLASH_RATIO = 260 / 300;
+
+  /**
    * Cached, because reading a computed style forces the engine to resolve one
    * and a held arrow key draws about thirty times a second. It only changes
    * with the theme, and the theme arriving is exactly when the stylesheet is
@@ -985,10 +1009,11 @@ try {
        path is exactly as long as the caret travelled. A move with no horizontal
        part has no back, so it takes the middle. */
     var ex = dx > 0 ? cx : dx < 0 ? cx + r.width : cx + r.width / 2;
-    if (style === 'flash') { drawFlash(ex, midY, colour, 260); return; }
+    var ms = arcDuration();
+    if (style === 'flash') { drawFlash(ex, midY, colour, Math.round(ms * FLASH_RATIO)); return; }
     /* Not "w": that is the watch this was handed, and shadowing it here worked
        only because nothing below touched it again. */
-    drawPath(style, ex - dx, midY - dy, dist, Math.atan2(dy, dx), colour, 300);
+    drawPath(style, ex - dx, midY - dy, dist, Math.atan2(dy, dx), colour, ms);
   }
 
   /**
