@@ -26,3 +26,8 @@ NEXT.md
 # Marketplace and the extension pane both fetch. Shipping them inside the VSIX
 # as well would double the download for files nothing reads from there.
 images/**
+
+# The file the README clip is recorded on. It is a prop for making the picture,
+# not something the extension reads, and it would arrive looking like a source
+# file of ours inside someone else's installation.
+samples/**
