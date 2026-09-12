@@ -35,7 +35,7 @@ try {
     bracketMatchGlow: 10, /* px of bloom on the matching bracket box; 0 = flat   */
     squiggleGlow:   5,   /* px of bloom on error/warning/info squiggles; 0 = flat */
     diffGlow:      10,   /* px of bloom on what changed inside a diff; 0 = flat  */
-    caretArc:    'off',  /* off | arc | beam | comet | flash | wave | bolt | dots */
+    caretArc:    'off',  /* off, or one of twelve shapes; see KNOB_ENUM below  */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
     caretArcDuration: 300, /* ms the arc takes to cross the path it drew         */
     caretArcOnDrag: false /* keep drawing while a selection is being dragged out */
@@ -59,7 +59,8 @@ try {
      dropped the same way a non-number is: the renderer decides what it will
      accept, so a hand-edited settings.json cannot put nonsense in here. */
   var KNOB_ENUM = {
-    caretArc: ['off', 'arc', 'beam', 'comet', 'flash', 'wave', 'bolt', 'dots']
+    caretArc: ['off', 'arc', 'beam', 'comet', 'flash', 'wave', 'bolt', 'dots',
+                'coil', 'square', 'zip', 'pulse', 'ring']
   };
 
   /* And knobs that carry a switch. Sorted by type like the other two, so a
@@ -834,11 +835,16 @@ try {
 
   /* No travel to trace, so it marks the arrival instead of the journey. The one
      style that still reads at a Tab's two characters. */
-  function drawFlash(x, y, colour, ms) {
+  function drawFlash(x, y, colour, ms, ring) {
     var d = document.createElement('div');
+    /* The same burst drawn two ways. flash fills, so it reads as light arriving
+       at a point; ring only carries an edge, so it reads as the point pushing
+       something outwards. On a Tab or a click the two are the clearest pair in
+       the set, which is why the second one is worth having at all. */
     d.style.cssText = ARC_BOX + 'width:30px;height:30px;border-radius:50%;left:'
       + (x - 15) + 'px;top:' + (y - 15) + 'px;'
-      + 'background:radial-gradient(circle,#fff 0%,' + colour + ' 35%,transparent 70%)';
+      + (ring ? 'border:2px solid ' + colour + ';box-shadow:0 0 10px ' + colour
+              : 'background:radial-gradient(circle,#fff 0%,' + colour + ' 35%,transparent 70%)');
     arcRelease(d, ms);
     d.animate([
       { transform: 'scale(0.2)', opacity: 0 },
@@ -871,9 +877,11 @@ try {
        because they wander differently rather than because they are drawn by
        different code. */
     var amp = 0, n = 1;
-    if (style === 'arc')  { amp = Math.max(2.5, Math.min(w * 0.035, 7));  n = Math.max(3, Math.round(w / 20)); }
-    if (style === 'wave') { amp = Math.max(3, Math.min(w * 0.05, 10));    n = Math.max(8, Math.round(w / 8)); }
-    if (style === 'bolt') { amp = Math.max(4, Math.min(w * 0.09, 16));    n = Math.max(2, Math.round(w / 34)); }
+    if (style === 'arc')    { amp = Math.max(2.5, Math.min(w * 0.035, 7)); n = Math.max(3, Math.round(w / 20)); }
+    if (style === 'wave')   { amp = Math.max(3, Math.min(w * 0.05, 10));   n = Math.max(8, Math.round(w / 8)); }
+    if (style === 'bolt')   { amp = Math.max(4, Math.min(w * 0.09, 16));   n = Math.max(2, Math.round(w / 34)); }
+    if (style === 'coil')   { amp = Math.max(3, Math.min(w * 0.06, 12));   n = Math.max(12, Math.round(w / 5)); }
+    if (style === 'square') { amp = Math.max(4, Math.min(w * 0.08, 14));   n = Math.max(4, Math.round(w / 24)); }
     var h = amp * 2 + 14, mid = h / 2;
 
     var pts = [], len = 0, px = 0, py = mid;
@@ -884,7 +892,11 @@ try {
          left and arrives at the one it is going to, whatever it does between. */
       if (i === 0 || i === n) Y = mid;
       else if (style === 'wave') Y = mid + Math.sin(i / n * Math.PI * 4) * amp;
+      else if (style === 'coil') Y = mid + Math.sin(i / n * Math.PI * 12) * amp;
       else if (style === 'bolt') Y = mid + (i % 2 ? amp : -amp);
+      /* Two points at each level before the jump, which is what makes it a
+         crenellation rather than the sharp zigzag bolt already draws. */
+      else if (style === 'square') Y = mid + (Math.floor(i / 2) % 2 ? amp : -amp);
       else Y = mid + (Math.random() * 2 - 1) * amp;
       if (i) len += Math.sqrt((X - px) * (X - px) + (Y - py) * (Y - py));
       px = X; py = Y;
@@ -945,15 +957,28 @@ try {
        token glow settled on. */
     for (var j = 0; j < 2; j++) {
       var el = j ? core : glow;
-      /* One lit segment sliding the length of the path, or a repeating pattern
-         of short ones doing the same. The travelling head is the whole point of
-         the dash here: nothing grows or is redrawn, the pattern is simply
-         offset, which is one property for the whole animation. */
-      el.style.strokeDasharray = dots ? '2 7' : (head + ' ' + len);
+      /* What the dash is doing is the second axis a style can differ on, and it
+         is a bigger difference than the shape: the same path reads as one head
+         travelling it, a stream of short ones, a line drawing itself in, or the
+         whole route lighting at once. All of it is the offset of a pattern -
+         nothing grows and nothing is redrawn, which is why a style costs the
+         same whichever of these it picks.
+           zip runs its offset the other way on purpose. The pattern is one dash
+         as long as the path followed by an equal gap, so an offset of len puts
+         the gap over the whole thing and nothing shows; bringing it to zero
+         slides the dash on from the end the caret left. */
+      if (style === 'pulse') {
+        el.animate([
+          { opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0 }
+        ], { duration: ms, easing: 'cubic-bezier(.12,.85,.2,1)', fill: 'forwards' });
+        continue;
+      }
+      var zip = (style === 'zip');
+      el.style.strokeDasharray = dots ? '2 7' : zip ? (len + ' ' + len) : (head + ' ' + len);
       el.animate([
-        { strokeDashoffset: 0, opacity: 0 },
+        { strokeDashoffset: zip ? len : 0, opacity: 0 },
         { opacity: 1, offset: 0.12 },
-        { strokeDashoffset: dots ? -len : -(len - head), opacity: 0 }
+        { strokeDashoffset: zip ? 0 : (dots ? -len : -(len - head)), opacity: 0 }
       ], { duration: ms, easing: 'cubic-bezier(.12,.85,.2,1)', fill: 'forwards' });
     }
   }
@@ -1029,7 +1054,10 @@ try {
        part has no back, so it takes the middle. */
     var ex = dx > 0 ? cx : dx < 0 ? cx + r.width : cx + r.width / 2;
     var ms = arcDuration();
-    if (style === 'flash') { drawFlash(ex, midY, colour, Math.round(ms * FLASH_RATIO)); return; }
+    if (style === 'flash' || style === 'ring') {
+      drawFlash(ex, midY, colour, Math.round(ms * FLASH_RATIO), style === 'ring');
+      return;
+    }
     /* Not "w": that is the watch this was handed, and shadowing it here worked
        only because nothing below touched it again. */
     drawPath(style, ex - dx, midY - dy, dist, Math.atan2(dy, dx), colour, ms);

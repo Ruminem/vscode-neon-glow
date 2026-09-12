@@ -193,7 +193,7 @@
         "neonGlow.caretArc": {
           "type": "string",
           "default": "off",
-          "enum": ["off", "arc", "beam", "comet", "flash", "wave", "bolt", "dots"],
+          "enum": ["off", "arc", "beam", "comet", "flash", "wave", "bolt", "dots", "coil", "square", "zip", "pulse", "ring"],
           "enumDescriptions": [
             "Nothing is drawn when the caret moves.",
             "A jagged bolt runs the way the caret went, lighting the path behind it before it fades. The jitter is rolled fresh every time, so no two are the same shape.",
@@ -202,7 +202,12 @@
             "No path at all - a burst where the caret landed. The only one that still reads on a Tab, because it does not need distance to draw.",
             "A regular ripple along the way the caret went, where `arc` is a random jitter. The wander is the same every time, which reads calmer over a long jump.",
             "A sharp zigzag with far fewer, larger turns than `arc` - the widest detour of the set, and the one that still reads at a glance across a whole file.",
-            "A stream of short dashes running the length of the path rather than one lit head. Busier than `comet` and quieter than `bolt`."
+            "A stream of short dashes running the length of the path rather than one lit head. Busier than `comet` and quieter than `bolt`.",
+            "`wave` wound six times tighter - a spring rather than a ripple. The one that reads as speed on a long jump and as a knot on a short one.",
+            "A crenellation: it holds a level, jumps, and holds the other. Squarer than `bolt`, which turns at every point it has.",
+            "The line draws itself on from the caret it left to the caret it reached, and stays whole while it fades. Nothing runs along it.",
+            "The whole route lights at once and goes out. The only path style with no travel in it at all, and the quietest of them.",
+            "`flash` drawn as an edge instead of a fill - a ring pushed outwards from where the caret landed. Like `flash`, it needs no distance."
           ],
           "order": 16,
           "scope": "application",

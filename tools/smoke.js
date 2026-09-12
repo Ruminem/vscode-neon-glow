@@ -438,6 +438,71 @@ async function main() {
       .filter((n) => n.tag === 'polyline' && n.style.strokeDasharray)
       .every((l) => l.style.strokeDasharray === '2 7'));
 
+  const ysOf = (d) => d.descendants().filter((n) => n.tag === 'polyline')[0]
+    .attrs.points.split(' ').map((p) => Number(p.split(',')[1]));
+
+  s = run({ knobs: { caretArc: 'coil' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('coil winds tighter than wave', drawn.length === 1 && (function () {
+    const ys = ysOf(drawn[0]), mid = ys[0], inner = ys.slice(1, -1);
+    let crossings = 0;
+    for (let i = 1; i < inner.length; i++) {
+      if ((inner[i - 1] - mid) * (inner[i] - mid) < 0) crossings++;
+    }
+    /* Six cycles against wave's two, so more crossings - but still a shape
+       rather than a scatter, which is the other side of the same count. */
+    return crossings >= 8 && crossings <= 14;
+  })());
+
+  s = run({ knobs: { caretArc: 'square' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('square holds a level before it jumps', drawn.length === 1 && (function () {
+    const ys = ysOf(drawn[0]), inner = ys.slice(1, -1);
+    /* Points come in pairs at the same height. A zigzag never repeats a level
+       twice in a row, so this is what tells the two apart. */
+    let flats = 0;
+    for (let i = 1; i < inner.length; i++) if (inner[i] === inner[i - 1]) flats++;
+    return inner.length > 3 && flats >= Math.floor((inner.length - 1) / 2) - 1;
+  })());
+
+  s = run({ knobs: { caretArc: 'zip' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('zip draws itself on rather than sliding a head along', drawn.length === 1
+    && drawn[0].descendants().filter((n) => n.tag === 'polyline')
+        .filter((l) => l.style.strokeDasharray)
+        .every((l) => {
+          const [dash, gap] = l.style.strokeDasharray.split(' ').map(Number);
+          const f = l.anims[0].frames;
+          /* One dash as long as the path and an equal gap, and the offset runs
+             down to zero from above rather than away below it. */
+          return Math.abs(dash - gap) < 0.01 && f[0].strokeDashoffset > 0
+            && f[f.length - 1].strokeDashoffset === 0;
+        }));
+
+  s = run({ knobs: { caretArc: 'pulse' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('pulse lights the whole route without moving anything', drawn.length === 1
+    && drawn[0].descendants().filter((n) => n.tag === 'polyline')
+        .every((l) => !l.style.strokeDasharray
+          && l.anims.every((a) => a.frames.every((f) => !('strokeDashoffset' in f)))));
+
+  s = run({ knobs: { caretArc: 'ring' } });
+  await wait(120);
+  await s.jump(600);
+  drawn = s.drawn();
+  check('ring bursts as an edge where flash bursts as a fill', drawn.length === 1
+    && /border:2px solid/.test(drawn[0].style.cssText)
+    && drawn[0].style.cssText.indexOf('radial-gradient') === -1
+    && drawn[0].descendants().length === 0);
+
   s = run({ knobs: { caretArc: 'flash' } });
   await wait(120);
   await s.jump(114);
