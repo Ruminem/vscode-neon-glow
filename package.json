@@ -29,7 +29,8 @@
       { "command": "neonGlow.disable", "title": "Neon Glow: Disable" },
       { "command": "neonGlow.install", "title": "Neon Glow: Patch the workbench bundle" },
       { "command": "neonGlow.remove",  "title": "Neon Glow: Restore the original bundle" },
-      { "command": "neonGlow.status",  "title": "Neon Glow: Show status" }
+      { "command": "neonGlow.status",  "title": "Neon Glow: Show status" },
+      { "command": "neonGlow.preset",  "title": "Neon Glow: Choose a preset" }
     ],
     "menus": {
       "commandPalette": [

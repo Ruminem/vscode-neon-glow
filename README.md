@@ -104,6 +104,7 @@ From the command palette (`F1`):
 | `Neon Glow: Toggle` | flip the glow on/off, instantly |
 | `Neon Glow: Enable` / `Neon Glow: Disable` | set it explicitly — only whichever one would actually change something is listed |
 | `Neon Glow: Show status` | current state, and whether the bundle is patched |
+| `Neon Glow: Choose a preset` | subtle, default, or everything on — twenty-three knobs as three answers. Applies at once, with no restart |
 
 **No default keybinding ships with this**, deliberately — that is what makes it
 impossible to collide with another extension. Bind whatever you like in *Keyboard
@@ -401,6 +402,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 | `Neon Glow: Toggle` | 글로우를 즉시 켜고 끔 |
 | `Neon Glow: Enable` / `Neon Glow: Disable` | 명시적으로 지정. 실제로 뭔가 바뀌는 쪽만 목록에 뜸 |
 | `Neon Glow: Show status` | 지금 상태와 번들이 패치돼 있는지 |
+| `Neon Glow: Choose a preset` | 은은하게 / 기본 / 다 켜기 — 노브 스물셋을 세 답으로. 재시작 없이 즉시 적용됨 |
 
 **기본 키바인딩을 넣지 않았음.** 일부러 그랬고, 다른 확장과 충돌할 수 없는 이유가
 그것임. *바로 가기 키*(`Ctrl+K Ctrl+S`)에서 `Neon Glow`로 찾아 원하는 대로 잡으면 됨.
