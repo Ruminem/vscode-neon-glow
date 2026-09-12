@@ -721,6 +721,26 @@ async function main() {
     'every install patched from an LF copy would be asked to re-patch for nothing');
   fs.unlinkSync(fLF); fs.unlinkSync(fCRLF);
 
+  /* ---- the payload is still findable once it is in a bundle ---- */
+  /* The marker and the stamp sit at the top of what gets appended, and both are
+     looked for in a window off the end of the file. A payload longer than that
+     window puts them out of reach: the bundle is patched, every byte of it is
+     right, and the extension reports it unpatched and offers to do it again.
+     That is not a slow squeeze either - it arrives whole, between one release
+     and the next, the first time the payload crosses the line. */
+  console.log('\npatched bundle');
+  const { isPatched, patchedStamp } = require('../patch.js');
+  const fake = path.join(require('os').tmpdir(), 'neon-bundle.js');
+  /* A megabyte of something else first, the way a real workbench.js is. */
+  fs.writeFileSync(fake, '/* filler */\n'.repeat(80000)
+    + lfText.replace('__NEON_STAMP__', payloadStamp(PAYLOAD)));
+  check('a patched bundle reads as patched', isPatched(fake),
+    'the payload has outgrown the window the marker is looked for in');
+  check('and the stamp in it can still be read back',
+    patchedStamp(fake) === payloadStamp(PAYLOAD),
+    'the extension would ask for a re-patch on every launch');
+  fs.unlinkSync(fake);
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
