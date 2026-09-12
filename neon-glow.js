@@ -35,7 +35,8 @@ try {
     bracketMatchGlow: 10, /* px of bloom on the matching bracket box; 0 = flat   */
     squiggleGlow:   5,   /* px of bloom on error/warning/info squiggles; 0 = flat */
     caretArc:    'off',  /* off | arc | beam | comet | flash                     */
-    caretArcMinJump: 5   /* px of travel before an arc is drawn                  */
+    caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
+    caretArcOnDrag: false /* keep drawing while a selection is being dragged out */
   };
 
   /* Clamped so a hand-edited settings.json cannot produce nonsense. */
@@ -55,6 +56,13 @@ try {
      accept, so a hand-edited settings.json cannot put nonsense in here. */
   var KNOB_ENUM = {
     caretArc: ['off', 'arc', 'beam', 'comet', 'flash']
+  };
+
+  /* And knobs that carry a switch. Sorted by type like the other two, so a
+     hand-edited settings.json holding the string "true" is dropped rather than
+     read as one. */
+  var KNOB_BOOL = {
+    caretArcOnDrag: true
   };
 
   /**
@@ -565,7 +573,9 @@ try {
       if (!Object.prototype.hasOwnProperty.call(KNOBS, name)) continue;
       var v = k[name];
       var words = KNOB_ENUM[name];
-      if (words) {
+      if (KNOB_BOOL[name]) {
+        if (typeof v !== 'boolean') continue;
+      } else if (words) {
         if (typeof v !== 'string' || words.indexOf(v) === -1) continue;
       } else {
         if (typeof v !== 'number' || !isFinite(v)) continue;
@@ -688,6 +698,28 @@ try {
 
   /* One entry per cursors layer on screen - one editor, or one pane of a split. */
   var arcWatch = [];
+
+  /**
+   * Whether the caret is being moved by a mouse that is still held down.
+   *
+   * A click and a drag are the same gesture until one of them keeps going: both
+   * press, both move the caret. So the first move after a press is the click
+   * landing and still draws - the settings have promised a click since this
+   * feature shipped - and everything after it, until the button comes back up,
+   * is the drag. Dragging a selection across a screenful moves the caret at
+   * mouse rate, and an arc for every step of that reads as noise rather than as
+   * light following the caret, which is why caretArcOnDrag ships off.
+   */
+  var arcPointer = { down: false, moved: 0 };
+
+  function attachArcPointer() {
+    window.addEventListener('mousedown', function (e) {
+      /* The primary button only. A middle-click paste moves the caret once and
+         is not a drag, and the context menu does not move it at all. */
+      if (!e || !e.button) { arcPointer.down = true; arcPointer.moved = 0; }
+    }, true);
+    window.addEventListener('mouseup', function () { arcPointer.down = false; }, true);
+  }
 
   function arcStyle() {
     var s = KNOBS.caretArc;
@@ -868,6 +900,11 @@ try {
        is no path on screen to draw when the text underneath it has shifted. */
     var scroll = arcScrollSig(w);
     if (scroll !== w.scroll) { w.scroll = scroll; return; }
+
+    /* The click that starts a drag draws; the drag itself does not, unless it
+       has been asked for. Counted here rather than at the press so that a press
+       which never moves the caret does not spend the one move it is allowed. */
+    if (arcPointer.down && arcPointer.moved++ && !KNOBS.caretArcOnDrag) return;
 
     /* Both axes. This read Math.abs(dx) with anything vertical thrown out a
        line above, so a plain Down drew nothing at all - the geometry below
@@ -1172,6 +1209,7 @@ try {
   try { startObservers(); } catch (e) {}
   try { attachStatusBar(); } catch (e) {}
   try { attachArc(); } catch (e) {}
+  try { attachArcPointer(); } catch (e) {}
 
   /* Panes come and go, and focusin is a cheap signal that one might have. It no
      longer decides which caret to watch - all of them are watched - so it only

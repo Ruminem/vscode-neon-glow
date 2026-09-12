@@ -209,6 +209,7 @@ reading is the preview.
 | `neonGlow.squiggleGlow` | `5` | px of bloom on error, warning and info squiggles, in the theme's own colours; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump: `arc`, `beam`, `comet` or `flash` |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
+| `neonGlow.caretArcOnDrag` | `false` | keep drawing while a selection is dragged out; the click that starts the drag draws either way |
 
 **`glowLayers` is the one that costs.** The editor virtualises, so a 10,000 line file
 is not 10,000 glowing spans and the cost scales with the viewport rather than the
@@ -487,6 +488,7 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.squiggleGlow` | `5` | 에러·경고·정보 물결선이 번지는 폭(px). 테마 자신의 색을 씀. `0`이면 꺼짐 |
 | `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지: `arc` `beam` `comet` `flash` |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
+| `neonGlow.caretArcOnDrag` | `false` | 마우스로 선택을 끄는 동안에도 계속 그릴지. 드래그를 시작한 클릭은 어느 쪽이든 그림 |
 
 **돈이 드는 것은 `glowLayers`임.** 에디터는 가상화하므로 10,000줄 파일이 곧 10,000개의
 빛나는 span은 아니고, 비용은 파일 크기가 아니라 뷰포트 크기에 비례함. 그런데 가장 넓은

@@ -204,6 +204,13 @@
           "order": 16,
           "scope": "application",
           "markdownDescription": "How far the caret has to travel, in pixels, before `#neonGlow.caretArc#` draws anything. Travel is the distance actually covered, across both axes, so a line up or down is about nineteen of it where a character is seven. The default of `5` is under one character, so a single arrow key clears it and holding one reads as light running along beside the caret - which is what the effect is for. It also means a held key draws one animation per repeat, and that is the only place this costs anything, so raise it if it ever shows. At `40` only real jumps qualify: End, Ctrl+arrow, a click across the file."
+        },
+        "neonGlow.caretArcOnDrag": {
+          "type": "boolean",
+          "default": false,
+          "order": 17,
+          "scope": "application",
+          "markdownDescription": "Keep drawing `#neonGlow.caretArc#` while a selection is being dragged out with the mouse. Off, because a drag moves the caret at mouse rate and one gesture then draws a whole run of arcs, which reads as noise rather than as light following the caret. **The click that starts the drag still draws either way** - it is the moving that is held back, not the press. Applies without a restart."
         }
       }
     }

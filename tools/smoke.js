@@ -73,6 +73,7 @@ function makeStub(opts) {
   opts = opts || {};
   const appended = [];
   const observers = [];
+  const winListeners = {};
   const classes = new Set();
   let fetches = 0;          /* how many times the payload has read the state file */
 
@@ -108,7 +109,9 @@ function makeStub(opts) {
 
   const globals = {
     window: {
-      addEventListener() {},
+      /* Kept rather than dropped: the arc tells a click from a drag by whether
+         the button is still down, and that only exists as a listener. */
+      addEventListener(type, fn) { (winListeners[type] = winListeners[type] || []).push(fn); },
       matchMedia: () => ({ matches: !!opts.reduceMotion })
     },
     document,
@@ -168,6 +171,11 @@ function makeStub(opts) {
       cb();
       await wait(40);
       return true;
+    },
+    /* Press and release the primary mouse button. What the arc reads to tell a
+       click from a drag. */
+    mouse(type) {
+      for (const fn of winListeners[type] || []) fn({ button: 0 });
     }
   };
 }
@@ -376,6 +384,38 @@ async function main() {
   await wait(120);
   await s.jumpTo(104, 69);
   check('a threshold measures the travel, not one side of it', s.drawn().length === 1);
+
+  /* A click, then the drag it turns into. The press lands one move and that one
+     still draws; the rest of the gesture is held back unless asked for. */
+  s = run({ knobs: { caretArc: 'arc' } });
+  await wait(120);
+  s.mouse('mousedown');
+  await s.jump(300);
+  check('the click that starts a drag still draws', s.drawn().length === 1);
+  await s.jump(400);
+  await s.jump(500);
+  check('the drag after it does not', s.drawn().length === 1,
+    'every step of a drag is drawing, which is the noise this knob exists for');
+  s.mouse('mouseup');
+  await s.jump(600);
+  check('and the button coming up ends the drag', s.drawn().length === 2);
+
+  s = run({ knobs: { caretArc: 'arc', caretArcOnDrag: true } });
+  await wait(120);
+  s.mouse('mousedown');
+  await s.jump(300);
+  await s.jump(400);
+  check('caretArcOnDrag keeps drawing through the drag', s.drawn().length === 2);
+
+  /* A boolean is the third type the wire carries. A string that looks like one
+     is still a string, and the renderer sorts by type. */
+  s = run({ knobs: { caretArc: 'arc', caretArcOnDrag: 'true' } });
+  await wait(120);
+  s.mouse('mousedown');
+  await s.jump(300);
+  await s.jump(400);
+  check('a knob that is not really a boolean is dropped', s.drawn().length === 1,
+    'the string "true" was read as the switch being on');
 
   /* ---- the regression this file was written for ---- */
   console.log('\nmissing document.addEventListener');
