@@ -1115,11 +1115,17 @@ try {
 
     /* A scroll carries the caret across the screen without the caret having
        gone anywhere, and the style attribute alone cannot tell the two apart.
-       Which element a scroll writes to has moved around between Monaco
-       versions, so rather than depend on the answer this compares the
-       container the layer sits in: if it moved too, the caret went with it.
-       Reading its inline style is another string read, the same as the caret's
-       - a rect here would be a layout on every keystroke.
+
+       Measured since, with tools/live.js: on this VS Code a wheel moves
+       .lines-content and leaves the caret's own inline top exactly where it
+       was - 152px before and after, while the container went 0 to -50px. So
+       this guard is insurance rather than the thing that makes scrolling work,
+       and it is kept at that: which element carries a scroll is Monaco's
+       business and has moved before, the cost here is three string reads, and
+       the failure it prevents is an arc on every notch of the wheel. Compare
+       the container the layer sits in - if it moved too, the caret went with
+       it. A rect here would be a layout on every keystroke.
+
        A move that scrolls as it lands is skipped with it, which is right: there
        is no path on screen to draw when the text underneath it has shifted. */
     var scroll = arcScrollSig(w);

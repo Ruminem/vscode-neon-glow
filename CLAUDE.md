@@ -16,7 +16,7 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 | `locate.js` | VS Code 설치 경로 탐색 |
 | `install.js` / `uninstall.js` | CLI 경로. 확장 없이도 패치·복원 가능 |
 | `install.cmd` / `install.sh` | 릴리스 아카이브에 동봉되는 설치 스크립트. VSIX에는 안 들어감 |
-| `tools/` | `make-icon.js`(아이콘 생성), `package.js`(VSIX 빌드), `release.js`(태그 생성), `bench.js`(글로우 공식 성능 쌍대 측정), `smoke.js`(스텁 DOM에 페이로드를 올려 검사). VSIX에는 안 들어감 |
+| `tools/` | `make-icon.js`(아이콘 생성), `package.js`(VSIX 빌드), `release.js`(태그 생성), `bench.js`(글로우 공식 성능 쌍대 측정), `smoke.js`(스텁 DOM에 페이로드를 올려 검사), `live.js`(진짜 VS Code에 CDP로 붙어 Monaco에게 물어봄), `cdp.js`(bench·live가 같이 쓰는 CDP 클라이언트), `hstack-apng.js`(APNG 좌우 합성·분할). VSIX에는 안 들어감 |
 | `samples/demo.js` | README 클립을 찍는 파일. 에러·경고·정보 물결선과 괄호 짝이 한 화면에 오게 짜여 있음. VSIX에는 안 들어감 |
 | `NEXT.md` | 세션 인수인계 노트. VSIX에는 안 들어감 |
 
