@@ -69,7 +69,13 @@ function payloadStamp(file) {
  */
 function patchedStamp(file) {
   try {
-    const m = /\[payload ([0-9a-f]{6,})\]/.exec(readTail(file, TAIL));
+    /* "payload" is what the bundle carried while the payload itself was
+       appended. An install from before the loader still says that, and reading
+       it as a loader stamp would call a perfectly good bundle current when it
+       is one re-patch behind - so only the loader banner answers here, and the
+       old one answers null, which every caller already reads as "not what this
+       copy would write". */
+    const m = /\[loader ([0-9a-f]{6,})\]/.exec(readTail(file, TAIL));
     return m ? m[1] : null;
   } catch (e) { return null; }
 }
@@ -197,15 +203,131 @@ function readState(stateFile) {
   try { return JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch (e) { return { enabled: true, seq: 0 }; }
 }
 
+/** Where the loader reads the payload from: a stable name beside state.json. */
+function payloadCopyPath(stateFile) {
+  return path.join(path.dirname(stateFile), 'neon-glow.js');
+}
+
 /**
- * Append the payload to `file`, keeping a pristine backup.
+ * Write the payload where the renderer can import it, with its placeholders
+ * filled in. Returns the stamp it was written with.
+ *
+ * Beside state.json rather than in the extension folder, which would be the
+ * obvious place and is the wrong one: that path carries the version number, so
+ * a URL baked into the bundle at patch time would go stale on the next
+ * extension update and ask for the re-patch this whole arrangement exists to
+ * abolish. globalStorage does not move.
+ */
+function writePayloadCopy(payload_path, stateFile) {
+  const stamp = payloadStamp(payload_path);
+  let payload = fs.readFileSync(payload_path, 'utf8');
+  payload = payload.split('__NEON_STATE_URL__').join(toVscodeFileUrl(stateFile));
+  payload = payload.split('__NEON_STAMP__').join(stamp);
+  const out = payloadCopyPath(stateFile);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, payload, 'utf8');
+  return stamp;
+}
+
+/**
+ * The stub that goes into the bundle instead of the payload.
+ *
+ * Four ways to run code you fetched, and the workbench refuses three of them.
+ * Measured by patching a probe in and reading what it recorded:
+ *
+ *   eval / new Function   EvalError - Trusted Types
+ *   script.src = url      TypeError - wants a TrustedScriptURL
+ *   trustedTypes.createPolicy('anything')   rejected, not on the CSP's list
+ *   import(url)           runs
+ *
+ * So it is a dynamic import, and the payload is loaded as a module. It was
+ * already an IIFE in strict mode that hangs its API off window, so module scope
+ * changes nothing about it.
+ *
+ * What this buys: the bundle stops carrying the payload, so changing the
+ * payload stops needing a re-patch - and a VS Code update that replaces
+ * workbench.js costs one re-patch of a stub that almost never changes, rather
+ * than one per payload release. The fetch it adds was measured at 0.95ms
+ * against a 2196ms first paint, and lands inside a wait the payload does anyway.
+ *
+ * A failure has to be visible somewhere, because a bundle that is patched and
+ * glowing at nothing looks identical to a working one from the extension side.
+ * data-neon is where the payload already reports itself, so the stub uses it.
+ */
+function loaderBody(payloadUrl) {
+  return 'try {\n'
+    + '(function () {\n'
+    + '  if (typeof window === "undefined" || window.__NEON_INSTALLED) { return; }\n'
+    + '  function mark(stage, extra) {\n'
+    + '    try { document.documentElement.setAttribute("data-neon", stage + (extra ? " " + extra : "")); } catch (e) {}\n'
+    + '  }\n'
+    + '  /* Three tries, because the payload sits in globalStorage and a window that\n'
+    + '     opened before the extension host wrote it would otherwise glow at nothing\n'
+    + '     for the rest of the session. */\n'
+    + '  var left = 3;\n'
+    + '  function go() {\n'
+    + '    import(' + JSON.stringify(payloadUrl) + ').catch(function (e) {\n'
+    + '      if (--left > 0) { setTimeout(go, 1200); return; }\n'
+    + '      mark("loader-failed", String(e && e.message || e).slice(0, 120));\n'
+    + '    });\n'
+    + '  }\n'
+    + '  go();\n'
+    + '})();\n'
+    + '} catch (e) { try { console.error("[NEON] loader", e); } catch (_) {} }\n';
+}
+
+/**
+ * Which payload the copy beside state.json was written from.
+ *
+ * Not a hash of the copy: the copy has had its placeholders filled in, so its
+ * bytes never match the payload it came from and comparing the two would say
+ * "changed" every single time. The substitution puts the source stamp into the
+ * banner on the way past, so the copy carries its own provenance and this reads
+ * it back.
+ */
+function payloadCopyStamp(stateFile) {
+  try {
+    const head = fs.readFileSync(payloadCopyPath(stateFile), 'utf8').slice(0, 400);
+    const m = /\[payload ([0-9a-f]{6,})\]/.exec(head);
+    return m ? m[1] : null;
+  } catch (e) { return null; }
+}
+
+/**
+ * The loader's identity, from its own bytes - deliberately not the payload's.
+ *
+ * This is what the extension compares against the bundle to decide whether a
+ * re-patch is owed, and stamping it with the payload would put the re-patch
+ * straight back: every payload release would change the number and every
+ * install would be told it is out of date, over a stub that had not moved.
+ * The loader only changes when the way it loads changes, which is rare.
+ *
+ * No cache-busting query on the URL for the same reason. A module map belongs
+ * to a window, and a payload only changes between sessions, so a new window
+ * fetches it again anyway.
+ */
+function loaderStamp(stateFile) {
+  return crypto.createHash('sha256')
+    .update(loaderBody(toVscodeFileUrl(payloadCopyPath(stateFile))))
+    .digest('hex').slice(0, 12);
+}
+
+function loaderSource(stateFile) {
+  const body = loaderBody(toVscodeFileUrl(payloadCopyPath(stateFile)));
+  return '\n/* ============ ' + MARKER + ' [loader ' + loaderStamp(stateFile) + '] ============ */\n'
+    + body
+    + '/* ============ /' + MARKER + ' ============ */\n';
+}
+
+/**
+ * Put the loader into `file`, keeping a pristine backup, and write the payload
+ * where the loader will look for it.
  * Re-installing always rebuilds from the backup, never from a patched file.
  */
 function applyPatch(file, payload_path, stateFile) {
-  let payload = fs.readFileSync(payload_path, 'utf8');
-  const url = stateFile ? toVscodeFileUrl(stateFile) : '';
-  payload = payload.split('__NEON_STATE_URL__').join(url);
-  payload = payload.split('__NEON_STAMP__').join(payloadStamp(payload_path));
+  if (!stateFile) throw new Error('the loader needs a state file path to sit beside');
+  writePayloadCopy(payload_path, stateFile);
+  const loader = loaderSource(stateFile);
 
   const backup = backupOf(file);
   let base;
@@ -217,7 +339,7 @@ function applyPatch(file, payload_path, stateFile) {
     fs.writeFileSync(backup, base, 'utf8');
   }
 
-  fs.writeFileSync(file, base + payload, 'utf8');
+  fs.writeFileSync(file, base + loader, 'utf8');
   return backup;
 }
 
@@ -234,6 +356,7 @@ const payloadPath = () => path.join(__dirname, 'neon-glow.js');
 
 module.exports = {
   applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
+  loaderStamp, loaderSource, writePayloadCopy, payloadCopyPath, payloadCopyStamp,
   rememberTargets, recallTargets, forgetTargets,
   backupOf, payloadPath,
   toVscodeFileUrl, defaultStateFile, ensureStateFile, writeState, readState,

@@ -250,11 +250,12 @@ carries a SHA-256 of `workbench.js`, and patching it breaks the match. Dismiss w
 *Don't Show Again*. Rewriting the checksum would silence it permanently but disables
 tamper detection for **all** future modifications, not just this one.
 
-**Updating the extension does not update the patch,** and patching does not update the
-extension. The two halves are written by different commands and neither touches the
-other, so a new setting can appear in the Settings UI while the payload has never
-heard of it, or the reverse. The injected banner carries a hash of the payload, so the
-extension notices a mismatch and offers to patch again.
+**Updating the extension no longer asks you to patch again.** What goes into
+`workbench.js` is a small loader; the code it loads lives beside the settings file and
+is rewritten whenever the extension starts with a newer copy of it. So an extension
+update reaches the glow on the next full restart, with nothing to click. Only a change
+to the loader itself — rare, and nothing a release usually touches — makes the
+extension ask, and it says so when it does.
 
 **VS Code updates wipe the patch.** The updater replaces `workbench.js`, which leaves
 the same state as a fresh install, so the extension offers to re-patch on next launch.
@@ -536,10 +537,11 @@ SHA-256을 들고 있는데 패치하면 그 값이 안 맞음. *다시 표시 �
 체크섬을 다시 써넣으면 영구히 조용해지지만, 이 변경만이 아니라 **앞으로의 모든 변조**에
 대한 탐지가 꺼짐.
 
-**확장을 업데이트해도 패치는 갱신되지 않고,** 패치해도 확장은 갱신되지 않음. 두 짝은 서로
-다른 명령이 쓰고 어느 쪽도 상대를 건드리지 않음. 그래서 설정 화면에는 새 설정이 떠 있는데
-페이로드는 그 이름을 들어본 적이 없거나, 그 반대가 될 수 있음. 주입된 배너가 페이로드
-해시를 들고 있어서 확장이 어긋남을 알아보고 다시 패치할지 물어봄.
+**확장을 업데이트해도 다시 패치하라고 하지 않음.** `workbench.js`에 들어가는 것은 작은
+로더이고, 그 로더가 읽는 코드는 설정 파일 옆에 있음. 확장이 더 새 것을 들고 뜨면 그 파일을
+알아서 갈아끼움. 그래서 확장 업데이트는 **완전 재시작 한 번**으로 글로우까지 닿고, 누를
+것이 없음. 다시 패치가 필요한 경우는 **로더 자체가 바뀔 때뿐**이고 — 릴리스에서 흔한 일이
+아님 — 그때는 확장이 말해줌.
 
 **VS Code 업데이트는 패치를 지움.** 업데이터가 `workbench.js`를 갈아치움. 새로 설치한
 것과 같은 상태라 확장이 다음 실행에서 다시 패치할지 물어봄. 다시 패치하는 것은 안전함 —

@@ -5,6 +5,7 @@ const vscode = require('vscode');
 const { resolveTargets } = require('./locate');
 const {
   applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
+  loaderStamp, writePayloadCopy, payloadCopyStamp,
   rememberTargets, forgetTargets,
   payloadPath,
   ensureStateFile, writeState, readState,
@@ -99,11 +100,29 @@ function appTargets() {
 function refreshPatched() {
   const targets = appTargets();
   patched = targets.length > 0 && targets.every(isPatched);
-  const want = payloadStamp(payloadPath());
-  payloadOutdated = patched && targets.some(f => patchedStamp(f) !== want);
   bundleMtime = 0;
   for (const f of targets) {
     try { bundleMtime = Math.max(bundleMtime, fs.statSync(f).mtimeMs); } catch (e) { /* gone */ }
+  }
+
+  /* Compared against the loader, not the payload. The bundle carries a stub now
+     and the payload sits beside state.json, so a payload release changes the
+     file the stub reads and not the stub - and asking for a re-patch over that
+     would put back the very thing the loader exists to remove. What a payload
+     release owes is a refreshed copy, which happens below without anyone being
+     asked and without a restart being mentioned.
+     activate has not run on the first call, and a stamp needs somewhere for the
+     payload to sit before it can say anything. */
+  if (!stateFile) { payloadOutdated = false; return; }
+  payloadOutdated = patched && targets.some(f => patchedStamp(f) !== loaderStamp(stateFile));
+
+  if (patched && !payloadOutdated) {
+    /* The copy carries the stamp of the payload it was made from, which is what
+       makes this a comparison rather than a rewrite every time: the copy's own
+       bytes differ from the payload's by the placeholders that were filled in. */
+    if (payloadCopyStamp(stateFile) !== payloadStamp(payloadPath())) {
+      try { writePayloadCopy(payloadPath(), stateFile); } catch (_) { /* read-only home */ }
+    }
   }
 }
 
@@ -424,7 +443,7 @@ function activate(context) {
 
     const where = targets.map(f => {
       const v = patchedStamp(f);
-      return (isPatched(f) ? 'patched with payload ' + (v || '(unstamped)') : 'clean')
+      return (isPatched(f) ? 'patched with loader ' + (v || '(pre-loader)') : 'clean')
         + ' - ' + f;
     }).join(' | ');
     const on = readState(stateFile).enabled ? 'ON' : 'OFF';
