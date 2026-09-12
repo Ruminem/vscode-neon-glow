@@ -762,7 +762,7 @@ try {
    * every time, because a fixed zigzag repeating on every jump is the thing
    * that would look cheap.
    */
-  function drawPath(style, boxLeft, midY, w, flip, colour, ms) {
+  function drawPath(style, sx, sy, w, angle, colour, ms) {
     var jag = (style === 'arc');
     var comet = (style === 'comet');
     var amp = jag ? Math.max(2.5, Math.min(w * 0.035, 7)) : 0;
@@ -787,8 +787,15 @@ try {
     head = Math.min(head, len * 0.8);
 
     var wrap = document.createElement('div');
-    wrap.style.cssText = ARC_BOX + 'left:' + boxLeft + 'px;top:' + (midY - mid) + 'px'
-      + (flip ? ';transform:scaleX(-1)' : '');
+    /* The path is built along +x and then turned to face the way the caret
+       went, so one geometry serves every direction. It is rotated about its own
+       start point, which is where the caret was, so the light still leaves
+       there and arrives where the caret is now. This was scaleX(-1) while only
+       horizontal moves drew: a flip answers "which way along this line" and has
+       nothing to say about a move that is mostly vertical. */
+    wrap.style.cssText = ARC_BOX + 'left:' + sx + 'px;top:' + (sy - mid) + 'px'
+      + ';transform-origin:0px ' + mid + 'px'
+      + ';transform:rotate(' + angle.toFixed(4) + 'rad)';
 
     var svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('width', w);
@@ -849,18 +856,50 @@ try {
     var style = arcStyle();
     if (!style || !enabled) return;
     if (reduceMotion && reduceMotion.matches) return;
-    if (Math.abs(dy) >= 1 || Math.abs(dx) < arcMinJump()) return;
+
+    /* A scroll carries the caret across the screen without the caret having
+       gone anywhere, and the style attribute alone cannot tell the two apart.
+       Which element a scroll writes to has moved around between Monaco
+       versions, so rather than depend on the answer this compares the
+       container the layer sits in: if it moved too, the caret went with it.
+       Reading its inline style is another string read, the same as the caret's
+       - a rect here would be a layout on every keystroke.
+       A move that scrolls as it lands is skipped with it, which is right: there
+       is no path on screen to draw when the text underneath it has shifted. */
+    var scroll = arcScrollSig(w);
+    if (scroll !== w.scroll) { w.scroll = scroll; return; }
+
+    /* Both axes. This read Math.abs(dx) with anything vertical thrown out a
+       line above, so a plain Down drew nothing at all - the geometry below
+       could only lay a path along a line, and a dy it could not draw was
+       easier to refuse than to answer. The docs never said horizontal. */
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < arcMinJump()) return;
 
     var r = w.caret.getBoundingClientRect();
     if (!r.width && !r.height) return;
 
     var colour = arcColour(w.caret);
     var midY = r.top + r.height / 2;
+    /* The leading edge of the caret: where it arrived, and where the light has
+       to land. A move with no horizontal part has no leading side, so it takes
+       the middle rather than an arbitrary one. */
+    var ex = dx > 0 ? r.left : dx < 0 ? r.left + r.width : r.left + r.width / 2;
+    if (style === 'flash') { drawFlash(ex, midY, colour, 260); return; }
     /* Not "w": that is the watch this was handed, and shadowing it here worked
        only because nothing below touched it again. */
-    var dist = Math.abs(dx);
-    if (style === 'flash') { drawFlash(dx > 0 ? r.left : r.left + r.width, midY, colour, 260); return; }
-    drawPath(style, dx > 0 ? r.left - dist : r.left + r.width, midY, dist, dx < 0, colour, 300);
+    drawPath(style, ex - dx, midY - dy, dist, Math.atan2(dy, dx), colour, 300);
+  }
+
+  /**
+   * What this editor's scroll looks like right now, as a string to compare
+   * against the last one. Empty when there is nothing to read, which compares
+   * equal to itself and so never suppresses anything.
+   */
+  function arcScrollSig(w) {
+    var c = w.content;
+    if (!c || !c.style) return '';
+    return c.style.top + '|' + c.style.left + '|' + c.style.transform;
   }
 
   /**
@@ -898,11 +937,17 @@ try {
       if (seen) continue;
 
       var caret = layer.querySelector('.cursor');
+      /* The element a scroll moves. Held per watch so the lookup happens once
+         per pane rather than on every caret move. */
+      var content = null;
+      try { content = layer.closest('.lines-content') || layer.parentElement; }
+      catch (e) { content = layer.parentElement; }
       var w = {
-        layer: layer, caret: caret, mo: null,
+        layer: layer, caret: caret, mo: null, content: content, scroll: '',
         x: caret ? (parseFloat(caret.style.left) || 0) : 0,
         y: caret ? (parseFloat(caret.style.top) || 0) : 0
       };
+      w.scroll = arcScrollSig(w);
       /* Reported rather than swallowed. A throw in here used to leave nothing
          at all behind, which is a bad way to learn that a selector was wrong. */
       w.mo = new MutationObserver((function (watch) {
