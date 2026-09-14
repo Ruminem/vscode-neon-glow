@@ -987,6 +987,11 @@ async function main() {
     const drift = Object.keys(en).filter(k => k in ko && spans(en[k]) !== spans(ko[k]));
     check('and the same values and setting links in each', drift.length === 0,
       drift.map(k => k + '\n            en: ' + spans(en[k]) + '\n            ko: ' + spans(ko[k])).join('\n          '));
+    /* The reasoning behind a setting lives in neon-glow.js. Written out in the
+       descriptions it turned the Settings page into a wall nobody reads. */
+    const long = Object.keys(en).filter(k => en[k].length > 140 || String(ko[k] || '').length > 140);
+    check('and no description runs past a couple of sentences', long.length === 0,
+      long.map(k => k + ' (en ' + en[k].length + ', ko ' + String(ko[k] || '').length + ')').join(', '));
     check('command names stay in English, untranslated',
       pkg.contributes.commands.every(c => c.title.indexOf('%') === -1));
   }
