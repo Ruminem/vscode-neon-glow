@@ -14,7 +14,16 @@
  * target list arrives over plain fetch, so this stays inside the rule that this
  * repository installs nothing.
  *
- *   node tools/bench.js --port 9222 --rounds 6
+ *   node tools/bench.js --port 9222 --rounds 8
+ *   node tools/bench.js --a brightness=1 --b brightness=2
+ *   node tools/bench.js --a none --b brightness=2,glowLayers=3,maxBlur=36
+ *
+ * A variant is `none` (no glow at all), `legacy` (the formula from before the
+ * falloff was rebalanced, kept so the old comparison can still be re-run), or a
+ * comma list of the knobs that shape the token glow - brightness, glowLayers,
+ * maxBlur - with anything left out at its shipped default. The default pair is
+ * legacy against the shipped defaults, which is the comparison this tool was
+ * written for.
  *
  * It attaches to a VS Code that is already listening. Launch one with:
  *
@@ -28,7 +37,8 @@
  *
  * Open a dense file and leave it on screen: the numbers only mean something
  * against a viewport with many glowing tokens in it, and the run prints how
- * many it found so that two runs can be compared at all.
+ * many it found so that two runs can be compared at all. Only the token glow is
+ * measured - the chrome surfaces are a handful of boxes beside it.
  */
 
 const argv = process.argv.slice(2);
@@ -41,26 +51,49 @@ const PORT = Number(arg('port', 9222));
 const ROUNDS = Number(arg('rounds', 6));
 const WHEELS = Number(arg('wheels', 40));
 
+/* What the shipped payload defaults to. Kept beside the parser so a variant
+   that names one knob is compared against the defaults for the rest. */
+const DEFAULTS = { brightness: 1, glowLayers: 3, maxBlur: 36 };
+
+function parseVariant(text) {
+  if (text === 'none' || text === 'legacy') return { kind: text, label: text };
+  const spec = Object.assign({ kind: 'knobs' }, DEFAULTS);
+  for (const part of String(text || '').split(',').filter(Boolean)) {
+    const [key, value] = part.split('=');
+    if (!(key in DEFAULTS) || !isFinite(Number(value))) {
+      throw new Error('not a variant: "' + part + '" - use none, legacy, or brightness=/glowLayers=/maxBlur=');
+    }
+    spec[key] = Number(value);
+  }
+  spec.label = 'brightness ' + spec.brightness + ', ' + spec.glowLayers + ' layers, maxBlur ' + spec.maxBlur;
+  return spec;
+}
+
 /* The socket, the workbench target and evaluate() live in tools/cdp.js, which
    live.js wanted as well. The two traps that cost an afternoon are written
    down there rather than here. */
 const { attach, sleep } = require('./cdp.js');
 
 /* ------------------------------------------------------------------ *
- * The two formulas, as source that runs inside the renderer.
+ * The formulas, as source that runs inside the renderer.
  *
- * Both variants are injected the same way - a stylesheet rebuilt from
+ * Every variant is injected the same way - a stylesheet rebuilt from
  * .vscode-tokens-styles and appended last - so the comparison is between two
  * sets of shadows rather than between "an override" and "whatever was already
- * there". A is what the payload ships today; B is the candidate.
+ * there". The knobs variant is glowFor() and blur() from neon-glow.js written
+ * out again; if those change, this has to change with them or it measures a
+ * formula nobody ships.
  * ------------------------------------------------------------------ */
-const APPLY = String.raw`(function (variant) {
+const APPLY = String.raw`(function (spec) {
   var old = document.getElementById('bench-formula');
   if (old) old.remove();
-  if (!variant) return { glowing: 0, spans: 0 };
+  var spans = document.querySelectorAll('.monaco-editor .view-line span[class*="mtk"]').length;
+  if (!spec || spec.kind === 'none') return { glowing: 0, spans: spans };
 
   var src = document.querySelector('.vscode-tokens-styles').textContent;
   var MINC = 0.30, MINL = 0.25, SPAN = 0.50, FLOOR = 0.40;
+  var LAYERS = Math.max(1, Math.min(3, Math.round(spec.glowLayers || 3)));
+  function blur(px) { return Math.max(1, Math.min(Math.round(spec.maxBlur), px)); }
 
   function hex2(x) {
     var v = Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16);
@@ -78,16 +111,17 @@ const APPLY = String.raw`(function (variant) {
     glowing++;
 
     var s;
-    if (variant === 'A') {
+    if (spec.kind === 'legacy') {
       s = '0 0 ' + Math.max(1, Math.round(1 + k)) + 'px #' + h + hex2(0.95*k)
         + ', 0 0 ' + Math.round(2 + 3*k) + 'px #' + h + hex2(0.75*k)
         + ', 0 0 ' + Math.round(6 + 10*k) + 'px #' + h + hex2(0.65*k)
         + ', 0 0 ' + Math.round(14 + 22*k) + 'px #' + h + hex2(0.40*k);
     } else {
-      s = '0 0 1px #' + h + hex2(1.00*k)
-        + ', 0 0 ' + (Math.round(4*k) + 1) + 'px #' + h + hex2(0.65*k)
-        + ', 0 0 ' + Math.max(1, Math.round(11*k)) + 'px #' + h + hex2(0.32*k)
-        + ', 0 0 ' + Math.max(1, Math.round(26*k)) + 'px #' + h + hex2(0.14*k);
+      k = k * spec.brightness;
+      s = '0 0 ' + blur(1) + 'px #' + h + hex2(1.00*k)
+        + ', 0 0 ' + blur(Math.round(4*k) + 1) + 'px #' + h + hex2(0.65*k);
+      if (LAYERS >= 2) s += ', 0 0 ' + blur(Math.round(11*k)) + 'px #' + h + hex2(0.32*k);
+      if (LAYERS >= 3) s += ', 0 0 ' + blur(Math.round(26*k)) + 'px #' + h + hex2(0.14*k);
     }
     return 'color:#' + h + '; text-shadow:' + s + ' !important;';
   });
@@ -97,13 +131,20 @@ const APPLY = String.raw`(function (variant) {
   el.textContent = css;
   document.head.appendChild(el);
 
-  return {
-    glowing: glowing,
-    spans: document.querySelectorAll('.monaco-editor .view-line span[class*="mtk"]').length
-  };
+  return { glowing: glowing, spans: spans };
 })`;
 
+const clock = () => new Date().toTimeString().slice(0, 8);
+const since = (t0) => {
+  const s = Math.round((Date.now() - t0) / 1000);
+  return Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0') + 's';
+};
+
 async function main() {
+  const A = parseVariant(arg('a', 'legacy'));
+  const B = parseVariant(arg('b', ''));
+  const started = Date.now();
+
   let cdp, sid, evaluate;
   try { ({ cdp, sid, evaluate } = await attach(PORT)); }
   catch (e) { console.error(e.message); process.exit(1); }
@@ -150,23 +191,26 @@ async function main() {
   }
 
   console.log('port ' + PORT + '  rounds ' + ROUNDS + '  wheels/round ' + WHEELS);
-  const info = await evaluate(APPLY + "('B')");
+  console.log('A: ' + A.label + '\nB: ' + B.label);
+  const info = await evaluate(APPLY + '(' + JSON.stringify(B.kind === 'none' ? A : B) + ')');
   console.log('viewport: ' + info.spans + ' token spans, '
     + info.glowing + ' glowing colour rules\n');
 
   const runs = { A: [], B: [] };
   for (let round = 0; round < ROUNDS; round++) {
-    const variant = round % 2 === 0 ? 'A' : 'B';
+    const name = round % 2 === 0 ? 'A' : 'B';
+    const variant = name === 'A' ? A : B;
 
     /* Back to the top, untraced, so every round rasterises the same content. */
     for (let i = 0; i < WHEELS + 10; i++) await wheel(-120);
-    await evaluate(APPLY + "('" + variant + "')");
+    await evaluate(APPLY + '(' + JSON.stringify(variant) + ')');
     await sleep(500);
 
     const r = await traceScroll();
-    runs[variant].push(r.ms);
-    console.log('round ' + (round + 1) + '  ' + variant + '  '
-      + r.ms.toFixed(1) + ' ms raster  (' + r.tasks + ' tasks)');
+    runs[name].push(r.ms);
+    console.log('[' + clock() + '] round ' + (round + 1) + '/' + ROUNDS
+      + ' (' + Math.round(((round + 1) / ROUNDS) * 100) + '%)  ' + name + '  '
+      + r.ms.toFixed(1) + ' ms raster  (' + r.tasks + ' tasks) · elapsed ' + since(started));
   }
 
   await evaluate(APPLY + '(null)');
@@ -188,6 +232,7 @@ async function main() {
   }
   const mean = sum / pairs;
   console.log('\nB vs A, mean of pairs: ' + (mean >= 0 ? '+' : '') + mean.toFixed(1) + '%');
+  console.log('total ' + since(started));
 }
 
 /* Held so a failure can shut the socket before exiting. Calling process.exit()
