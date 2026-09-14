@@ -118,3 +118,65 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 - 릴리스 태그는 손으로 치지 않음. `node tools/release.js --push`가 `package.json`에서
   버전을 읽어 태그를 만듦. 버전을 먼저 올리고 커밋한 뒤에 돌릴 것 — 워크플로가 태그와
   `package.json`이 어긋나면 빌드를 거부함.
+
+## 알아둘 것
+
+코드에 안 남는, 한 번씩 밟아서 알게 된 것. 2026-09-14까지는 `NEXT.md`에 세션 일지로 쌓였고,
+그 전문은 `git log -p -- NEXT.md`에 있음. 결정의 근거는 여기가 아니라 `neon-glow.js` 주석에 둠.
+
+**실기에서 볼 때**
+- 반영이 안 보이면 **완전 재시작**부터 의심함. 창 다시 로드로는 페이로드가 안 바뀌고, 옛
+  페이로드는 새 선택지를 모르는 값이라 버리고 쓰던 값을 유지함.
+- 효과는 DevTools 콘솔에 스타일을 넣어 먼저 봄. 스니펫에 `id`를 붙여 두 번 넣어도 안 겹치게.
+  **이미 빛나는 자리가 아니라 안 빛나는 자리에서** 볼 것.
+- 시험하려고 `neon-glow.js`를 고치지 않음. 물결선이 필요하면 `Ctrl+N` 새 파일에 `let x = ;`.
+- diff 에디터에서는 거터 막대가 원래 안 보임(`display: none`). 일반 탭으로 열 것.
+- 규칙에 쓸 테마 변수는 설치본에서 실제로 있는지 찾아봄. `debugIcon.breakpoint.foreground`는
+  없는 이름이었고, 물결선 규칙은 번들 CSS가 아니라 JS가 만듦.
+
+**스크래치 VS Code (`bench`·`live`·측정)**
+- `ELECTRON_RUN_AS_NODE`를 지우고 띄움 — 통합 터미널에는 1이 걸려 있어 Node로 뜸.
+- VS Code가 떠 있으면 `--user-data-dir` 없이는 기존 인스턴스로 넘어가고 디버그 포트도 사라짐.
+- 스크래치 프로필에 `security.workspace.trust.enabled: false`(제한 모드면 F2가 안 됨). 한국어
+  화면은 진짜 프로필의 `languagepacks.json`을 복사해야 뜸.
+- `--extensions-dir`을 빈 폴더로 줘야 설치본이 안 떠서 `state.json`을 덮어쓰지 않음.
+- 스크래치 창의 페이로드는 로더에 박힌 **진짜** 프로필 `state.json`을 읽음 — 설정은 페이지
+  안에서 `fetch`를 가로채 넣음.
+- 필터 애니메이션 비용은 `RasterTask`에 안 잡힘 — 스레드별 `RunTask`로 합칠 것. 새로고침을
+  수십 번 하면 창이 느려져 측정이 망가짐. 막 뜬 창은 토큰 span이 아직 없음.
+
+**마켓플레이스**
+- `/_apis/securityroles`·`/_apis/gallery` 타임아웃은 Microsoft 쪽이 오락가락하는 것이고
+  워크플로가 3회 재시도함. 그래도 죽으면 게시자 페이지에서 확장 이름 옆 `⋮` → Update로
+  **릴리스에 붙은** VSIX를 올림(다시 빌드하면 바이트가 달라짐).
+- 토큰이 의심되면 `vsce verify-pat Ruminem`. "나만 안 되나"는 마켓 조회 API(`filterType:8`,
+  `sortBy:1`)의 최근 `lastUpdated`로 봄. 시험 게시는 하지 않음.
+- 태그 없이 CI 확인: `gh workflow run marketplace.yml --ref main` — 태그 검사에서 멈춤.
+- PAT은 2027년 안에 만료됨. 새 토큰은 **All accessible organizations**로 — 특정 조직이면
+  401이 토큰 오류처럼 보임.
+- 초록이어도 마켓 목록 반영은 몇 분 걸림.
+
+**그림과 README**
+- 그림은 VSIX에 안 실리고 README가 `raw.githubusercontent.com`의 `main`을 가리킴. 그래서
+  **README가 가리키는 그림을 `main`에서 지우면 게시된 마켓 페이지가 다음 릴리스까지 깨짐.**
+  릴리스 노트의 그림은 커밋 해시로 고정한 URL로 걸 것.
+- 애니메이션은 APNG(확장자는 `.png`). GIF를 받으면 `gifsicle -O3`부터. 좌우 비교는
+  `tools/hstack-apng.js`로 한 파일에 — 두 파일은 재생 시계가 따로 놂. 30fps 녹화에는
+  `cursorTrail` 45ms가 안 찍힘.
+- 앵커는 추측하지 말고 `gh api repos/Ruminem/vscode-neon-glow/readme -H 'Accept:
+  application/vnd.github.html'`로 대조. 마켓 HTML의 `id` 속성엔 따옴표가 없음.
+
+**smoke와 커밋**
+- 새 검사는 `tools/smoke.js` 맨 뒤에 붙임 — `run()`이 전역 스텁을 갈아치워서 중간에 넣으면
+  앞 섹션이 엉뚱하게 빨개짐. 넣은 검사는 고치기 전 코드에서 한 번 빨개지는 것을 봄.
+- 기본값을 바꾸면 그 값을 전제한 검사도 봄. 페이로드가 커지면 `patch.js`의 끝 256KB 탐색
+  창을 넘지 않는지 봄.
+- 섞인 diff 나누기: `git diff -U0`에서 헝크를 골라 `git apply --cached --unidiff-zero`, 앞
+  커밋 단독 검사는 `git worktree add`.
+
+**무엇을 넣을지**
+- 먼저 물을 것: **이 색이 어디서 오는가.** 테마 색을 다른 표면으로 연장하는 것은 넣고, 제
+  팔레트를 얹는 효과(스캔라인, 부팅 연출)는 안 넣음.
+- 기본값의 경계: 색만 바꾸는 설정은 켜서, 움직이는 설정은 꺼서 내보냄.
+- 기능 전에 "손으로 하면 얼마나 번거로운가" — 미리보기 명령을 만들었다 뺀 이유.
+- DOM으로 닿는 표면은 사실상 끝남. 터미널·미니맵·오버뷰 룰러는 캔버스라 CSS가 못 감.
