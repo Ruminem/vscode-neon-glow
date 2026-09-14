@@ -219,7 +219,7 @@ async function main() {
   /* The line the defaults are drawn on: a knob that only decides what colour
      lands where is on, a knob that moves something is off. Both halves are
      checked, because either one drifting is a change every user sees. */
-  check('no caret transition', css.indexOf('transition: transform') === -1);
+  check('no caret slide', css.indexOf('.cursor { transition: none') === -1 && s.api.trailWatching() === 0);
   check('no jolt keyframes', css.indexOf('neon-glow-shake') === -1);
   check('find bloom is on by default', /\.findMatch \{ box-shadow: 0 0 18px 6px/.test(css));
   check('find bloom lifts a theme colour too dark to glow',
@@ -278,7 +278,12 @@ async function main() {
   await wait(120);
   css = s.styles();
 
-  check('caret transition emitted', /transition: transform 45ms/.test(css));
+  /* The slide is an animation on translate now. What reaches the stylesheet is
+     only the rule that switches VS Code's own caret transition off, so the
+     slide is the one motion on the caret. */
+  check('the caret slide switches VS Code\'s own caret transition off',
+    /prefers-reduced-motion: no-preference\) \{ \.monaco-editor \.cursor \{ transition: none !important; \} \}/.test(css));
+  check('and the caret layer is watched for the slide', s.api.trailWatching() === 1);
   check('jolt keyframes emitted', /@keyframes neon-glow-shake/.test(css));
   check('find bloom follows the knob', /\.findMatch \{ box-shadow: 0 0 30px/.test(css));
   check('selection bloom follows the knob', /\.selected-text \{ box-shadow: 0 0 20px/.test(css));
@@ -353,6 +358,38 @@ async function main() {
   s.api.enable();
   check('enabling brings it back',
     s.api.isEnabled() === true && s.appended.find((n) => n.id === 'neon-glow-styles').disabled === false);
+
+  /* ---- the caret slide, played on translate ---- */
+  console.log('\ncaret slide');
+  /* The stub caret sits at left 100px, top 50px. Moving it to 300 has to put it
+     back 200px to the left and animate that away over the knob's duration and
+     curve, on translate, added to whatever else is on the caret. */
+  s = run({ knobs: { cursorTrail: 45 } });
+  await wait(120);
+  check('the slide watches the caret', s.api.trailWatching() === 1);
+  await s.jump(300);
+  {
+    const a = s.caret.anims[s.caret.anims.length - 1];
+    check('a move plays the distance back on translate',
+      !!a && a.frames[0].translate === '-200px 0px' && a.frames[1].translate === '0px 0px',
+      a ? JSON.stringify(a.frames) : 'no animation on the caret');
+    check('over the knob\'s duration and curve, added rather than replacing',
+      !!a && a.opts.duration === 45 && a.opts.easing === 'ease-out' && a.opts.composite === 'add',
+      a ? JSON.stringify(a.opts) : 'no animation on the caret');
+  }
+  /* Each axis is its own slide, as left and top were two transitions. */
+  const slideAnimsBefore = s.caret.anims.length;
+  await s.jumpTo(300, 80);
+  {
+    const added = s.caret.anims.slice(slideAnimsBefore);
+    check('a move straight down slides only down',
+      added.length === 1 && added[0].frames[0].translate === '0px -30px',
+      JSON.stringify(added.map(x => x.frames[0])));
+  }
+  s = run({ knobs: { cursorTrail: 45 }, reduceMotion: true });
+  await wait(120);
+  await s.jump(300);
+  check('reduced motion keeps the plain jump', s.caret.anims.length === 0);
 
   /* ---- the caret arc, which builds elements rather than a stylesheet ---- */
   console.log('\ncaret arc');

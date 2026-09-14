@@ -280,18 +280,20 @@ try {
        being typed: 130ms reads as lag, 45ms keeps up and still streaks on a
        jump across the file.
 
-       !important because VS Code's own editor.cursorSmoothCaretAnimation paints
-       ".cursors-layer.cursor-smooth-caret-animation > .cursor" - three classes
-       against our two - and hard-codes 80ms. With both on, this value wins.
+       The slide is not a CSS transition, though it was until 2026-09-14 - see
+       slideAxis(). Monaco moves the caret by writing its inline left and top,
+       and a transition on those two is a layout on every frame of every slide:
+       holding an arrow key at thirty presses a second cost the renderer's main
+       thread 683ms more in two seconds than with the trail off. The same curve
+       now plays on the translate property, which the compositor can run.
 
-       Of the three properties listed, this build animates left and top: the
-       caret is position:absolute and Monaco moves it by setting those, not by
-       transforming it. They are layout properties, so each frame of the slide
-       is main-thread work rather than compositor work - which is why the
-       duration is worth keeping short, and part of why this ships off. The
-       same is true of VS Code's own option, at 80ms and over "all". transform
-       is listed anyway, and costs nothing while it goes unused, so that a build
-       which moves the caret that way keeps the trail.
+       What is left for CSS is to stop any other motion on the caret, so the
+       slide is the only one - VS Code's own editor.cursorSmoothCaretAnimation
+       among them, which paints ".cursors-layer.cursor-smooth-caret-animation >
+       .cursor" with "transition: all 80ms". !important for the reason the old
+       transition had it: that selector is three classes against our two. The
+       old rule's transition list likewise left no other property transitioning,
+       so switching them all off changes nothing beyond moving the slide.
 
        A duration is not what anyone sees; frames are. 45ms is under three of
        them at 60Hz and six or seven at 144Hz, so the same number is a glide on
@@ -301,8 +303,7 @@ try {
     var trail = Math.round(KNOBS.cursorTrail);
     if (trail > 0) {
       css += '@media (prefers-reduced-motion: no-preference) {'
-        + ' .monaco-editor .cursor { transition: transform ' + trail + 'ms ease-out,'
-        + ' left ' + trail + 'ms ease-out, top ' + trail + 'ms ease-out !important; } }\n';
+        + ' .monaco-editor .cursor { transition: none !important; } }\n';
     }
 
     /* The jolt on save.
@@ -869,6 +870,9 @@ try {
          leaves the observer in place, which costs two parseFloats on a move
          that then draws nothing. */
       try { attachArc(); } catch (e) {}
+      /* The same for the slide, which used to take effect the moment its CSS
+         arrived and has to keep doing so now that it needs an observer. */
+      try { attachTrail(); } catch (e) {}
       mark('knobs');
     }
     return changed;
@@ -1276,9 +1280,9 @@ try {
     var colour = arcColour(w.caret);
 
     /* Where the caret is going, not where it is currently being painted.
-       cursorTrail puts a CSS transition on left and top, and this observer runs
-       the moment the inline style changes - which is the moment that transition
-       starts, with the caret still drawn at the position it is leaving. A rect
+       cursorTrail slides the caret there, and this observer runs the moment the
+       inline style changes - which is the moment that slide starts, with the
+       caret still drawn at the position it is leaving. A rect
        read there answers with the old position, and the whole arc lands one
        full move behind the caret: it appears to set out from somewhere behind
        where the caret was and to stop short of where it now is. With no trail
@@ -1377,6 +1381,168 @@ try {
       })(w));
       w.mo.observe(layer, { attributes: true, attributeFilter: ['style'], subtree: true });
       arcWatch.push(w);
+    }
+  }
+
+  /* ---- cursorTrail: the slide, on the compositor ---- */
+
+  /**
+   * The caret's slide, played on `translate` instead of transitioned on left
+   * and top.
+   *
+   * The jump Monaco makes is left alone. The moment the inline value changes, a
+   * translate puts the caret back where it was being drawn and animates to
+   * nothing over the same duration and the same ease-out, so what is on screen
+   * is the transition it replaces - without a layout on every frame. Measured
+   * before the change, holding an arrow key at thirty presses a second: 683ms
+   * more main-thread work in two seconds than with the trail off.
+   *
+   * And after it, the same keys against the old transition at 41ms, three
+   * loads of each with three traces per load: the page's main thread averaged
+   * 853ms with the transition and 594ms with this, 30% less, every pair in the
+   * same direction. Frame by frame the caret was drawn within 0.36px of where
+   * the transition put it - closer than two runs of the transition came to each
+   * other, which was 0.52px.
+   *
+   * Looking the same means copying what CSS Transitions does to a slide that is
+   * still running when the caret moves again, because at key-repeat rates that
+   * is nearly every slide:
+   *
+   *   - Each axis is its own transition, as left and top were, so a move down
+   *     does not restart a slide still running sideways. One animation per axis,
+   *     composited with "add", sums to the same offset.
+   *   - A new slide starts from where the caret is being drawn, not from where
+   *     it was last put, and runs the full duration.
+   *   - A move straight back to where the running slide set out from is
+   *     shortened by the spec's reversing shortening factor, so Right then Left
+   *     does not take longer to settle than Right did.
+   *
+   * translate rather than transform: VS Code's "expand" blinking animates the
+   * caret's transform, and the individual property composes with that instead
+   * of replacing it.
+   */
+  var trailWatch = [];
+
+  function trailDuration() {
+    if (!enabled) return 0;
+    if (reduceMotion && reduceMotion.matches) return 0;
+    return Math.max(0, Math.round(KNOBS.cursorTrail));
+  }
+
+  /* The value of left or top in a style attribute as it was before the change,
+     which MutationObserver hands over as a string. */
+  function inlinePx(styleText, prop) {
+    var m = new RegExp('(?:^|;)\\s*' + prop + ':\\s*(-?[0-9.]+)px').exec(styleText || '');
+    return m ? parseFloat(m[1]) : null;
+  }
+
+  function slideAxis(el, axis, from, to, ms) {
+    var slides = el.__neonSlide || (el.__neonSlide = {});
+    var run = slides[axis];
+    var start = from, reverseFrom = from, factor = 1;
+    if (run && run.anim && run.anim.playState === 'running') {
+      var timing = run.anim.effect && run.anim.effect.getComputedTiming
+        ? run.anim.effect.getComputedTiming() : null;
+      /* progress here is after the easing, which is what both the drawn
+         position and the shortening factor are defined on. */
+      var p = timing && typeof timing.progress === 'number' ? timing.progress : null;
+      if (p !== null) {
+        start = run.end + (run.start - run.end) * (1 - p);
+        if (to === run.reverseFrom) {
+          factor = Math.max(0, Math.min(1, p * run.factor + (1 - run.factor)));
+          reverseFrom = run.end;
+        } else {
+          reverseFrom = start;
+        }
+      }
+      run.anim.cancel();
+    }
+    slides[axis] = null;
+    var duration = ms * factor;
+    if (start === to || duration <= 0) return;
+    var off = start - to;
+    var at = axis === 'x' ? off + 'px 0px' : '0px ' + off + 'px';
+    var anim = el.animate([{ translate: at }, { translate: '0px 0px' }],
+      { duration: duration, easing: 'ease-out', composite: 'add' });
+    /* A transition's clock starts at the style change; an animation's starts
+       when it is ready, a frame later, which would put the whole slide a frame
+       behind the one it replaces. Starting it now lines the two up. */
+    try {
+      if (document.timeline && document.timeline.currentTime !== null) anim.startTime = document.timeline.currentTime;
+    } catch (e) {}
+    slides[axis] = { anim: anim, start: start, end: to, reverseFrom: reverseFrom, factor: factor };
+  }
+
+  function trailMoved(watch, records) {
+    var ms = trailDuration();
+    var targets = [];
+    if (records && records.length) {
+      /* A move can arrive as one record for left and another for top. The first
+         record for an element carries the value from before either. */
+      var seen = [];
+      for (var i = 0; i < records.length; i++) {
+        var el = records[i].target;
+        if (!el || !el.classList || !el.classList.contains('cursor') || seen.indexOf(el) !== -1) continue;
+        seen.push(el);
+        targets.push({ el: el, old: records[i].oldValue });
+      }
+    } else {
+      var c = watch.layer.querySelector('.cursor');
+      if (c) targets.push({ el: c, old: null });
+    }
+    for (var j = 0; j < targets.length; j++) {
+      var caret = targets[j].el, last = caret.__neonPos;
+      var ox = inlinePx(targets[j].old, 'left'), oy = inlinePx(targets[j].old, 'top');
+      if (ox === null && last) ox = last.x;
+      if (oy === null && last) oy = last.y;
+      var nx = parseFloat(caret.style.left), ny = parseFloat(caret.style.top);
+      caret.__neonPos = { x: nx, y: ny };
+      if (!ms || isNaN(nx) || isNaN(ny)) continue;
+      if (ox !== null && !isNaN(ox) && ox !== nx) slideAxis(caret, 'x', ox, nx, ms);
+      if (oy !== null && !isNaN(oy) && oy !== ny) slideAxis(caret, 'y', oy, ny, ms);
+    }
+  }
+
+  /* Every cursors layer on screen, for the reason attachArc gives. Kept apart
+     from the arc's observer because it wants the old value of the attribute,
+     and because either can be on without the other. */
+  function attachTrail() {
+    if (!(Math.round(KNOBS.cursorTrail) > 0)) return;
+    var layers;
+    try { layers = document.querySelectorAll('.monaco-editor .cursors-layer'); }
+    catch (e) { return; }
+
+    for (var i = trailWatch.length - 1; i >= 0; i--) {
+      if (!trailWatch[i].layer.isConnected) {
+        try { trailWatch[i].mo.disconnect(); } catch (e) {}
+        trailWatch.splice(i, 1);
+      }
+    }
+
+    for (var j = 0; j < layers.length; j++) {
+      var layer = layers[j], seen = false;
+      for (var k = 0; k < trailWatch.length; k++) {
+        if (trailWatch[k].layer === layer) { seen = true; break; }
+      }
+      if (seen) continue;
+
+      var known = [];
+      try { known = Array.prototype.slice.call(layer.querySelectorAll('.cursor')); } catch (e) {}
+      var first = layer.querySelector('.cursor');
+      if (first && known.indexOf(first) === -1) known.push(first);
+      for (var n = 0; n < known.length; n++) {
+        known[n].__neonPos = { x: parseFloat(known[n].style.left), y: parseFloat(known[n].style.top) };
+      }
+
+      var w = { layer: layer, mo: null };
+      w.mo = new MutationObserver((function (watch) {
+        return function (records) {
+          try { trailMoved(watch, records); }
+          catch (e) { mark('trail-error', String(e && e.message || e)); }
+        };
+      })(w));
+      w.mo.observe(layer, { attributes: true, attributeFilter: ['style'], attributeOldValue: true, subtree: true });
+      trailWatch.push(w);
     }
   }
 
@@ -1514,6 +1680,7 @@ try {
           var wasLive = statusLive();
           try { attachStatusBar(); } catch (e) {}
           try { attachArc(); } catch (e) {}
+          try { attachTrail(); } catch (e) {}
           if (!wasLive && statusLive()) quiet = 0;
           pollState();
         }
@@ -1555,6 +1722,7 @@ try {
     isEnabled: function () { return enabled; },
     bridgeOk: function () { return bridgeOk; },
     arcWatching: function () { return arcWatch.length; },
+    trailWatching: function () { return trailWatch.length; },
     statusBarOk: function () { return statusLive() && lastStatus !== null; }
   };
 
@@ -1591,6 +1759,7 @@ try {
   try { startObservers(); } catch (e) {}
   try { attachStatusBar(); } catch (e) {}
   try { attachArc(); } catch (e) {}
+  try { attachTrail(); } catch (e) {}
   try { attachArcPointer(); } catch (e) {}
 
   /* Panes come and go, and focusin is a cheap signal that one might have. It no
@@ -1599,6 +1768,7 @@ try {
   try {
     window.addEventListener('focusin', function () {
       try { attachArc(); } catch (e) {}
+      try { attachTrail(); } catch (e) {}
     });
   } catch (e) {}
 })();
