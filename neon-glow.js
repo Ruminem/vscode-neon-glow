@@ -244,6 +244,25 @@ try {
   }
 
   /**
+   * Everything that is not a token colour: the surfaces VS Code draws around
+   * the text, each lit from a colour the theme already gives it. One function
+   * per surface, each with the reasoning for its rule above it.
+   *
+   * The order is the order the rules land in the stylesheet, and it matters
+   * where two of them match one element - a current find match is a find match
+   * too, and the later rule is the one that wins. A new surface goes where it
+   * belongs, not at the end.
+   */
+  function chromeStyles() {
+    return '\n.monaco-editor .margin, .monaco-editor .inputarea.ime-input { background: transparent; }\n'
+      + '.monaco-editor .cursor { box-shadow: 0 0 8px var(--vscode-editorCursor-foreground, transparent); }\n'
+      + bracketStyles() + trailStyles() + shakeStyles() + findStyles() + selectionStyles()
+      + occurrenceStyles() + gutterStyles() + bracketMatchStyles() + squiggleStyles()
+      + lineHighlightStyles() + breakpointStyles() + snippetStyles() + renameStyles()
+      + breatheStyles() + diffStyles();
+  }
+
+  /**
    * Brackets are left to VS Code's own colouring and given their glow back in
    * `currentColor`, so each nesting level glows in the colour it is actually
    * painted rather than in the token colour underneath it. Two classes beats
@@ -252,10 +271,8 @@ try {
    * At zero brightness the rule is dropped rather than emitted: currentColor
    * carries no alpha to fade, so the only way for it to go dark is to not exist.
    */
-  function chromeStyles() {
-    var css = '\n.monaco-editor .margin, .monaco-editor .inputarea.ime-input { background: transparent; }\n'
-      + '.monaco-editor .cursor { box-shadow: 0 0 8px var(--vscode-editorCursor-foreground, transparent); }\n';
-
+  function bracketStyles() {
+    var css = '';
     var k = KNOBS.brightness;
     if (k > 0) {
       /* Only the two tight passes, and no wide one. currentColor carries no
@@ -268,59 +285,67 @@ try {
       css += '.monaco-editor [class*="bracket-highlighting-"] { text-shadow:'
         + shadow + ' !important; }\n';
     }
+    return css;
+  }
 
-    /* The caret slides to a new position instead of jumping, and the glow on it
-       rides along, so a move across the file leaves a short streak of light
-       behind. Motion only - the colour is still the theme's own cursor colour,
-       so unlike a scanline or a tint this imposes no palette of its own.
+  /* The caret slides to a new position instead of jumping, and the glow on it
+     rides along, so a move across the file leaves a short streak of light
+     behind. Motion only - the colour is still the theme's own cursor colour,
+     so unlike a scanline or a tint this imposes no palette of its own.
 
-       Off by default, on the side of the line that moves things rather than
-       colours them - see the note over KNOBS. Every keystroke restarts the
-       transition, so too long a duration leaves the caret trailing the text
-       being typed: 130ms reads as lag, 45ms keeps up and still streaks on a
-       jump across the file.
+     Off by default, on the side of the line that moves things rather than
+     colours them - see the note over KNOBS. Every keystroke restarts the
+     transition, so too long a duration leaves the caret trailing the text
+     being typed: 130ms reads as lag, 45ms keeps up and still streaks on a
+     jump across the file.
 
-       The slide is not a CSS transition, though it was until 2026-09-14 - see
-       slideAxis(). Monaco moves the caret by writing its inline left and top,
-       and a transition on those two is a layout on every frame of every slide:
-       holding an arrow key at thirty presses a second cost the renderer's main
-       thread 683ms more in two seconds than with the trail off. The same curve
-       now plays on the translate property, which the compositor can run.
+     The slide is not a CSS transition, though it was until 2026-09-14 - see
+     slideAxis(). Monaco moves the caret by writing its inline left and top,
+     and a transition on those two is a layout on every frame of every slide:
+     holding an arrow key at thirty presses a second cost the renderer's main
+     thread 683ms more in two seconds than with the trail off. The same curve
+     now plays on the translate property, which the compositor can run.
 
-       What is left for CSS is to stop any other motion on the caret, so the
-       slide is the only one - VS Code's own editor.cursorSmoothCaretAnimation
-       among them, which paints ".cursors-layer.cursor-smooth-caret-animation >
-       .cursor" with "transition: all 80ms". !important for the reason the old
-       transition had it: that selector is three classes against our two. The
-       old rule's transition list likewise left no other property transitioning,
-       so switching them all off changes nothing beyond moving the slide.
+     What is left for CSS is to stop any other motion on the caret, so the
+     slide is the only one - VS Code's own editor.cursorSmoothCaretAnimation
+     among them, which paints ".cursors-layer.cursor-smooth-caret-animation >
+     .cursor" with "transition: all 80ms". !important for the reason the old
+     transition had it: that selector is three classes against our two. The
+     old rule's transition list likewise left no other property transitioning,
+     so switching them all off changes nothing beyond moving the slide.
 
-       A duration is not what anyone sees; frames are. 45ms is under three of
-       them at 60Hz and six or seven at 144Hz, so the same number is a glide on
-       one panel and a step or two on another - which is why a value that looks
-       right here can read as nothing at all elsewhere. Tuning it by eye means
-       saying which display it was tuned on. */
+     A duration is not what anyone sees; frames are. 45ms is under three of
+     them at 60Hz and six or seven at 144Hz, so the same number is a glide on
+     one panel and a step or two on another - which is why a value that looks
+     right here can read as nothing at all elsewhere. Tuning it by eye means
+     saying which display it was tuned on. */
+  function trailStyles() {
+    var css = '';
     var trail = Math.round(KNOBS.cursorTrail);
     if (trail > 0) {
       css += '@media (prefers-reduced-motion: no-preference) {'
         + ' .monaco-editor .cursor { transition: none !important; } }\n';
     }
+    return css;
+  }
 
-    /* The jolt on save.
+  /* The jolt on save.
 
-       A CSS animation on transform alone, not a JS loop writing inline styles.
-       An animation the compositor can run needs nothing from the main thread
-       once it starts, while a loop asks for a style recalculation on every
-       frame of it - that much is what the choice buys.
+     A CSS animation on transform alone, not a JS loop writing inline styles.
+     An animation the compositor can run needs nothing from the main thread
+     once it starts, while a loop asks for a style recalculation on every
+     frame of it - that much is what the choice buys.
 
-       What it does not buy is known: whether either approach re-rasters the
-       glow was never measured. Both promote a layer, and a claim about raster
-       cost here would be arithmetic rather than a reading. tools/bench.js is
-       the place to settle it if it ever matters.
+     What it does not buy is known: whether either approach re-rasters the
+     glow was never measured. Both promote a layer, and a claim about raster
+     cost here would be arithmetic rather than a reading. tools/bench.js is
+     the place to settle it if it ever matters.
 
-       will-change is scoped to the class rather than left on the rule, so the
-       promotion lasts the 150ms and nothing is held promoted while you are only
-       reading. */
+     will-change is scoped to the class rather than left on the rule, so the
+     promotion lasts the 150ms and nothing is held promoted while you are only
+     reading. */
+  function shakeStyles() {
+    var css = '';
     var amp = Math.round(KNOBS.saveShake);
     if (amp > 0) {
       var off = Math.max(1, Math.round(amp * 0.6));
@@ -337,34 +362,38 @@ try {
         + ' animation: neon-glow-shake 150ms ease-out; will-change: transform; }'
         + ' }\n';
     }
+    return css;
+  }
 
-    /* Find matches and the selection, lit from the colours the theme already
-       gives them - the same derivation as the token glow, applied to two more
-       surfaces rather than to a look of our own.
+  /* Find matches and the selection, lit from the colours the theme already
+     gives them - the same derivation as the token glow, applied to two more
+     surfaces rather than to a look of our own.
 
-       Both of those colours are semi-transparent, because they sit behind text
-       and must not hide it, and a shadow that only blurs them comes out nearly
-       invisible. The spread is what makes them read: it carries the weak colour
-       outwards at full width before the blur starts, instead of asking the blur
-       to do both jobs. This is why these take a spread and the cursor, whose
-       colour is opaque, does not.
+     Both of those colours are semi-transparent, because they sit behind text
+     and must not hide it, and a shadow that only blurs them comes out nearly
+     invisible. The spread is what makes them read: it carries the weak colour
+     outwards at full width before the blur starts, instead of asking the blur
+     to do both jobs. This is why these take a spread and the cursor, whose
+     colour is opaque, does not.
 
-       Cost stays bounded by the viewport. Only rendered lines carry a
-       .selected-text span, so selecting a whole file lights the screenful in
-       front of you and nothing beyond it.
+     Cost stays bounded by the viewport. Only rendered lines carry a
+     .selected-text span, so selecting a whole file lights the screenful in
+     front of you and nothing beyond it.
 
-       Find's two colours are lifted to a lightness of at least 0.6 on the way
-       in, keeping their hue, chroma and alpha. A theme can hand over a colour
-       that cannot glow at all: Hyper Dracula sets the highlight to opaque
-       #000000, and a black shadow on a dark editor is no shadow - every match
-       but the current one went dark, and the current one fell back to VS Code's
-       own #515c6a, a grey that barely showed. The floor turns black into a grey
-       halo and leaves anything already lighter exactly as the theme drew it,
-       Dark Modern's orange included. It is done in CSS rather than by reading
-       the colour in JS because a theme swap rewrites the token stylesheet and
-       the colour variables separately, and a read in between would judge the new
-       tokens by the old theme's colour. An unset variable still drops the rule,
-       as it did before. */
+     Find's two colours are lifted to a lightness of at least 0.6 on the way
+     in, keeping their hue, chroma and alpha. A theme can hand over a colour
+     that cannot glow at all: Hyper Dracula sets the highlight to opaque
+     #000000, and a black shadow on a dark editor is no shadow - every match
+     but the current one went dark, and the current one fell back to VS Code's
+     own #515c6a, a grey that barely showed. The floor turns black into a grey
+     halo and leaves anything already lighter exactly as the theme drew it,
+     Dark Modern's orange included. It is done in CSS rather than by reading
+     the colour in JS because a theme swap rewrites the token stylesheet and
+     the colour variables separately, and a read in between would judge the new
+     tokens by the old theme's colour. An unset variable still drops the rule,
+     as it did before. */
+  function findStyles() {
+    var css = '';
     var find = Math.round(KNOBS.findGlow);
     if (find > 0) {
       var fh = 'oklch(from var(--vscode-editor-findMatchHighlightBackground) max(l, 0.6) c h / alpha)';
@@ -378,34 +407,43 @@ try {
         + ' 0 0 ' + Math.round(find * 2.4) + 'px ' + Math.round(find / 3) + 'px ' + fc
         + ' !important; }\n';
     }
+    return css;
+  }
 
+  /* The selection, lit the way find is - see findStyles(). */
+  function selectionStyles() {
+    var css = '';
     var sel = Math.round(KNOBS.selectionGlow);
     if (sel > 0) {
       css += '.monaco-editor .selected-text { box-shadow: 0 0 ' + sel + 'px'
         + ' var(--vscode-editor-selectionBackground) !important; }\n';
     }
+    return css;
+  }
 
-    /* The symbol under the caret, and every other place it appears on screen.
+  /* The symbol under the caret, and every other place it appears on screen.
 
-       The same derivation again, on the surface next door to find: these are
-       semi-transparent backgrounds behind text, so they take a spread for the
-       reason the find rule does.
+     The same derivation again, on the surface next door to find: these are
+     semi-transparent backgrounds behind text, so they take a spread for the
+     reason the find rule does.
 
-       One pass each, where find takes two. The difference is not how they look
-       but when they exist. A find match is on screen only while the widget is
-       open and you are looking for something; these appear every time the caret
-       lands on a word and stay for as long as it rests there, which is most of
-       a working day. The cheaper rule is the one that is always running.
+     One pass each, where find takes two. The difference is not how they look
+     but when they exist. A find match is on screen only while the widget is
+     open and you are looking for something; these appear every time the caret
+     lands on a word and stay for as long as it rests there, which is most of
+     a working day. The cheaper rule is the one that is always running.
 
-       Three classes rather than one, because VS Code lights the same idea from
-       different sources and gives each its own colour. wordHighlight is a read
-       and wordHighlightStrong a write, both answered by a language server; a
-       theme that separates them is saying something worth keeping, so the write
-       gets the wider radius. wordHighlightText is what VS Code falls back to
-       when no server answers - plain textual matches - and carrying it means the
-       effect still works in a file nothing understands. A theme that leaves any
-       one of these colours undefined drops that rule and keeps the others: an
-       unset custom property invalidates the declaration, not the block. */
+     Three classes rather than one, because VS Code lights the same idea from
+     different sources and gives each its own colour. wordHighlight is a read
+     and wordHighlightStrong a write, both answered by a language server; a
+     theme that separates them is saying something worth keeping, so the write
+     gets the wider radius. wordHighlightText is what VS Code falls back to
+     when no server answers - plain textual matches - and carrying it means the
+     effect still works in a file nothing understands. A theme that leaves any
+     one of these colours undefined drops that rule and keeps the others: an
+     unset custom property invalidates the declaration, not the block. */
+  function occurrenceStyles() {
+    var css = '';
     var occ = Math.round(KNOBS.occurrenceGlow);
     if (occ > 0) {
       var oSpread = Math.round(occ / 3);
@@ -427,30 +465,34 @@ try {
       css += '.monaco-editor .selectionHighlight { box-shadow: 0 0 ' + occ + 'px '
         + oSpread + 'px var(--vscode-editor-selectionHighlightBackground) !important; }\n';
     }
+    return css;
+  }
 
-    /* The change bars in the gutter - added, modified, deleted - lit from the
-       colours the theme gives them, the same derivation once more.
+  /* The change bars in the gutter - added, modified, deleted - lit from the
+     colours the theme gives them, the same derivation once more.
 
-       The spread here is not the one the find rule takes, and the reason is
-       different enough to be worth saying. VS Code paints the bar as the
-       element's own left border, with a style but no width, so it comes out at
-       the CSS initial `medium` - 3px. Its `:before` is what sits over the bar,
-       and that box is `width: 0`. A shadow of a box with no area paints
-       nothing, whatever the blur, so the spread is what gives the glow a body
-       at all. Find needs a spread because its colour is weak; this needs one
-       because its box is empty.
+     The spread here is not the one the find rule takes, and the reason is
+     different enough to be worth saying. VS Code paints the bar as the
+     element's own left border, with a style but no width, so it comes out at
+     the CSS initial `medium` - 3px. Its `:before` is what sits over the bar,
+     and that box is `width: 0`. A shadow of a box with no area paints
+     nothing, whatever the blur, so the spread is what gives the glow a body
+     at all. Find needs a spread because its colour is weak; this needs one
+     because its box is empty.
 
-       Deleted is drawn elsewhere - a wedge on `:after` rather than a bar - so
-       it is lit there instead.
+     Deleted is drawn elsewhere - a wedge on `:after` rather than a bar - so
+     it is lit there instead.
 
-       Each kind is listed twice: once bare, once as `.secondary`. VS Code grew
-       the secondary colours for edits it did not make itself, and the bare rule
-       is what a build without them still matches. Same `!important` on both, so
-       the more specific `.secondary` wins where it exists.
+     Each kind is listed twice: once bare, once as `.secondary`. VS Code grew
+     the secondary colours for edits it did not make itself, and the bare rule
+     is what a build without them still matches. Same `!important` on both, so
+     the more specific `.secondary` wins where it exists.
 
-       Cost is bounded harder than any other effect here: not by the viewport
-       but by how many lines of it you have changed since the last commit, and
-       only in a file under source control. */
+     Cost is bounded harder than any other effect here: not by the viewport
+     but by how many lines of it you have changed since the last commit, and
+     only in a file under source control. */
+  function gutterStyles() {
+    var css = '';
     var gut = Math.round(KNOBS.gutterGlow);
     if (gut > 0) {
       var gSpread = Math.max(1, Math.round(gut / 4));
@@ -468,26 +510,30 @@ try {
           + ') !important; }\n';
       }
     }
+    return css;
+  }
 
-    /* The box drawn around a bracket and its partner while the caret is on one.
+  /* The box drawn around a bracket and its partner while the caret is on one.
 
-       Brackets already glow - the rule above gives them one in currentColor, so
-       each nesting level lights in the colour it is painted. The box marking the
-       pair did not, which left the one moment the editor is pointing at
-       something as the dimmest thing on the line.
+     Brackets already glow - the rule above gives them one in currentColor, so
+     each nesting level lights in the colour it is painted. The box marking the
+     pair did not, which left the one moment the editor is pointing at
+     something as the dimmest thing on the line.
 
-       The border colour, not the background. VS Code registers the background
-       at #0064001a - ten percent alpha, a hint of a fill - and the border at
-       #888, and it is the border a theme is understood to be drawing with. The
-       background is the fallback for a theme that sets only that. Opaque, so no
-       spread: the same reason the caret rule has none.
+     The border colour, not the background. VS Code registers the background
+     at #0064001a - ten percent alpha, a hint of a fill - and the border at
+     #888, and it is the border a theme is understood to be drawing with. The
+     background is the fallback for a theme that sets only that. Opaque, so no
+     spread: the same reason the caret rule has none.
 
-       This is the one rule here that lights a colour the token pass would have
-       thrown away. minChroma exists to keep body text from glowing, because a
-       glow on every word is a wash rather than a highlight; #888 would never
-       clear it. The argument does not carry over. There are two of these boxes
-       on screen at most, and only while the caret is on a bracket, so what
-       lighting them costs is bounded to the moment you asked the question. */
+     This is the one rule here that lights a colour the token pass would have
+     thrown away. minChroma exists to keep body text from glowing, because a
+     glow on every word is a wash rather than a highlight; #888 would never
+     clear it. The argument does not carry over. There are two of these boxes
+     on screen at most, and only while the caret is on a bracket, so what
+     lighting them costs is bounded to the moment you asked the question. */
+  function bracketMatchStyles() {
+    var css = '';
     var brk = Math.round(KNOBS.bracketMatchGlow);
     if (brk > 0) {
       css += '.monaco-editor .bracket-match { box-shadow: 0 0 ' + brk + 'px'
@@ -495,34 +541,38 @@ try {
         + ' var(--vscode-editorBracketMatch-background, transparent))'
         + ' !important; }\n';
     }
+    return css;
+  }
 
-    /* The wavy underline under errors, warnings and info, lit in the colours
-       the theme already draws it with.
+  /* The wavy underline under errors, warnings and info, lit in the colours
+     the theme already draws it with.
 
-       Not a box-shadow, unlike every other surface here. VS Code draws the
-       wave as an SVG background - a data URI it builds from the editorError,
-       editorWarning or editorInfo foreground - on an overlay element the width
-       of the flagged range. A box-shadow would light that rectangle, word and
-       all. drop-shadow follows the alpha of what is drawn, which on this
-       element is only the wave, so the line glows and the word above it does
-       not. The border-bottom VS Code also puts on these classes is the
-       high-contrast variant, drawn in the -border colours most themes leave
-       empty; it is not what you normally see.
+     Not a box-shadow, unlike every other surface here. VS Code draws the
+     wave as an SVG background - a data URI it builds from the editorError,
+     editorWarning or editorInfo foreground - on an overlay element the width
+     of the flagged range. A box-shadow would light that rectangle, word and
+     all. drop-shadow follows the alpha of what is drawn, which on this
+     element is only the wave, so the line glows and the word above it does
+     not. The border-bottom VS Code also puts on these classes is the
+     high-contrast variant, drawn in the -border colours most themes leave
+     empty; it is not what you normally see.
 
-       Two passes, tight then wide, because a 1px line under a single blur
-       reads as smudged rather than lit: the tight pass keeps the colour on the
-       wave and the wide one is the halo. What the eye reads is the ratio
-       between them, as with the token glow.
+     Two passes, tight then wide, because a 1px line under a single blur
+     reads as smudged rather than lit: the tight pass keeps the colour on the
+     wave and the wide one is the halo. What the eye reads is the ratio
+     between them, as with the token glow.
 
-       Hints are left out on purpose. They are the three dots under a word that
-       VS Code keeps quiet by design, and lighting them would undo the one thing
-       that tells them apart from a warning.
+     Hints are left out on purpose. They are the three dots under a word that
+     VS Code keeps quiet by design, and lighting them would undo the one thing
+     that tells them apart from a warning.
 
-       The one surface lit with a filter, and a filter is composited per element
-       where a shadow is not. The overlays exist only for rendered lines, so the
-       cost is bounded by the viewport - a screen full of errors is the most it
-       can be. tools/bench.js is the place to measure it in pairs if that ever
-       shows. */
+     The one surface lit with a filter, and a filter is composited per element
+     where a shadow is not. The overlays exist only for rendered lines, so the
+     cost is bounded by the viewport - a screen full of errors is the most it
+     can be. tools/bench.js is the place to measure it in pairs if that ever
+     shows. */
+  function squiggleStyles() {
+    var css = '';
     var sq = Math.round(KNOBS.squiggleGlow);
     if (sq > 0) {
       var sqNear = Math.max(1, Math.round(sq * 0.4));
@@ -537,40 +587,25 @@ try {
           + sqNear + 'px ' + wc + ') drop-shadow(0 0 ' + sq + 'px ' + wc + ') !important; }\n';
       }
     }
+    return css;
+  }
 
-    /* What changed, inside a diff.
+  /* The line the editor is pointing at.
 
-       Semi-transparent theme colours behind text again, so this takes a spread
-       for the same reason find and selection do.
+     Four of them, all the same shape: a full-width tint behind one line,
+     semi-transparent because text sits on it, so they take a spread like find
+     and selection do. The stopped line while debugging, the one below it when
+     you click up the call stack, the range that lights when you jump to a
+     symbol or peek a result, and the symbol highlight VS Code paints on the
+     same occasions.
 
-       The word-level highlight only, not the line tint. VS Code paints both:
-       .char-insert marks the run of characters that actually differ, and
-       .line-insert washes the whole line width behind it. Blurring a full-width
-       block bleeds a radius above and below into its neighbours, and a diff
-       usually has changed lines next to each other, so what comes out is a haze
-       over the region rather than a mark on the change. It is the same line the
-       token glow draws when it keeps body text out of it - light on what you
-       are looking for, not on everything around it. The line tint is already
-       doing the job of saying which side of the diff you are on.
-
-       This is also where the gutter bars are not: VS Code hides them with
-       display:none once .modified-in-monaco-diff-editor is on the editor, and
-       clicking a file in source control opens a diff. So the view people reach
-       for most had the least lit in it, which is what this is for. */
-    /* The line the editor is pointing at.
-
-       Four of them, all the same shape: a full-width tint behind one line,
-       semi-transparent because text sits on it, so they take a spread like find
-       and selection do. The stopped line while debugging, the one below it when
-       you click up the call stack, the range that lights when you jump to a
-       symbol or peek a result, and the symbol highlight VS Code paints on the
-       same occasions.
-
-       The objection that kept the glow off the diff line tint does not reach
-       here. That one is a run - changed lines come in blocks, and blurring each
-       of them washes the region rather than marking anything. These are one at
-       a time, which is the same reason the bracket box is allowed through a
-       threshold built to keep body text out. */
+     The objection that kept the glow off the diff line tint does not reach
+     here. That one is a run - changed lines come in blocks, and blurring each
+     of them washes the region rather than marking anything. These are one at
+     a time, which is the same reason the bracket box is allowed through a
+     threshold built to keep body text out. */
+  function lineHighlightStyles() {
+    var css = '';
     var lh = Math.round(KNOBS.lineHighlightGlow);
     if (lh > 0) {
       var lSpread = Math.round(lh / 3);
@@ -585,44 +620,52 @@ try {
           + lSpread + 'px var(--vscode-editor-' + lines[li][1] + ') !important; }\n';
       }
     }
+    return css;
+  }
 
-    /* Breakpoints, in whatever colour they were painted.
+  /* Breakpoints, in whatever colour they were painted.
 
-       currentColor rather than a named theme variable, the way the bracket rule
-       works. The colour for these does not arrive as one: searching the whole
-       installation for debugIcon.breakpoint.foreground finds nothing, so a rule
-       written against that name would have been a no-op that looked fine in the
-       source. currentColor cannot be wrong about it - it is whatever VS Code
-       settled on, including a theme that overrode it and including the dimmer
-       shade a disabled breakpoint gets.
+     currentColor rather than a named theme variable, the way the bracket rule
+     works. The colour for these does not arrive as one: searching the whole
+     installation for debugIcon.breakpoint.foreground finds nothing, so a rule
+     written against that name would have been a no-op that looked fine in the
+     source. currentColor cannot be wrong about it - it is whatever VS Code
+     settled on, including a theme that overrode it and including the dimmer
+     shade a disabled breakpoint gets.
 
-       text-shadow, not box-shadow: a codicon is a font glyph, so the light has
-       to follow the letterform rather than the box around it. That is the same
-       reason the squiggles use a filter - the shape being lit is not a
-       rectangle. It inherits into the ::before that carries the glyph. */
+     text-shadow, not box-shadow: a codicon is a font glyph, so the light has
+     to follow the letterform rather than the box around it. That is the same
+     reason the squiggles use a filter - the shape being lit is not a
+     rectangle. It inherits into the ::before that carries the glyph. */
+  function breakpointStyles() {
+    var css = '';
     var bp = Math.round(KNOBS.breakpointGlow);
     if (bp > 0) {
       css += '.monaco-editor [class*="codicon-debug-breakpoint"] { text-shadow: 0 0 '
         + Math.max(1, Math.round(bp * 0.4)) + 'px currentColor, 0 0 ' + bp
         + 'px currentColor !important; }\n';
     }
+    return css;
+  }
 
-    /* A snippet's tabstops, while you are filling one in.
+  /* A snippet's tabstops, while you are filling one in.
 
-       The stops still to visit share one colour and the last one - where the
-       caret lands when you are done - has its own. VS Code draws the first as a
-       semi-transparent fill and the last as an outline around a box with no
-       width, so both take a spread: the fill for the reason find does, the last
-       stop for the reason the gutter bars do.
+     The stops still to visit share one colour and the last one - where the
+     caret lands when you are done - has its own. VS Code draws the first as a
+     semi-transparent fill and the last as an outline around a box with no
+     width, so both take a spread: the fill for the reason find does, the last
+     stop for the reason the gutter bars do.
 
-       Both are lifted to a lightness of at least 0.6 on the way in, the floor
-       find takes. Here it is not a theme's mistake being covered but VS Code's
-       own defaults: a 30% grey fill and a #525252 outline, neither of which reads
-       as light once it is blurred. The last stop falls back to its fill for a
-       theme that sets only that, the way the bracket box does.
+     Both are lifted to a lightness of at least 0.6 on the way in, the floor
+     find takes. Here it is not a theme's mistake being covered but VS Code's
+     own defaults: a 30% grey fill and a #525252 outline, neither of which reads
+     as light once it is blurred. The last stop falls back to its fill for a
+     theme that sets only that, the way the bracket box does.
 
-       A snippet's stops exist only between inserting it and leaving it, so this
-       costs nothing the rest of the time and a handful of boxes while it runs. */
+     A snippet's stops exist only between inserting it and leaving it, so this
+     costs nothing the rest of the time and a handful of boxes while it runs. */
+  function snippetStyles() {
+    var css = '';
     var snip = Math.round(KNOBS.snippetGlow);
     if (snip > 0) {
       var sSpread = Math.max(1, Math.round(snip / 3));
@@ -634,87 +677,95 @@ try {
         + ' var(--vscode-editor-snippetFinalTabstopHighlightBackground)) max(l, 0.6) c h / alpha)'
         + ' !important; }\n';
     }
+    return css;
+  }
 
-    /* The box F2 opens, in the colour the theme draws a focused field with.
+  /* The box F2 opens, in the colour the theme draws a focused field with.
 
-       A filter rather than a box-shadow, and without !important, both for one
-       reason: VS Code writes this box's own shadow and border as inline styles
-       on every theme change, and an inline style beats any stylesheet that does
-       not force its way past it - while a forced declaration is one no animation
-       can move, which would leave the breath below with nothing to do. Nothing
-       writes a filter here, so a plain rule is enough, and the widget's own
-       shadow stays underneath. drop-shadow follows the alpha of what is drawn,
-       which on this box is the box - rounded corners included - and it leaves
-       the text inside alone.
+     A filter rather than a box-shadow, and without !important, both for one
+     reason: VS Code writes this box's own shadow and border as inline styles
+     on every theme change, and an inline style beats any stylesheet that does
+     not force its way past it - while a forced declaration is one no animation
+     can move, which would leave the breath below with nothing to do. Nothing
+     writes a filter here, so a plain rule is enough, and the widget's own
+     shadow stays underneath. drop-shadow follows the alpha of what is drawn,
+     which on this box is the box - rounded corners included - and it leaves
+     the text inside alone.
 
-       .monaco-editor on the box itself, not only above it: the widget carries
-       that class, and the candidate list inside it is also a .rename-box that
-       must not grow a halo of its own.
+     .monaco-editor on the box itself, not only above it: the widget carries
+     that class, and the candidate list inside it is also a .rename-box that
+     must not grow a halo of its own.
 
-       Two passes, tight then wide, for the reason the squiggles take two. */
-    function renameFilter(colour) {
-      var n = Math.round(KNOBS.renameGlow);
-      return 'drop-shadow(0 0 ' + Math.max(1, Math.round(n * 0.4)) + 'px ' + colour + ')'
-        + ' drop-shadow(0 0 ' + n + 'px ' + colour + ')';
-    }
+     Two passes, tight then wide, for the reason the squiggles take two. */
+  function renameFilter(colour) {
+    var n = Math.round(KNOBS.renameGlow);
+    return 'drop-shadow(0 0 ' + Math.max(1, Math.round(n * 0.4)) + 'px ' + colour + ')'
+      + ' drop-shadow(0 0 ' + n + 'px ' + colour + ')';
+  }
+  function renameStyles() {
+    var css = '';
     if (Math.round(KNOBS.renameGlow) > 0) {
       css += '.monaco-editor .monaco-editor.rename-box { filter: '
         + renameFilter('var(--vscode-focusBorder)') + '; }\n';
     }
+    return css;
+  }
 
-    /* A slow swell on what is waiting for you.
+  /* A slow swell on what is waiting for you.
 
-       The glow is a text-shadow, and a text-shadow cannot be animated without
-       re-rastering its blur on every frame. The token glow alone takes a dense
-       scroll from 26ms to 101ms of raster at the defaults (measured, see
-       layers()), and a breath would pay that on every frame instead of only
-       when something moves - so breathing the tokens would not drop frames, it
-       would hold up typing. What can be animated instead is a filter on the single
-       element that carries the glow: the blur is rastered once and the frames
-       only darken the result, the same bargain saveShake takes with transform.
+     The glow is a text-shadow, and a text-shadow cannot be animated without
+     re-rastering its blur on every frame. The token glow alone takes a dense
+     scroll from 26ms to 101ms of raster at the defaults (measured, see
+     layers()), and a breath would pay that on every frame instead of only
+     when something moves - so breathing the tokens would not drop frames, it
+     would hold up typing. What can be animated instead is a filter on the single
+     element that carries the glow: the blur is rastered once and the frames
+     only darken the result, the same bargain saveShake takes with transform.
 
-       Five surfaces, and what lets one in is when it is on screen rather than
-       how few of it there are: each is there only while the editor is waiting
-       on you. The current find match is already the one place the glow does
-       work rather than decoration, and a pulse is more of that work; the
-       stopped line is the one thing you are waiting on while everything else is
-       still; the bracket box is the two the editor is pointing at; a snippet's
-       tabstops are the gaps it is holding open for you; and the rename box is a
-       question that stays until it is answered. Count still bounds the cost,
-       and none of these is more than a handful.
+     Five surfaces, and what lets one in is when it is on screen rather than
+     how few of it there are: each is there only while the editor is waiting
+     on you. The current find match is already the one place the glow does
+     work rather than decoration, and a pulse is more of that work; the
+     stopped line is the one thing you are waiting on while everything else is
+     still; the bracket box is the two the editor is pointing at; a snippet's
+     tabstops are the gaps it is holding open for you; and the rename box is a
+     question that stays until it is answered. Count still bounds the cost,
+     and none of these is more than a handful.
 
-       The occurrence highlights were the obvious sixth and are deliberately
-       not here, and the reason is not their count. They are on screen whenever
-       the caret is resting on a word, which their own setting describes as most
-       of a working day - so breathing them would mean something is always
-       pulsing, and a mark that never stops is background rather than a signal.
-       The tokens, the gutter and the breakpoints fail the count as well.
+     The occurrence highlights were the obvious sixth and are deliberately
+     not here, and the reason is not their count. They are on screen whenever
+     the caret is resting on a word, which their own setting describes as most
+     of a working day - so breathing them would mean something is always
+     pulsing, and a mark that never stops is background rather than a signal.
+     The tokens, the gutter and the breakpoints fail the count as well.
 
-       The rename box breathes its own way. The others dim under a brightness
-       filter, which is safe on them because they are decorations drawn behind
-       the text; the rename box holds the name you are typing, and dimming it
-       would dim that too. So its keyframes move the drop-shadow's colour
-       instead, down to the same 55%, and the name stays lit. Both ends are
-       written as the same kind of colour, a relative oklch that differs only in
-       alpha, and that is not style. With the plain variable at one end and a
-       color-mix at the other, Chromium interpolated between them into nonsense:
-       in a real VS Code the blue went yellow-green at mid-breath, and the
-       computed colour read back with oklab a and b in the teens.
+     The rename box breathes its own way. The others dim under a brightness
+     filter, which is safe on them because they are decorations drawn behind
+     the text; the rename box holds the name you are typing, and dimming it
+     would dim that too. So its keyframes move the drop-shadow's colour
+     instead, down to the same 55%, and the name stays lit. Both ends are
+     written as the same kind of colour, a relative oklch that differs only in
+     alpha, and that is not style. With the plain variable at one end and a
+     color-mix at the other, Chromium interpolated between them into nonsense:
+     in a real VS Code the blue went yellow-green at mid-breath, and the
+     computed colour read back with oklab a and b in the teens.
 
-       That is not the bargain the filter strikes for the others, and it has now
-       been measured: four pairs of one 2400ms breath against the same glow held
-       still, with the box open, on 2026-09-14. Breathing kept frames coming the
-       whole time and cost the renderer's main thread 258ms more (about 11% of
-       it), and the compositor and GPU threads 110-125ms each; held still, all
-       four were near zero. The keyframes read theme variables through relative
-       colours, which is probably what keeps the animation off the compositor -
-       that part is a guess, not a measurement. Bounded to one widget that exists
-       only while you are renaming. The brightness breath on the other four
-       surfaces has not been measured.
+     That is not the bargain the filter strikes for the others, and it has now
+     been measured: four pairs of one 2400ms breath against the same glow held
+     still, with the box open, on 2026-09-14. Breathing kept frames coming the
+     whole time and cost the renderer's main thread 258ms more (about 11% of
+     it), and the compositor and GPU threads 110-125ms each; held still, all
+     four were near zero. The keyframes read theme variables through relative
+     colours, which is probably what keeps the animation off the compositor -
+     that part is a guess, not a measurement. Bounded to one widget that exists
+     only while you are renaming. The brightness breath on the other four
+     surfaces has not been measured.
 
-       It dips rather than swells: the rest point is the glow as it already is,
-       and the breath takes it down and brings it back, so turning this on never
-       makes anything brighter than leaving it off did. */
+     It dips rather than swells: the rest point is the glow as it already is,
+     and the breath takes it down and brings it back, so turning this on never
+     makes anything brighter than leaving it off did. */
+  function breatheStyles() {
+    var css = '';
     var br = Math.round(KNOBS.breathe);
     if (br > 0) {
       /* Anything faster than this reads as a strobe rather than a breath, and a
@@ -751,7 +802,30 @@ try {
         css += ' }\n';
       }
     }
+    return css;
+  }
 
+  /* What changed, inside a diff.
+
+     Semi-transparent theme colours behind text again, so this takes a spread
+     for the same reason find and selection do.
+
+     The word-level highlight only, not the line tint. VS Code paints both:
+     .char-insert marks the run of characters that actually differ, and
+     .line-insert washes the whole line width behind it. Blurring a full-width
+     block bleeds a radius above and below into its neighbours, and a diff
+     usually has changed lines next to each other, so what comes out is a haze
+     over the region rather than a mark on the change. It is the same line the
+     token glow draws when it keeps body text out of it - light on what you
+     are looking for, not on everything around it. The line tint is already
+     doing the job of saying which side of the diff you are on.
+
+     This is also where the gutter bars are not: VS Code hides them with
+     display:none once .modified-in-monaco-diff-editor is on the editor, and
+     clicking a file in source control opens a diff. So the view people reach
+     for most had the least lit in it, which is what this is for. */
+  function diffStyles() {
+    var css = '';
     var dif = Math.round(KNOBS.diffGlow);
     if (dif > 0) {
       var dSpread = Math.round(dif / 3);
