@@ -8,7 +8,7 @@ It ships no theme of its own. It reads whatever colours your current theme produ
 and makes the vivid ones glow, so you can keep changing themes and the glow follows
 along — no reload needed.
 
-![requires VS Code 1.70 or newer](https://img.shields.io/badge/VS%20Code-1.70%2B-blue)
+![requires VS Code 1.73 or newer](https://img.shields.io/badge/VS%20Code-1.73%2B-blue)
 
 The same file at the same moment, without the glow on the left and with it on the
 right — the token colours, the matching bracket box, every other place the symbol
@@ -63,17 +63,17 @@ chosen.
 
 | On by default | |
 |---|---|
-| **Find results** (`findGlow`) | the one place the glow does work rather than decoration — a match is visible without hunting the scrollbar for its mark |
-| **The selection** (`selectionGlow`) | only rendered lines carry a selection span, so selecting a whole file costs the screenful in front of you and nothing beyond it |
-| **The symbol under the caret** (`occurrenceGlow`) | every place it appears on screen — and the same for a word selected with the mouse, which VS Code marks differently. Where a theme paints a write in a different colour from a read, the write is lit wider |
-| **The gutter's change bars** (`gutterGlow`) | added, modified and deleted marks from source control — bounded by how many lines you have changed, not by the viewport |
-| **The matching bracket box** (`bracketMatchGlow`) | brackets already glow; the box that marks the pair did not, which left the moment the editor points at something as the dimmest thing on the line |
-| **Error, warning and info squiggles** (`squiggleGlow`) | the glow follows the wave itself, so an error is visible from across the screen without the word above it blooming. Hints are left alone — VS Code keeps them quiet on purpose |
-| **What changed in a diff** (`diffGlow`) | the word-level highlight, not the line tint behind it — and a diff is the one view the gutter bars are missing from, because VS Code hides them there |
-| **The line the editor points at** (`lineHighlightGlow`) | the stopped line while debugging, and the range that lights when you jump to a definition or peek a result. A full-width band, which the diff tint is not allowed — these come one at a time, so they mark a line instead of washing a region |
-| **Breakpoints** (`breakpointGlow`) | in whatever colour the glyph was painted, since this one is not published as a theme colour a rule could name |
-| **A snippet's tabstops** (`snippetGlow`) | the stops a snippet is holding open for you, and the last one it lands on. VS Code's default colours for them are a faint grey, so they are lifted to a lightness a glow can show first |
-| **The rename box** (`renameGlow`) | the field `F2` opens, in the theme's `focusBorder` colour. A `drop-shadow` rather than a `box-shadow`, because VS Code writes the box's own shadow inline |
+| **Find results** (`findGlow`) | matches stand out without hunting the scrollbar for them |
+| **The selection** (`selectionGlow`) | the text you selected |
+| **The symbol under the caret** (`occurrenceGlow`) | the word under the caret and every other place it appears |
+| **The gutter's change bars** (`gutterGlow`) | the added, modified and deleted marks from source control |
+| **The matching bracket box** (`bracketMatchGlow`) | the box around a bracket and its partner |
+| **Error, warning and info squiggles** (`squiggleGlow`) | the wavy line lights, the word above it does not |
+| **What changed in a diff** (`diffGlow`) | the changed words, not the whole line |
+| **The line the editor points at** (`lineHighlightGlow`) | the debugger's stopped line, a jump, a peek |
+| **Breakpoints** (`breakpointGlow`) | in whatever colour they are painted |
+| **A snippet's tabstops** (`snippetGlow`) | the places a snippet is waiting for you to fill in |
+| **The rename box** (`renameGlow`) | the box `F2` opens |
 
 Find, selection, occurrence and diff colours are semi-transparent, because they sit behind
 text and must not hide it, so those rules take a `spread` — the weak colour is carried
@@ -87,10 +87,10 @@ is why the rules do not match each other, and the reasoning is kept beside each 
 
 | Off until you set it | |
 |---|---|
-| **The caret trail** (`cursorTrail`) | the caret gets a duration to cross instead of jumping, so the glow on it smears into a streak. `130` reads as lag; `45` keeps up and still streaks on a jump across a file. How much of a slide that is depends on the display — `45` is under three frames at 60Hz and six or seven at 144Hz, so raise it on a slower panel |
-| **The save jolt** (`saveShake`) | the workbench knocks sideways when a file is saved. A compositor animation on `transform` alone, so the glow is never re-drawn during it |
-| **A breath on what is waiting for you** (`breathe`) | a slow swell on the current find match, the stopped line while debugging, the matching bracket box, a snippet's tabstops and the rename box — each on screen only while the editor waits on you. Only those: the glow is a `text-shadow`, and animating one re-draws its blur every frame — a handful is nothing, every token on screen would hold up typing |
-| **The caret arc** (`caretArc`) | one of twelve shapes drawn along a caret jump, in the theme's own caret colour, as SVG that lives a few hundred milliseconds. `caretArcDuration` sets how long it takes to cross |
+| **The caret trail** (`cursorTrail`) | the caret slides instead of jumping and leaves a streak; `45` keeps up with typing |
+| **The save jolt** (`saveShake`) | the window knocks sideways when you save; leave it off with auto save |
+| **A breath on what is waiting for you** (`breathe`) | a slow pulse on the find match, the stopped line, the bracket box, snippet tabstops and the rename box |
+| **The caret arc** (`caretArc`) | one of twelve shapes drawn along a caret jump, in the theme's caret colour |
 
 These four move things, and nobody asked for movement, so they ship at `0` and stay
 there until you say otherwise. All four are ignored when the system asks for reduced
@@ -369,17 +369,17 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 
 | 기본으로 켜짐 | |
 |---|---|
-| **찾기 결과** (`findGlow`) | 글로우가 장식이 아니라 실제로 일을 하는 유일한 자리임. 스크롤바의 표시를 뒤지지 않아도 매치가 보임 |
-| **선택 영역** (`selectionGlow`) | 화면에 그려진 줄만 선택 span을 가지므로, 파일 전체를 선택해도 눈앞의 한 화면만큼만 듦 |
-| **커서가 놓인 심볼** (`occurrenceGlow`) | 그 심볼이 화면에 나온 자리 전부. 마우스로 고른 단어도 같음 — VS Code가 그 둘을 다른 표시로 칠함. 테마가 읽기와 쓰기를 다른 색으로 칠하면 쓰기를 더 넓게 밝힘 |
-| **거터의 변경 막대** (`gutterGlow`) | 소스 관리가 남기는 추가·수정·삭제 표시. 뷰포트가 아니라 고친 줄 수에 비용이 묶임 |
-| **일치하는 괄호 상자** (`bracketMatchGlow`) | 괄호 자체는 이미 빛나는데 짝을 표시하는 상자는 안 빛났음. 에디터가 무언가를 가리키는 그 순간이 줄에서 제일 어두운 자리였음 |
-| **에러·경고·정보 물결선** (`squiggleGlow`) | 물결 모양을 그대로 따라 빛나서, 그 위 단어는 번지지 않은 채로 에러가 멀리서도 보임. 힌트는 건드리지 않음 — VS Code가 일부러 조용하게 두는 표시임 |
-| **diff에서 바뀐 것** (`diffGlow`) | 줄 전체 틴트가 아니라 단어 단위 강조에만 붙음. 그리고 diff는 거터 막대가 없는 유일한 화면임 — VS Code가 거기서 숨김 |
-| **에디터가 가리키는 줄** (`lineHighlightGlow`) | 디버그 중 멈춘 줄, 그리고 정의로 뛰거나 결과를 미리볼 때 켜지는 범위. 폭 전체를 덮는데 diff 틴트에는 허락되지 않은 것임 — 이쪽은 한 번에 하나만 떠서 영역을 흐리지 않고 줄을 짚음 |
-| **중단점** (`breakpointGlow`) | 글리프가 칠해진 그 색 그대로. 이 색은 규칙이 이름으로 부를 수 있는 테마 색으로 공개돼 있지 않음 |
-| **스니펫 탭 정지 자리** (`snippetGlow`) | 스니펫이 채워주길 기다리는 자리들과 마지막에 떨어질 자리. VS Code 기본 색이 흐린 회색이라, 글로우가 보일 만큼 밝기를 먼저 끌어올림 |
-| **이름 바꾸기 상자** (`renameGlow`) | `F2`가 여는 입력 상자. 테마의 `focusBorder` 색을 씀. VS Code가 상자 자체 그림자를 인라인으로 박아 두므로 `box-shadow` 대신 `drop-shadow`를 씀 |
+| **찾기 결과** (`findGlow`) | 스크롤바를 뒤지지 않아도 매치가 눈에 띔 |
+| **선택 영역** (`selectionGlow`) | 선택한 텍스트 |
+| **커서가 놓인 심볼** (`occurrenceGlow`) | 커서가 놓인 단어와, 화면에 나온 같은 단어 전부 |
+| **거터의 변경 막대** (`gutterGlow`) | 소스 관리가 남기는 추가·수정·삭제 표시 |
+| **일치하는 괄호 상자** (`bracketMatchGlow`) | 괄호와 그 짝을 감싼 상자 |
+| **에러·경고·정보 물결선** (`squiggleGlow`) | 물결선만 빛나고 그 위 단어는 번지지 않음 |
+| **diff에서 바뀐 것** (`diffGlow`) | 줄 전체가 아니라 바뀐 단어만 |
+| **에디터가 가리키는 줄** (`lineHighlightGlow`) | 디버그 중 멈춘 줄, 정의로 이동하거나 미리본 자리 |
+| **중단점** (`breakpointGlow`) | 칠해진 색 그대로 |
+| **스니펫 탭 정지 자리** (`snippetGlow`) | 스니펫이 채워주길 기다리는 자리 |
+| **이름 바꾸기 상자** (`renameGlow`) | `F2`가 여는 입력 상자 |
 
 찾기·선택·심볼·diff 색은 글자 뒤에 깔리는 색이라 테마가 반투명으로 잡아둠. 그래서 그 넷에는
 `spread`가 붙음 — 약한 색을 원래 폭만큼 먼저 밀어낸 다음에 번지게 함. 거터 막대에도
@@ -391,10 +391,10 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 
 | 켜야 도는 것 | |
 |---|---|
-| **커서 잔상** (`cursorTrail`) | 커서가 튀는 대신 새 위치까지 건너갈 시간을 줘서 글로우가 꼬리로 끌림. `130`은 렉처럼 읽히고, `45`는 타이핑을 따라가면서도 멀리 뛸 때 꼬리가 남음. 같은 값도 주사율에 따라 다르게 읽힘 — 60Hz에서 `45`는 세 프레임이 안 되고 144Hz에서는 예닐곱 프레임임. 주사율이 낮으면 올려 잡을 것 |
-| **저장 흔들림** (`saveShake`) | 파일을 저장할 때 워크벤치가 옆으로 한 번 얻어맞음. `transform`만 건드리는 컴포지터 애니메이션이라 그동안 글로우가 다시 그려지지 않음 |
-| **기다리는 것만 숨쉬기** (`breathe`) | 현재 찾기 결과, 디버그 중 멈춘 줄, 일치하는 괄호 상자, 스니펫 탭 정지 자리, 이름 바꾸기 상자가 천천히 부풀었다 가라앉음. 전부 에디터가 나를 기다리는 동안에만 화면에 있는 것임. 그것뿐임 — 글로우가 `text-shadow`라 애니메이션하면 매 프레임 블러를 다시 그림. 몇 개는 공짜지만 화면의 토큰 전부면 타이핑이 밀림 |
-| **커서 아크** (`caretArc`) | 커서가 뛴 길에 열두 모양 중 하나를 그림. 테마 자신의 커서 색을 쓰고, 몇백 밀리초 살다 사라지는 SVG임. 건너는 시간은 `caretArcDuration`이 정함 |
+| **커서 잔상** (`cursorTrail`) | 커서가 튀는 대신 미끄러지며 꼬리를 남김. `45`면 타이핑을 따라감 |
+| **저장 흔들림** (`saveShake`) | 저장할 때 화면이 옆으로 흔들림. 자동 저장을 쓰면 끌 것 |
+| **기다리는 것만 숨쉬기** (`breathe`) | 찾기 결과·멈춘 줄·괄호 상자·스니펫 자리·이름 바꾸기 상자가 천천히 숨쉼 |
+| **커서 아크** (`caretArc`) | 커서가 뛴 길에 열두 모양 중 하나를 테마의 커서 색으로 그림 |
 
 이 넷은 무언가를 움직임. 움직임을 달라고 한 사람은 없으므로 `0`으로 나가고 말하기
 전까지 그대로 있음. 셋 다 시스템이 모션 줄이기를 요청하면 무시됨.
