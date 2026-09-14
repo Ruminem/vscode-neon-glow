@@ -24,6 +24,9 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Three tries of a step that can hang for three minutes each, with a pause
+    # between, is the longest this should ever take.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -55,10 +58,23 @@ jobs:
       # looks exactly like the Marketplace being down: three minutes of nothing
       # and "Request timeout: /_apis/gallery". verify-pat says which it is, in
       # seconds, before anything is uploaded.
+      #
+      # Tried three times, a minute apart, because the Marketplace side comes and
+      # goes: v0.14.1, v0.14.2 and v0.16.2 all died here on "Request timeout:
+      # /_apis/securityroles" after three minutes, and v0.16.2 went through in
+      # 27 seconds when the same run was started again six minutes later. A
+      # token that is really rejected fails all three and costs ten minutes
+      # instead of three, which is the cheaper mistake.
       - name: Check the token still works
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx --yes @vscode/vsce@latest verify-pat Ruminem
+        run: |
+          for try in 1 2 3; do
+            if npx --yes @vscode/vsce@latest verify-pat Ruminem; then exit 0; fi
+            echo "verify-pat failed (try $try of 3)" >&2
+            if [ "$try" -lt 3 ]; then sleep 60; fi
+          done
+          exit 1
 
       # The Marketplace takes the version from package.json rather than from the
       # tag, so a disagreement publishes a number nobody asked for - and that one
@@ -82,7 +98,29 @@ jobs:
       # --packagePath publishes the file just built instead of packaging a second
       # time, so what reaches the Marketplace is the artifact this run inspected
       # rather than a rebuild of it.
+      #
+      # Retried for the same reason as verify-pat. A try that timed out on this
+      # side may still have landed on theirs, so the next try can be told the
+      # version already exists - which means the job is done, not failed.
+      #
+      # shell: bash is what turns on pipefail. Without it the tee below would
+      # hand back its own success whatever vsce did, and a failed publish would
+      # go green.
       - name: Publish
+        shell: bash
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx --yes @vscode/vsce@latest publish --packagePath "neon-glow-${GITHUB_REF_NAME#v}.vsix"
+        run: |
+          vsix="neon-glow-${GITHUB_REF_NAME#v}.vsix"
+          for try in 1 2 3; do
+            if npx --yes @vscode/vsce@latest publish --packagePath "$vsix" 2>&1 | tee publish.log; then
+              exit 0
+            fi
+            if grep -qi "already exists" publish.log; then
+              echo "This version is already on the Marketplace; nothing left to do."
+              exit 0
+            fi
+            echo "publish failed (try $try of 3)" >&2
+            if [ "$try" -lt 3 ]; then sleep 60; fi
+          done
+          exit 1
