@@ -90,7 +90,7 @@ is why the rules do not match each other, and the reasoning is kept beside each 
 | **The caret trail** (`cursorTrail`) | the caret slides instead of jumping and leaves a streak; `45` keeps up with typing |
 | **The save jolt** (`saveShake`) | the window knocks sideways when you save; leave it off with auto save |
 | **A breath on what is waiting for you** (`breathe`) | a slow pulse on the find match, the stopped line, the bracket box, snippet tabstops and the rename box |
-| **The caret arc** (`caretArc`) | one of twelve shapes drawn along a caret jump, in the theme's caret colour |
+| **The caret arc** (`caretArc`) | one of twelve shapes drawn along a caret jump, in the theme's caret colour or one you pick |
 
 These four move things, and nobody asked for movement, so they ship at `0` and stay
 there until you say otherwise. All four are ignored when the system asks for reduced
@@ -222,6 +222,7 @@ reading is the preview.
 | `neonGlow.snippetGlow` | `8` | px of bloom on a snippet's tabstops while you fill them in; `0` turns it off |
 | `neonGlow.renameGlow` | `12` | px of bloom around the rename box, in the theme's `focusBorder` colour; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump — twelve shapes, from a straight `beam` to a `ring` that needs no distance |
+| `neonGlow.caretArcColor` | `cursor` | the arc's colour — `cursor` follows the theme's caret, or give a hex like `#ff2f92`; settings.json offers a colour picker |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
 | `neonGlow.caretArcDuration` | `300` | ms the arc takes to cross its path — eighteen frames at 60Hz, and it wants raising on a slower panel |
 | `neonGlow.caretArcOnDrag` | `false` | keep drawing while a selection is dragged out; the click that starts the drag draws either way |
@@ -396,7 +397,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 | **커서 잔상** (`cursorTrail`) | 커서가 튀는 대신 미끄러지며 꼬리를 남김. `45`면 타이핑을 따라감 |
 | **저장 흔들림** (`saveShake`) | 저장할 때 화면이 옆으로 흔들림. 자동 저장을 쓰면 끌 것 |
 | **기다리는 것만 숨쉬기** (`breathe`) | 찾기 결과·멈춘 줄·괄호 상자·스니펫 자리·이름 바꾸기 상자가 천천히 숨쉼 |
-| **커서 아크** (`caretArc`) | 커서가 뛴 길에 열두 모양 중 하나를 테마의 커서 색으로 그림 |
+| **커서 아크** (`caretArc`) | 커서가 뛴 길에 열두 모양 중 하나를 테마의 커서 색이나 직접 고른 색으로 그림 |
 
 이 넷은 무언가를 움직임. 움직임을 달라고 한 사람은 없으므로 `0`으로 나가고 말하기
 전까지 그대로 있음. 셋 다 시스템이 모션 줄이기를 요청하면 무시됨.
@@ -520,6 +521,7 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.snippetGlow` | `8` | 스니펫 탭 정지 자리가 번지는 폭(px). 채우는 동안에만 보임. `0`이면 꺼짐 |
 | `neonGlow.renameGlow` | `12` | 이름 바꾸기 상자가 번지는 폭(px). 테마의 `focusBorder` 색을 씀. `0`이면 꺼짐 |
 | `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지. 열두 모양 — 곧은 `beam`부터 거리가 필요 없는 `ring`까지 |
+| `neonGlow.caretArcColor` | `cursor` | 아크 색. `cursor`는 테마의 커서 색을 따르고, `#ff2f92` 같은 hex도 받음. settings.json에서는 색 선택기가 뜸 |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |
 | `neonGlow.caretArcDuration` | `300` | 아크가 경로를 건너는 시간(ms). 60Hz에서 열여덟 프레임이고, 주사율이 낮으면 올려 잡아야 함 |
 | `neonGlow.caretArcOnDrag` | `false` | 마우스로 선택을 끄는 동안에도 계속 그릴지. 드래그를 시작한 클릭은 어느 쪽이든 그림 |

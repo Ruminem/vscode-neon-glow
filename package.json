@@ -260,12 +260,22 @@
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArc.markdownDescription%"
         },
+        "neonGlow.caretArcColor": {
+          "type": "string",
+          "default": "cursor",
+          "pattern": "^(cursor|#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$",
+          "patternErrorMessage": "%neonGlow.caretArcColor.patternErrorMessage%",
+          "anyOf": [{ "type": "string", "pattern": "^cursor$" }, { "type": "string", "format": "color-hex" }],
+          "order": 22,
+          "scope": "application",
+          "markdownDescription": "%neonGlow.caretArcColor.markdownDescription%"
+        },
         "neonGlow.caretArcMinJump": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 400,
-          "order": 22,
+          "order": 23,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArcMinJump.markdownDescription%"
         },
@@ -274,14 +284,14 @@
           "default": 300,
           "minimum": 80,
           "maximum": 1200,
-          "order": 23,
+          "order": 24,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArcDuration.markdownDescription%"
         },
         "neonGlow.caretArcOnDrag": {
           "type": "boolean",
           "default": false,
-          "order": 24,
+          "order": 25,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArcOnDrag.markdownDescription%"
         }

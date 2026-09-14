@@ -1095,6 +1095,25 @@ async function main() {
       relight ? after.slice(0, 160) : 'nothing observes the token stylesheet');
   }
 
+  /* The arc is drawn in the theme's caret colour unless it is given one of its
+     own, and only a hex gets through: a named colour, or anything else a
+     hand-edited settings.json holds, is dropped and the caret colour stays. */
+  console.log('\ncaret arc colour');
+  for (const [given, want, name] of [
+    ['#ff2f92', '#ff2f92', 'a hex of your own replaces the caret colour'],
+    ['#0f08', '#0f08', 'and so does a short hex with alpha'],
+    ['red', '#22d3ee', 'a colour that is not a hex is dropped, and the caret colour stays'],
+    ['cursor', '#22d3ee', 'cursor follows the theme']
+  ]) {
+    const a = run({ knobs: { caretArc: 'arc', caretArcColor: given } });
+    await wait(120);
+    await a.jump(600);
+    const d = a.drawn();
+    const wire = d.length ? d[0].descendants().find((n) => n.tag === 'polyline') : null;
+    const stroke = wire ? wire.attrs.stroke : null;
+    check(name, stroke === want, 'stroke is ' + stroke);
+  }
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,

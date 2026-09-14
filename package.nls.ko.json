@@ -37,6 +37,8 @@
   "neonGlow.caretArc.enum.zip": "스스로 그려지는 선",
   "neonGlow.caretArc.enum.pulse": "경로 전체가 한 번 번쩍임",
   "neonGlow.caretArc.enum.ring": "바깥으로 퍼지는 고리",
+  "neonGlow.caretArcColor.markdownDescription": "커서 아크의 색입니다. `cursor`는 테마의 커서 색을 따르고, `#ff2f92` 같은 hex도 받습니다(settings.json에서는 색 선택기가 뜹니다).",
+  "neonGlow.caretArcColor.patternErrorMessage": "cursor 또는 #ff2f92 같은 hex 색이어야 합니다.",
   "neonGlow.caretArcMinJump.markdownDescription": "효과를 그리는 커서의 최소 이동 거리(px)입니다.",
   "neonGlow.caretArcDuration.markdownDescription": "효과가 이어지는 시간(ms)입니다.",
   "neonGlow.caretArcOnDrag.markdownDescription": "선택 영역을 드래그하는 동안에도 효과를 그립니다."

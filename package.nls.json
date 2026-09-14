@@ -37,6 +37,8 @@
   "neonGlow.caretArc.enum.zip": "Line that draws itself",
   "neonGlow.caretArc.enum.pulse": "Whole path flashes once",
   "neonGlow.caretArc.enum.ring": "Ring spreading outward",
+  "neonGlow.caretArcColor.markdownDescription": "Colour of the caret arc: `cursor` follows the theme's caret colour, or a hex such as `#ff2f92` (settings.json offers a picker).",
+  "neonGlow.caretArcColor.patternErrorMessage": "Use cursor, or a hex colour such as #ff2f92.",
   "neonGlow.caretArcMinJump.markdownDescription": "Smallest caret move that draws an effect, in px.",
   "neonGlow.caretArcDuration.markdownDescription": "How long the effect lasts, in ms.",
   "neonGlow.caretArcOnDrag.markdownDescription": "Also draw the effect while dragging a selection."

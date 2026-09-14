@@ -41,6 +41,7 @@ try {
     renameGlow:    12,   /* px of bloom around the rename box; 0 = leave it flat  */
     breathe:        0,   /* ms for one breath on whatever is waiting for you     */
     caretArc:    'off',  /* off, or one of twelve shapes; see KNOB_ENUM below  */
+    caretArcColor: 'cursor', /* the theme's caret colour, or a #hex of your own */
     caretArcMinJump: 5,  /* px of travel before an arc is drawn                  */
     caretArcDuration: 300, /* ms the arc takes to cross the path it drew         */
     caretArcOnDrag: false /* keep drawing while a selection is being dragged out */
@@ -76,6 +77,13 @@ try {
      read as one. */
   var KNOB_BOOL = {
     caretArcOnDrag: true
+  };
+
+  /* And knobs that carry a colour: the word cursor, meaning the theme's own,
+     or a hex. A named CSS colour is dropped with the rest - the setting's schema
+     offers only hex, so that is all the renderer takes. */
+  var KNOB_COLOR = {
+    caretArcColor: /^(cursor|#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$/
   };
 
   /**
@@ -932,6 +940,8 @@ try {
       var words = KNOB_ENUM[name];
       if (KNOB_BOOL[name]) {
         if (typeof v !== 'boolean') continue;
+      } else if (KNOB_COLOR[name]) {
+        if (typeof v !== 'string' || !KNOB_COLOR[name].test(v)) continue;
       } else if (words) {
         if (typeof v !== 'string' || words.indexOf(v) === -1) continue;
       } else {
@@ -1139,10 +1149,17 @@ try {
    * and a held arrow key draws about thirty times a second. It only changes
    * with the theme, and the theme arriving is exactly when the stylesheet is
    * rebuilt, so that is where it is thrown away.
+   *
+   * caretArcColor is the one colour in this file a person can pick instead of
+   * the theme's. It ships as `cursor`, so the default still adds no palette of
+   * its own - the line drawn over KNOBS - and a hand-picked colour is only ever
+   * one somebody asked for. It is read from the knob rather than cached: a
+   * setting changing is not a theme arriving, and nothing would clear the cache.
    */
   var arcCachedColour = null;
 
   function arcColour(el) {
+    if (KNOBS.caretArcColor !== 'cursor') return KNOBS.caretArcColor;
     if (arcCachedColour) return arcCachedColour;
     var c = '#ffffff';
     try {
