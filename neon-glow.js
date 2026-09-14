@@ -765,14 +765,20 @@ try {
     return css;
   }
 
-  var lastLen = -1;
+  var lastSource = null;
 
   /**
    * Turning off flips the stylesheet's `disabled` flag instead of removing the
    * element, so turning back on costs nothing: the CSS stays parsed and the
-   * regex pass is not repeated. `lastLen` therefore survives an off/on cycle,
-   * and a theme swapped *while* off still rebuilds, because the token source
-   * length no longer matches.
+   * regex pass is not repeated. `lastSource` therefore survives an off/on cycle,
+   * and a theme swapped *while* off still rebuilds, because the token source no
+   * longer matches.
+   *
+   * The whole text is compared, not its length, though it was the length until
+   * 2026-09-14. Every rule VS Code writes there is `.mtkN { color: #RRGGBB; }`,
+   * so two themes with as many token colours as each other come out the same
+   * length, and the length check kept the old theme's glow on the new theme's
+   * text. The comparison runs only when the stylesheet changes.
    */
   function render() {
     var styleTag = document.getElementById(STYLE_ID);
@@ -787,11 +793,11 @@ try {
     var source = tokensEl.textContent || '';
     if (!/\S/.test(source)) return false;   /* cheaper than stripping a copy */
 
-    if (styleTag && source.length === lastLen) {
+    if (styleTag && source === lastSource) {
       if (styleTag.disabled) styleTag.disabled = false;
       return true;
     }
-    lastLen = source.length;
+    lastSource = source;
     arcCachedColour = null;    /* a new theme brings a new caret colour */
 
     if (!styleTag) {
@@ -840,7 +846,7 @@ try {
   /**
    * Take tuning values sent by the extension. Unlike the on/off state there is
    * nothing local to protect here, so these apply on the very first read too.
-   * A change invalidates lastLen, because the stylesheet has to be rebuilt from
+   * A change invalidates lastSource, because the stylesheet has to be rebuilt from
    * the token source rather than merely re-shown.
    */
   function applyKnobs(k) {
@@ -864,7 +870,7 @@ try {
       changed = true;
     }
     if (changed) {
-      lastLen = -1;
+      lastSource = null;
       render();
       /* Switching the arc on has to find a caret to watch; switching it off
          leaves the observer in place, which costs two parseFloats on a move

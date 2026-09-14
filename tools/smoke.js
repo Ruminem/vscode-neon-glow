@@ -1078,6 +1078,23 @@ async function main() {
       /statusBase = 'NEON:'/.test(src) && !/l10n\.t\([^)]*NEON:/.test(src));
   }
 
+  /* A theme swap reaches the payload as the token stylesheet changing, and two
+     themes with as many token colours as each other write it at the same
+     length: every rule is `.mtkN { color: #RRGGBB; }`. Comparing lengths kept
+     the old theme's glow on the new theme's text. */
+  console.log('\ntheme swap');
+  {
+    const t = run({});
+    await wait(80);
+    t.tokens.textContent = '.mtk1 { color: #22d3ee; }\n.mtk2 { color: #808080; }';
+    const relight = t.callbackFor(t.tokens);
+    if (relight) relight();
+    const after = t.styles();
+    check('a theme with as many token colours as the last one still relights',
+      !!relight && /\.mtk1 \{ color: #22d3ee;/.test(after) && after.indexOf('ff2f92') === -1,
+      relight ? after.slice(0, 160) : 'nothing observes the token stylesheet');
+  }
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,
