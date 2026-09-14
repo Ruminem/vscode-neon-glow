@@ -21,7 +21,9 @@
  * A variant is `none` (no glow at all), `legacy` (the formula from before the
  * falloff was rebalanced, kept so the old comparison can still be re-run), or a
  * comma list of the knobs that shape the token glow - brightness, glowLayers,
- * maxBlur - with anything left out at its shipped default. The default pair is
+ * maxBlur, and backface (1 adds the `backface-visibility: hidden` the glow rules
+ * carried until 0.17.1, so that comparison can be re-run; 0 is what ships) -
+ * with anything left out at its shipped default. The default pair is
  * legacy against the shipped defaults, which is the comparison this tool was
  * written for.
  *
@@ -53,7 +55,7 @@ const WHEELS = Number(arg('wheels', 40));
 
 /* What the shipped payload defaults to. Kept beside the parser so a variant
    that names one knob is compared against the defaults for the rest. */
-const DEFAULTS = { brightness: 1, glowLayers: 3, maxBlur: 36 };
+const DEFAULTS = { brightness: 1, glowLayers: 3, maxBlur: 36, backface: 0 };
 
 function parseVariant(text) {
   if (text === 'none' || text === 'legacy') return { kind: text, label: text };
@@ -65,7 +67,8 @@ function parseVariant(text) {
     }
     spec[key] = Number(value);
   }
-  spec.label = 'brightness ' + spec.brightness + ', ' + spec.glowLayers + ' layers, maxBlur ' + spec.maxBlur;
+  spec.label = 'brightness ' + spec.brightness + ', ' + spec.glowLayers + ' layers, maxBlur ' + spec.maxBlur
+    + (spec.backface ? '' : ', no backface-visibility');
   return spec;
 }
 
@@ -123,7 +126,11 @@ const APPLY = String.raw`(function (spec) {
       if (LAYERS >= 2) s += ', 0 0 ' + blur(Math.round(11*k)) + 'px #' + h + hex2(0.32*k);
       if (LAYERS >= 3) s += ', 0 0 ' + blur(Math.round(26*k)) + 'px #' + h + hex2(0.14*k);
     }
-    return 'color:#' + h + '; text-shadow:' + s + ' !important;';
+    /* glowFor() ended every rule with this until 0.17.1. It is off by default
+       here for the same reason it is gone there, and kept as an option so the
+       measurement that took it out can be repeated. */
+    return 'color:#' + h + '; text-shadow:' + s + ' !important;'
+      + (spec.kind === 'knobs' && spec.backface ? ' backface-visibility: hidden;' : '');
   });
 
   var el = document.createElement('style');

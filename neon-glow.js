@@ -223,8 +223,14 @@ try {
     if (n >= 2) shadow += ', 0 0 '+mid+'px #'+hex+alpha(0.32*k);
     if (n >= 3) shadow += ', 0 0 '+far+'px #'+hex+alpha(0.14*k);
 
-    return 'color: #'+hex+'; text-shadow:' + shadow + ' !important;'
-      + ' backface-visibility: hidden;';
+    /* No backface-visibility: hidden, though every rule carried it from the
+       first commit - it came from SynthWave '84, which puts it on its own glow
+       rules and does not say why either. Measured on 2026-09-14 before taking it
+       out: raster time was the same with and without it (+0.4% over ten pairs),
+       not one pixel of a 900x500 capture changed at brightness 1 or 2, and what
+       it did do was lift glowing spans into layers of their own - 51
+       compositing layers against 43 on the same viewport. */
+    return 'color: #'+hex+'; text-shadow:' + shadow + ' !important;';
   }
 
   function addGlow(styles) {

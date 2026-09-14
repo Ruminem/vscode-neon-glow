@@ -211,6 +211,9 @@ async function main() {
 
   check('the payload finishes and exposes its API', !!s.api);
   check('a vivid colour glows', /\.mtk1 \{[^}]*text-shadow:/.test(css));
+  /* It changed no pixel and cost a compositing layer per glowing span, so it
+     should not find its way back in. */
+  check('glow rules carry no backface-visibility', css.indexOf('backface-visibility') === -1);
   check('a flat colour is skipped', /\.mtk2 \{ color: #808080; \}/.test(css));
   check('brackets get their own rule', css.indexOf('bracket-highlighting-') !== -1);
   /* The line the defaults are drawn on: a knob that only decides what colour
