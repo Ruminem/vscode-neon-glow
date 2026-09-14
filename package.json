@@ -10,8 +10,9 @@
     "url": "https://github.com/Ruminem/vscode-neon-glow.git"
   },
   "engines": {
-    "vscode": "^1.70.0"
+    "vscode": "^1.73.0"
   },
+  "l10n": "./l10n",
   "categories": ["Themes", "Other"],
   "keywords": ["neon", "glow", "cyberpunk", "retro", "syntax highlighting", "text-shadow"],
   "icon": "icon.png",

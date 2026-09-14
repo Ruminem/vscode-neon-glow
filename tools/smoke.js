@@ -996,6 +996,48 @@ async function main() {
       pkg.contributes.commands.every(c => c.title.indexOf('%') === -1));
   }
 
+  /* ---- messages the extension shows ---- */
+  /* vscode.l10n looks a message up by its English text, so a message that
+     changed in extension.js silently falls back to English unless the Korean
+     bundle changed with it. Every call takes one plain literal for exactly this
+     reason: it can be read back out of the file and checked here. */
+  console.log('\nmessages');
+  {
+    const root = path.join(__dirname, '..');
+    const src = fs.readFileSync(path.join(root, 'extension.js'), 'utf8');
+    const { PRESETS } = require('../presets.js');
+    const ko = JSON.parse(fs.readFileSync(path.join(root, 'l10n', 'bundle.l10n.ko.json'), 'utf8'));
+    const unquote = s => s.slice(1, -1).replace(/\\(.)/g, '$1');
+    const used = new Set();
+    const lit = /l10n\.t\(\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*[,)]/g;
+    let m, literals = 0;
+    while ((m = lit.exec(src))) { used.add(unquote(m[1])); literals++; }
+    /* Counted rather than pattern-matched: 'a' + 'b' starts with a quote too,
+       and slipped past a check that only looked at the first character. */
+    const calls = (src.match(/l10n\.t\(/g) || []).length;
+    const presetCalls = (src.match(/l10n\.t\(\s*PRESETS\[/g) || []).length;
+    check('every message is a plain literal, apart from the preset details',
+      literals > 20 && calls === literals + presetCalls,
+      calls + ' calls, ' + literals + ' plain literals, ' + presetCalls + ' preset details');
+    for (const k of Object.keys(PRESETS)) used.add(PRESETS[k].detail);
+
+    const missing = [...used].filter(s => typeof ko[s] !== 'string' || !ko[s].trim());
+    check('and every one has a Korean translation', missing.length === 0, missing.join('\n          '));
+    const stale = Object.keys(ko).filter(k => !used.has(k));
+    check('with nothing left in the bundle from a message that changed', stale.length === 0,
+      stale.join('\n          '));
+    const holes = s => (s.match(/\{\d+\}/g) || []).slice().sort().join('');
+    const bad = [...used].filter(s => typeof ko[s] === 'string' && holes(s) !== holes(ko[s]));
+    check('and the same placeholders on both sides', bad.length === 0, bad.join('\n          '));
+    check('the engine floor is one that has vscode.l10n',
+      /^\^1\.(7[3-9]|[89]\d|\d{3})\./.test(pkg.engines.vscode) && pkg.l10n === './l10n',
+      'engines.vscode is ' + pkg.engines.vscode + ', l10n is ' + pkg.l10n);
+    /* The renderer matches this text on the status bar; translated, the fast
+       half of the bridge would go deaf in every language but English. */
+    check('and the status bar label the renderer listens for is never translated',
+      /statusBase = 'NEON:'/.test(src) && !/l10n\.t\([^)]*NEON:/.test(src));
+  }
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,

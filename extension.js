@@ -14,9 +14,13 @@ const {
 
 const VERSION = require('./package.json').version;
 
-const RESTART_NOTE =
-  'Quit VS Code completely and start it again. "Reload Window" is not enough - ' +
-  'it replays the old bundle from cache.';
+/* Every message goes through vscode.l10n, which translates it from the bundle
+   in l10n/. Each is one string literal on one line, because that literal is the
+   key the translation is looked up by and tools/smoke.js reads them straight
+   out of this file to check every one has a translation. The ones that used to
+   be built when this module loaded are built when they are shown instead. */
+const restartNote = () =>
+  vscode.l10n.t('Quit VS Code completely and start it again. "Reload Window" is not enough - it replays the old bundle from cache.');
 
 /** Set when the user removes the patch, or asks not to be prompted about it. */
 const SUPPRESS_PROMPT = 'neonGlow.suppressPatchPrompt';
@@ -143,7 +147,7 @@ function restartPending() {
 function targetsOrWarn() {
   const targets = appTargets();
   if (!targets.length) {
-    vscode.window.showErrorMessage('Neon Glow: could not locate the VS Code installation.');
+    vscode.window.showErrorMessage(vscode.l10n.t('Neon Glow: could not locate the VS Code installation.'));
     return null;
   }
   return targets;
@@ -157,30 +161,23 @@ function targetsOrWarn() {
  * someone off to try sudo for a thing that cannot work either way is worse than
  * saying so.
  */
-const BLOCKED = {
+const BLOCKED = () => ({
   'readonly-snap':
-    'this VS Code is a snap, and snaps are mounted read-only, so the workbench ' +
-    'bundle cannot be patched by anything. Install VS Code from the .deb or the ' +
-    'tarball to use this.',
+    vscode.l10n.t('this VS Code is a snap, and snaps are mounted read-only, so the workbench bundle cannot be patched by anything. Install VS Code from the .deb or the tarball to use this.'),
   'readonly-flatpak':
-    'this VS Code is a flatpak, whose files are read-only, so the workbench ' +
-    'bundle cannot be patched. Install VS Code from the .deb or the tarball to use this.',
+    vscode.l10n.t('this VS Code is a flatpak, whose files are read-only, so the workbench bundle cannot be patched. Install VS Code from the .deb or the tarball to use this.'),
   readonly:
-    'the VS Code install directory is on a read-only filesystem, so the workbench ' +
-    'bundle cannot be patched.',
+    vscode.l10n.t('the VS Code install directory is on a read-only filesystem, so the workbench bundle cannot be patched.'),
   permission: process.platform === 'win32'
-    ? 'no write access to the VS Code install directory. Restart VS Code as ' +
-      'administrator and run this again.'
-    : 'no write access to the VS Code install directory. The extension host runs ' +
-      'as you rather than as root, so this command cannot elevate - clone the ' +
-      'repository and run "sudo node install.js" instead.',
-};
+    ? vscode.l10n.t('no write access to the VS Code install directory. Restart VS Code as administrator and run this again.')
+    : vscode.l10n.t('no write access to the VS Code install directory. The extension host runs as you rather than as root, so this command cannot elevate - clone the repository and run "sudo node install.js" instead.'),
+});
 
 /** Refuse before writing anything, with the reason, rather than failing part way. */
 function blockedReason(targets) {
   for (const f of targets) {
     const kind = writeBlocker(f);
-    if (kind) return BLOCKED[kind] || ('cannot write ' + f + ' (' + kind + ').');
+    if (kind) return BLOCKED()[kind] || vscode.l10n.t('cannot write {0} ({1}).', f, kind);
   }
   return null;
 }
@@ -188,7 +185,7 @@ function blockedReason(targets) {
 function reportFailure(e) {
   if (/EACCES|EPERM|EROFS/.test(e.code || '')) {
     vscode.window.showErrorMessage('Neon Glow: ' +
-      BLOCKED[e.code === 'EROFS' ? 'readonly' : 'permission']);
+      BLOCKED()[e.code === 'EROFS' ? 'readonly' : 'permission']);
   } else {
     vscode.window.showErrorMessage('Neon Glow: ' + e.message);
   }
@@ -226,23 +223,23 @@ function reflect(enabled) {
 
   if (!patched) {
     statusItem.tooltip =
-      'Neon Glow: the workbench bundle is not patched, so nothing glows. Click to patch.';
+      vscode.l10n.t('Neon Glow: the workbench bundle is not patched, so nothing glows. Click to patch.');
     statusItem.command = 'neonGlow.install';
     statusItem.backgroundColor = warn;
   } else if (payloadOutdated) {
     statusItem.tooltip =
-      'Neon Glow ' + VERSION + ': the bundle carries a different payload, so anything ' +
-      'this version added to the renderer is inert. Click to patch it again.';
+      vscode.l10n.t('Neon Glow {0}: the bundle carries a different loader, so this version is not the one running. Click to patch it again.', VERSION);
     statusItem.command = 'neonGlow.install';
     statusItem.backgroundColor = warn;
   } else if (restartPending()) {
     statusItem.tooltip =
-      'Neon Glow: patched, but this window is still running the bundle it started ' +
-      'with. Click to finish.';
+      vscode.l10n.t('Neon Glow: patched, but this window is still running the bundle it started with. Click to finish.');
     statusItem.command = 'neonGlow.restartHint';
     statusItem.backgroundColor = warn;
   } else {
-    statusItem.tooltip = 'Neon Glow is ' + (enabled ? 'on' : 'off') + ' - click to toggle';
+    statusItem.tooltip = enabled
+      ? vscode.l10n.t('Neon Glow is on - click to turn it off')
+      : vscode.l10n.t('Neon Glow is off - click to turn it on');
     statusItem.command = 'neonGlow.toggle';
     statusItem.backgroundColor = undefined;
   }
@@ -281,7 +278,7 @@ function publish(enabled) {
   try {
     writeState(stateFile, enabled, readKnobs(), VERSION);
   } catch (e) {
-    vscode.window.showErrorMessage('Neon Glow: could not write state - ' + e.message);
+    vscode.window.showErrorMessage(vscode.l10n.t('Neon Glow: could not write state - {0}', e.message));
     return;
   }
   reflect(enabled);
@@ -291,8 +288,8 @@ function setGlow(enabled) { publish(enabled); }
 
 /** A bundle rewrite only takes effect on a cold start, so offer to do one. */
 async function noteRestart(what) {
-  const quit = 'Quit VS Code';
-  const answer = await vscode.window.showInformationMessage(what + ' ' + RESTART_NOTE, quit);
+  const quit = vscode.l10n.t('Quit VS Code');
+  const answer = await vscode.window.showInformationMessage(what + ' ' + restartNote(), quit);
   if (answer === quit) vscode.commands.executeCommand('workbench.action.quit');
 }
 
@@ -313,9 +310,8 @@ function installPatch(context) {
 
     /* Editing anything inside a signed .app invalidates its signature. It keeps
        running in practice, but it is not something to spring on someone. */
-    noteRestart('Neon Glow installed.' + (process.platform === 'darwin'
-      ? ' Note that this edits a file inside the signed VS Code app bundle, which' +
-        ' invalidates its code signature.'
+    noteRestart(vscode.l10n.t('Neon Glow installed.') + (process.platform === 'darwin'
+      ? ' ' + vscode.l10n.t('Note that this edits a file inside the signed VS Code app bundle, which invalidates its code signature.')
       : ''));
   } catch (e) { reportFailure(e); }
 }
@@ -334,13 +330,12 @@ async function offerToPatch(context) {
   if (!appTargets().length) return;
   if (patched && !payloadOutdated) return;
 
-  const yes = 'Patch now', never = "Don't ask again";
+  const yes = vscode.l10n.t('Patch now'), never = vscode.l10n.t("Don't ask again");
   const answer = await vscode.window.showInformationMessage(
     payloadOutdated
-      ? 'Neon Glow ' + VERSION + ' is installed, but the workbench bundle still ' +
-        'carries the payload from an earlier version.'
-      : 'Neon Glow: the workbench bundle is not patched, so nothing glows yet.',
-    yes, 'Later', never);
+      ? vscode.l10n.t('Neon Glow {0} is installed, but the workbench bundle still carries the loader from an earlier version.', VERSION)
+      : vscode.l10n.t('Neon Glow: the workbench bundle is not patched, so nothing glows yet.'),
+    yes, vscode.l10n.t('Later'), never);
 
   if (answer === never) { context.globalState.update(SUPPRESS_PROMPT, true); return; }
   if (answer === yes) installPatch(context);
@@ -418,18 +413,20 @@ async function applyPreset(key) {
 
   cmd('neonGlow.preset', async () => {
     const pick = await vscode.window.showQuickPick(
+      /* The names stay in English, the way the command names do; what each one
+         does is translated. */
       PRESET_ORDER.map(k => ({ label: PRESETS[k].icon + ' ' + PRESETS[k].label,
-                               detail: PRESETS[k].detail, key: k })),
-      { title: 'Neon Glow', placeHolder: 'Pick a starting point - settings apply at once' });
+                               detail: vscode.l10n.t(PRESETS[k].detail), key: k })),
+      { title: 'Neon Glow', placeHolder: vscode.l10n.t('Pick a starting point - settings apply at once') });
     if (!pick) return;
     try {
       await applyPreset(pick.key);
       /* No restart, no re-patch: these ride state.json to the renderer, which is
          the whole reason a preset is worth having rather than a paragraph of
          instructions. */
-      vscode.window.showInformationMessage('Neon Glow: ' + PRESETS[pick.key].label + ' applied.');
+      vscode.window.showInformationMessage(vscode.l10n.t('Neon Glow: {0} applied.', PRESETS[pick.key].label));
     } catch (err) {
-      vscode.window.showErrorMessage('Neon Glow: could not write the settings - ' + err.message);
+      vscode.window.showErrorMessage(vscode.l10n.t('Neon Glow: could not write the settings - {0}', err.message));
     }
   });
 
@@ -438,7 +435,7 @@ async function applyPreset(key) {
   /* Not in contributes.commands, so it stays out of the palette: it exists
      only as the click target of the status bar item while a restart is due. */
   cmd('neonGlow.restartHint',
-      () => noteRestart('Neon Glow is patched, but this window predates the patch.'));
+      () => noteRestart(vscode.l10n.t('Neon Glow is patched, but this window predates the patch.')));
 
   cmd('neonGlow.remove', () => {
     const targets = targetsOrWarn();
@@ -448,7 +445,7 @@ async function applyPreset(key) {
       if (blocked) { vscode.window.showErrorMessage('Neon Glow: ' + blocked); return; }
       const undone = targets.filter(f => removePatch(f));
       if (!undone.length) {
-        vscode.window.showInformationMessage('Neon Glow: nothing to remove (no backup found).');
+        vscode.window.showInformationMessage(vscode.l10n.t('Neon Glow: nothing to remove (no backup found).'));
         return;
       }
       forgetTargets(stateFile);
@@ -456,7 +453,7 @@ async function applyPreset(key) {
       context.globalState.update(SUPPRESS_PROMPT, true);
       refreshPatched();
       reflect(readState(stateFile).enabled);
-      noteRestart('Neon Glow removed.');
+      noteRestart(vscode.l10n.t('Neon Glow removed.'));
     } catch (e) { reportFailure(e); }
   });
 
@@ -473,12 +470,14 @@ async function applyPreset(key) {
 
     const where = targets.map(f => {
       const v = patchedStamp(f);
-      return (isPatched(f) ? 'patched with loader ' + (v || '(pre-loader)') : 'clean')
+      return (isPatched(f)
+        ? vscode.l10n.t('patched with loader {0}', v || vscode.l10n.t('(pre-loader)'))
+        : vscode.l10n.t('clean'))
         + ' - ' + f;
     }).join(' | ');
     const on = readState(stateFile).enabled ? 'ON' : 'OFF';
 
-    let msg = 'Neon Glow is ' + on + '. Bundle: ' + where;
+    let msg = vscode.l10n.t('Neon Glow is {0}. Bundle: {1}', on, where);
 
     /* Another glow extension cannot corrupt this one - different files - but it
        does paint the same tokens, so say whether it is actually competing.
@@ -486,9 +485,9 @@ async function applyPreset(key) {
     const rival = targets.map(rivalGlow).find(Boolean);
     if (rival) {
       const theme = String(vscode.workspace.getConfiguration('workbench').get('colorTheme') || '');
-      msg += ' | ' + rival + ' is also patched in, ' + (/synthwave/i.test(theme)
-        ? 'and its theme is active, so both are painting the same tokens - turn one off.'
-        : 'but it only paints under its own theme, so nothing is competing right now.');
+      msg += ' | ' + (/synthwave/i.test(theme)
+        ? vscode.l10n.t('{0} is also patched in, and its theme is active, so both are painting the same tokens - turn one off.', rival)
+        : vscode.l10n.t('{0} is also patched in, but it only paints under its own theme, so nothing is competing right now.', rival));
     }
 
     /* Only a constructive action gets a button. This is a readout - something
@@ -496,11 +495,12 @@ async function applyPreset(key) {
        the single thing to click is a good way to undo the install by accident.
        Restoring is what uninstalling the extension does, and the command is
        still there to bind if someone wants it without uninstalling. */
+    const patchItNow = vscode.l10n.t('Patch it now');
     const answer = (patched && !payloadOutdated)
       ? await vscode.window.showInformationMessage(msg)
-      : await vscode.window.showInformationMessage(msg, 'Patch it now');
+      : await vscode.window.showInformationMessage(msg, patchItNow);
 
-    if (answer === 'Patch it now') installPatch(context);
+    if (answer === patchItNow) installPatch(context);
   });
 
   offerToPatch(context);
