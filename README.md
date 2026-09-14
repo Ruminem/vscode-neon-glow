@@ -231,10 +231,12 @@ reading is the preview.
 is not 10,000 glowing spans and the cost scales with the viewport rather than the
 file. But the widest pass is very nearly the whole bill, not the two thirds the area
 arithmetic predicts — blur time climbs much faster than radius, and neighbouring
-tokens' widest blurs overlap. Measured over a driven scroll on a dense C++ viewport,
-`3` cost several times what `2` did. Drop it to `2` on a slow machine. `maxBlur` is
-the same lever with a finer grain; `brightness` is not, and fades the glow far more
-than it speeds it up. The measurements and their caveats are kept in `neon-glow.js`,
+tokens' widest blurs overlap. Measured over a driven scroll on a dense C++ file, the
+defaults took raster from 26ms with no glow to 101ms, and `2` brought it to 58ms.
+**Raising `brightness` makes it worse**, because it widens every blur: at `2` the
+same scroll took 270ms, and `glowLayers` `2` brought that to 61ms. Drop to `2` on a
+slow machine, or cap `maxBlur` to keep the wide halo for less (`26` took a third off
+at brightness `2`). The measurements and their caveats are kept in `neon-glow.js`,
 and `tools/bench.js` re-runs them in pairs.
 
 Settings work without a restart because they do not live in the patch: the extension
@@ -526,9 +528,11 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 **돈이 드는 것은 `glowLayers`임.** 에디터는 가상화하므로 10,000줄 파일이 곧 10,000개의
 빛나는 span은 아니고, 비용은 파일 크기가 아니라 뷰포트 크기에 비례함. 그런데 가장 넓은
 겹이 면적 산수가 예측하는 3분의 2가 아니라 사실상 전부임 — 블러 시간이 반경보다 훨씬
-빠르게 오르고, 이웃 토큰끼리 가장 넓은 블러가 겹침. 토큰이 빽빽한 C++ 뷰포트에서 스크롤을
-구동하며 재보면 `3`이 `2`의 몇 배를 씀. 느린 기계에서는 `2`로 내릴 것. `maxBlur`는 같은
-레버를 더 잘게 쓴 것이고, `brightness`는 아님 — 빨라지는 것보다 흐려지는 쪽이 훨씬 큼.
+빠르게 오르고, 이웃 토큰끼리 가장 넓은 블러가 겹침. 토큰이 빽빽한 C++ 파일에서 스크롤을
+구동하며 재보면 기본값은 래스터 시간을 글로우 없을 때의 26ms에서 101ms로 늘리고, `2`면
+58ms임. **`brightness`를 올리면 더 무거워짐** — 모든 블러가 넓어지기 때문임. `2`에서는 같은
+스크롤이 270ms였고 `glowLayers` `2`로 61ms가 됐음. 느린 기계에서는 `2`로 내리거나, 넓은
+후광을 남기고 싶으면 `maxBlur`를 낮출 것(밝기 `2`에서 `26`이면 3분의 1이 줄었음).
 측정값과 그 단서는 `neon-glow.js`에 남겨뒀고, `tools/bench.js`가 쌍대로 다시 잼.
 
 설정이 재시작 없이 도는 것은 패치 안에 살지 않기 때문임. 확장이 토글과 같은

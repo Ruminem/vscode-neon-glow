@@ -81,18 +81,19 @@ try {
   /**
    * How many shadow passes to paint.
    *
-   * This is the expensive knob, not brightness. The widest pass is not two
-   * thirds of the cost as the area arithmetic suggests but nearly all of it:
-   * measured over a real scroll on a dense C++ viewport - 390 token spans, 220
-   * of them glowing - 12ms of raster with no glow, 16ms at two passes, 87ms at
-   * three. Blur time climbs far faster than radius, and the widest blurs of
-   * neighbouring tokens overlap.
+   * This is the expensive knob. The widest pass is not a third of the cost as
+   * the pass count suggests but most of it, and brightness makes it more so:
+   * brightness scales every radius, and the widest pass is the one that grows
+   * into maxBlur. Blur time climbs far faster than radius, and the widest blurs
+   * of neighbouring tokens overlap.
    *
-   * Those figures are from the formula that ran until the falloff was
-   * rebalanced, whose widest pass was 36px rather than 26px, so the absolute
-   * numbers now read high. The ordering they establish is what matters and has
-   * not changed. `tools/bench.js` measures a candidate against the shipped
-   * formula in pairs if a number is needed again.
+   * Measured with tools/bench.js on 2026-09-14 - a driven scroll of a dense C++
+   * file (fmt's format-test.cc) in a 1200x800 window under Hyper Dracula, four
+   * A/B pairs each, raster time summed over the scroll: 26ms with no glow, 101ms
+   * at the defaults, 58ms at two passes. At brightness 2 the defaults took 270ms
+   * and two passes 61ms - cheaper than the defaults at brightness 1. The pairs
+   * agreed to within a few percent. The figures that stood here before, 12, 16
+   * and 87ms, came from the formula in use before the falloff was rebalanced.
    */
   function layers() {
     return Math.max(1, Math.min(3, Math.round(KNOBS.glowLayers)));
@@ -110,7 +111,9 @@ try {
    * The formula now stops at 26px of its own accord at brightness 1, so the
    * default of 36 no longer binds anything. It still matters at brightness
    * above 1, which scales every radius, and to anyone who wants to cap the
-   * bloom tighter than the formula does.
+   * bloom tighter than the formula does. In the run described over layers(),
+   * brightness 2 at three passes went from 270ms to 181ms of raster with this
+   * at 26 instead of 36 - a third off while keeping the wide pass.
    */
   function blur(px) {
     return Math.max(1, Math.min(Math.round(KNOBS.maxBlur), px));
@@ -655,10 +658,11 @@ try {
     /* A slow swell on what is waiting for you.
 
        The glow is a text-shadow, and a text-shadow cannot be animated without
-       re-rastering its blur on every frame. On this project's own measurement
-       that is 87ms for one frame of a dense viewport at three passes, against a
-       16ms budget - so breathing the tokens would not drop frames, it would
-       hold up typing. What can be animated instead is a filter on the single
+       re-rastering its blur on every frame. The token glow alone takes a dense
+       scroll from 26ms to 101ms of raster at the defaults (measured, see
+       layers()), and a breath would pay that on every frame instead of only
+       when something moves - so breathing the tokens would not drop frames, it
+       would hold up typing. What can be animated instead is a filter on the single
        element that carries the glow: the blur is rastered once and the frames
        only darken the result, the same bargain saveShake takes with transform.
 
@@ -688,10 +692,18 @@ try {
        alpha, and that is not style. With the plain variable at one end and a
        color-mix at the other, Chromium interpolated between them into nonsense:
        in a real VS Code the blue went yellow-green at mid-breath, and the
-       computed colour read back with oklab a and b in the teens. That re-draws one
-       box's blur on every frame of the breath - not the bargain the filter
-       strikes for the others, and not measured, but bounded to one widget that
-       exists only while you are renaming.
+       computed colour read back with oklab a and b in the teens.
+
+       That is not the bargain the filter strikes for the others, and it has now
+       been measured: four pairs of one 2400ms breath against the same glow held
+       still, with the box open, on 2026-09-14. Breathing kept frames coming the
+       whole time and cost the renderer's main thread 258ms more (about 11% of
+       it), and the compositor and GPU threads 110-125ms each; held still, all
+       four were near zero. The keyframes read theme variables through relative
+       colours, which is probably what keeps the animation off the compositor -
+       that part is a guess, not a measurement. Bounded to one widget that exists
+       only while you are renaming. The brightness breath on the other four
+       surfaces has not been measured.
 
        It dips rather than swells: the rest point is the glow as it already is,
        and the breath takes it down and brings it back, so turning this on never
