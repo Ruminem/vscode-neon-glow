@@ -40,8 +40,9 @@ jobs:
             exit 1
           fi
 
+      # vsce is held at major 3, the same as marketplace.yml - see the note there.
       - name: Package
-        run: npx --yes @vscode/vsce@latest package --out "neon-glow-${GITHUB_REF_NAME#v}.vsix"
+        run: npx --yes @vscode/vsce@3 package --out "neon-glow-${GITHUB_REF_NAME#v}.vsix"
 
       # Both are checked out on Linux, so .gitattributes is the only thing keeping
       # their line endings apart: a .cmd with bare LF misparses goto, and a .sh

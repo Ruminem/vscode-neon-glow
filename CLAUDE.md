@@ -149,6 +149,10 @@ VS Code 구문 강조에 네온 글로우를 입히는 익스텐션. **테마를
 - `/_apis/securityroles`·`/_apis/gallery` 타임아웃은 Microsoft 쪽이 오락가락하는 것이고
   워크플로가 3회 재시도함. 그래도 죽으면 게시자 페이지에서 확장 이름 옆 `⋮` → Update로
   **릴리스에 붙은** VSIX를 올림(다시 빌드하면 바이트가 달라짐).
+- **단, 세 번 다 같은 타임아웃이면 vsce 버전부터 의심함.** vsce 4.0.0(2026-09-14)에서는
+  전날 게시에 성공한 토큰으로도 `verify-pat`이 `securityroles` 타임아웃을 3/3 냈고,
+  3.x로는 몇 초에 통과했음. 그래서 두 워크플로가 `@vscode/vsce@3`으로 고정돼 있음.
+  `@latest`로 되돌리는 건 4에서 게시가 실제로 통과하는 걸 본 뒤에.
 - 토큰이 의심되면 `vsce verify-pat Ruminem`. "나만 안 되나"는 마켓 조회 API(`filterType:8`,
   `sortBy:1`)의 최근 `lastUpdated`로 봄. 시험 게시는 하지 않음.
 - 태그 없이 CI 확인: `gh workflow run marketplace.yml --ref main` — 태그 검사에서 멈춤.
