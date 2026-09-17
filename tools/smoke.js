@@ -1033,8 +1033,11 @@ async function main() {
     const long = Object.keys(en).filter(k => en[k].length > 140 || String(ko[k] || '').length > 140);
     check('and no description runs past a couple of sentences', long.length === 0,
       long.map(k => k + ' (en ' + en[k].length + ', ko ' + String(ko[k] || '').length + ')').join(', '));
-    check('command names stay in English, untranslated',
-      pkg.contributes.commands.every(c => c.title.indexOf('%') === -1));
+    /* Command titles are translated too. A Korean palette still prints the
+       English title under the Korean one, so searching in English keeps working. */
+    const untitled = pkg.contributes.commands.map(c => c.title)
+      .filter(t => !/^%[^%]+%$/.test(t) || [en, ko].some(l => !String(l[t.slice(1, -1)] || '').trim()));
+    check('every command title is a key with English and Korean text', untitled.length === 0, untitled.join(', '));
   }
 
   /* ---- messages the extension shows ---- */

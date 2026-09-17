@@ -1,4 +1,11 @@
 {
+  "neonGlow.toggle.title": "Neon Glow: Toggle",
+  "neonGlow.enable.title": "Neon Glow: Enable",
+  "neonGlow.disable.title": "Neon Glow: Disable",
+  "neonGlow.install.title": "Neon Glow: Patch the workbench bundle",
+  "neonGlow.remove.title": "Neon Glow: Restore the original bundle",
+  "neonGlow.status.title": "Neon Glow: Show status",
+  "neonGlow.preset.title": "Neon Glow: Choose a preset",
   "neonGlow.glowLayers.markdownDescription": "Glow layers per token. **The most costly setting** - fewer layers are much faster on dense files.",
   "neonGlow.glowLayers.enum.3": "Near, mid and wide halo",
   "neonGlow.glowLayers.enum.2": "No wide halo, much faster",

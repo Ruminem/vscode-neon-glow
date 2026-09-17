@@ -25,13 +25,13 @@
   },
   "contributes": {
     "commands": [
-      { "command": "neonGlow.toggle",  "title": "Neon Glow: Toggle" },
-      { "command": "neonGlow.enable",  "title": "Neon Glow: Enable" },
-      { "command": "neonGlow.disable", "title": "Neon Glow: Disable" },
-      { "command": "neonGlow.install", "title": "Neon Glow: Patch the workbench bundle" },
-      { "command": "neonGlow.remove",  "title": "Neon Glow: Restore the original bundle" },
-      { "command": "neonGlow.status",  "title": "Neon Glow: Show status" },
-      { "command": "neonGlow.preset",  "title": "Neon Glow: Choose a preset" }
+      { "command": "neonGlow.toggle",  "title": "%neonGlow.toggle.title%" },
+      { "command": "neonGlow.enable",  "title": "%neonGlow.enable.title%" },
+      { "command": "neonGlow.disable", "title": "%neonGlow.disable.title%" },
+      { "command": "neonGlow.install", "title": "%neonGlow.install.title%" },
+      { "command": "neonGlow.remove",  "title": "%neonGlow.remove.title%" },
+      { "command": "neonGlow.status",  "title": "%neonGlow.status.title%" },
+      { "command": "neonGlow.preset",  "title": "%neonGlow.preset.title%" }
     ],
     "menus": {
       "commandPalette": [

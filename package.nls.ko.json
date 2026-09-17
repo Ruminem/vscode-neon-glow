@@ -1,4 +1,11 @@
 {
+  "neonGlow.toggle.title": "Neon Glow: 설정/해제",
+  "neonGlow.enable.title": "Neon Glow: 사용",
+  "neonGlow.disable.title": "Neon Glow: 사용 안 함",
+  "neonGlow.install.title": "Neon Glow: 워크벤치 번들 패치",
+  "neonGlow.remove.title": "Neon Glow: 원래 번들 복원",
+  "neonGlow.status.title": "Neon Glow: 상태 표시",
+  "neonGlow.preset.title": "Neon Glow: 프리셋 선택",
   "neonGlow.glowLayers.markdownDescription": "토큰마다 칠하는 빛의 겹 수입니다. **성능에 가장 큰 영향을 줍니다** — 겹이 적을수록 훨씬 가볍습니다.",
   "neonGlow.glowLayers.enum.3": "가까운·중간·넓은 빛 모두",
   "neonGlow.glowLayers.enum.2": "넓은 빛을 빼서 훨씬 가벼움",
