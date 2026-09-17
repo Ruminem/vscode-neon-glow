@@ -107,7 +107,8 @@ function makeStub(opts) {
        the panel, a dialog and the developer tools all take it away - and the
        arc used to ask for the focused editor and therefore find nothing. */
     querySelector: (s) => s === '.vscode-tokens-styles' ? tokens
-                        : s === '.monaco-workbench' ? workbench : null,
+                        : s === '.monaco-workbench' ? workbench
+                        : s === '.monaco-reduce-motion' && opts.vscodeReduceMotion ? workbench : null,
     querySelectorAll: (s) => s === '.monaco-editor .cursors-layer' ? [layer] : [statusEl],
     createElement: node,
     createElementNS: (ns, tag) => { const n = node(tag); n.ns = ns; return n; }
@@ -282,7 +283,7 @@ async function main() {
      only the rule that switches VS Code's own caret transition off, so the
      slide is the one motion on the caret. */
   check('the caret slide switches VS Code\'s own caret transition off',
-    /prefers-reduced-motion: no-preference\) \{ \.monaco-editor \.cursor \{ transition: none !important; \} \}/.test(css));
+    /prefers-reduced-motion: no-preference\) \{ \.monaco-editor \.cursor:not\(\.monaco-reduce-motion, \.monaco-reduce-motion \*\) \{ transition: none !important; \} \}/.test(css));
   check('and the caret layer is watched for the slide', s.api.trailWatching() === 1);
   check('jolt keyframes emitted', /@keyframes neon-glow-shake/.test(css));
   check('find bloom follows the knob', /\.findMatch \{ box-shadow: 0 0 30px/.test(css));
@@ -310,12 +311,12 @@ async function main() {
      its blur every frame. */
   check('breathing rides on a filter, on the surfaces that are waiting for you',
     /@keyframes neon-glow-breathe \{ 0%, 100% \{ filter: none; \} 50% \{ filter: brightness\(0\.55\); \} \}/.test(css)
-    && /\.currentFindMatch, \.monaco-editor \.debug-top-stack-frame-line, \.monaco-editor \.bracket-match, \.monaco-editor \.snippet-placeholder, \.monaco-editor \.finish-snippet-placeholder \{ animation: neon-glow-breathe 2400ms/.test(css));
+    && /\.currentFindMatch:not\(\.monaco-reduce-motion, \.monaco-reduce-motion \*\), \.monaco-editor \.debug-top-stack-frame-line:not\([^)]*\), \.monaco-editor \.bracket-match:not\([^)]*\), \.monaco-editor \.snippet-placeholder:not\([^)]*\), \.monaco-editor \.finish-snippet-placeholder:not\([^)]*\) \{ animation: neon-glow-breathe 2400ms/.test(css));
   /* The rename box holds the name being typed, so a brightness filter on it
      would dim the name too; it breathes its glow's colour instead. */
   check('the rename box breathes its glow rather than itself',
     /@keyframes neon-glow-breathe-rename \{ 0%, 100% \{ filter: drop-shadow\(0 0 8px oklch\(from var\(--vscode-focusBorder\) l c h \/ alpha\)\)[^}]*\} 50% \{ filter: drop-shadow\(0 0 8px oklch\(from var\(--vscode-focusBorder\) l c h \/ calc\(alpha \* 0\.55\)\)\)/.test(css)
-    && /\.monaco-editor\.rename-box \{ animation: neon-glow-breathe-rename 2400ms/.test(css));
+    && /\.monaco-editor\.rename-box:not\([^)]*\) \{ animation: neon-glow-breathe-rename 2400ms/.test(css));
   check('and nothing else is asked to breathe',
     (css.match(/neon-glow-breathe(?!-)/g) || []).length === 2
     && (css.match(/neon-glow-breathe-rename/g) || []).length === 2);
@@ -1112,6 +1113,29 @@ async function main() {
     const wire = d.length ? d[0].descendants().find((n) => n.tag === 'polyline') : null;
     const stroke = wire ? wire.attrs.stroke : null;
     check(name, stroke === want, 'stroke is ' + stroke);
+  }
+
+  /* workbench.reduceMotion is VS Code's own switch, and "on" holds motion back
+     whatever the operating system says. It reaches the page only as a class on
+     the workbench, so the media query alone let everything keep moving. */
+  console.log('\nVS Code reduce motion');
+  {
+    const r = run({ knobs: { cursorTrail: 45, caretArc: 'arc', saveShake: 5, breathe: 2400 },
+                    vscodeReduceMotion: true });
+    await wait(120);
+    await r.jump(600);
+    check('the arc draws nothing', r.drawn().length === 0);
+    /* Apart from the arc, whose observer would take the move; the same
+       straight-down move that slides above. */
+    const t = run({ knobs: { cursorTrail: 45 }, vscodeReduceMotion: true });
+    await wait(120);
+    await t.jumpTo(100, 50);
+    await t.jumpTo(300, 80);
+    check('and the caret does not slide', t.caret.anims.length === 0);
+    const moving = r.styles().split('\n').filter(l => /animation:|transition: none/.test(l));
+    check('and every moving rule stands down under the class',
+      moving.length === 3 && moving.every(l => l.indexOf(':not(.monaco-reduce-motion, .monaco-reduce-motion *)') !== -1),
+      moving.join('\n          '));
   }
 
   if (PRINT) {

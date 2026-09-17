@@ -93,8 +93,8 @@ is why the rules do not match each other, and the reasoning is kept beside each 
 | **The caret arc** (`caretArc`) | one of twelve shapes drawn along a caret jump, in the theme's caret colour or one you pick |
 
 These four move things, and nobody asked for movement, so they ship at `0` and stay
-there until you say otherwise. All four are ignored when the system asks for reduced
-motion.
+there until you say otherwise. All four stand still when the system or VS Code's
+`workbench.reduceMotion` asks for reduced motion.
 
 ## Turning it on and off
 
@@ -400,7 +400,8 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 | **커서 아크** (`caretArc`) | 커서가 뛴 길에 열두 모양 중 하나를 테마의 커서 색이나 직접 고른 색으로 그림 |
 
 이 넷은 무언가를 움직임. 움직임을 달라고 한 사람은 없으므로 `0`으로 나가고 말하기
-전까지 그대로 있음. 셋 다 시스템이 모션 줄이기를 요청하면 무시됨.
+전까지 그대로 있음. 넷 다 시스템이나 VS Code의 `workbench.reduceMotion`이 모션 줄이기를
+요청하면 멈춤.
 
 ### 켜고 끄기
 

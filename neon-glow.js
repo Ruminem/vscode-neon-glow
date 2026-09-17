@@ -296,6 +296,16 @@ try {
     return css;
   }
 
+  /* Motion is held back for two switches, not one. The media query is the
+     operating system's; workbench.reduceMotion is VS Code's own, and turned
+     "on" it puts .monaco-reduce-motion on the workbench whatever the system
+     says - VS Code's own animations check both, so these do too. A :not()
+     rather than a positive .monaco-enable-motion, because that class only
+     arrives once the accessibility service is up, and nothing would move
+     before it. The element itself as well as its descendants, because the
+     jolt is on the workbench, which is the element carrying the class. */
+  var MOTION_OK = ':not(.monaco-reduce-motion, .monaco-reduce-motion *)';
+
   /* The caret slides to a new position instead of jumping, and the glow on it
      rides along, so a move across the file leaves a short streak of light
      behind. Motion only - the colour is still the theme's own cursor colour,
@@ -332,7 +342,7 @@ try {
     var trail = Math.round(KNOBS.cursorTrail);
     if (trail > 0) {
       css += '@media (prefers-reduced-motion: no-preference) {'
-        + ' .monaco-editor .cursor { transition: none !important; } }\n';
+        + ' .monaco-editor .cursor' + MOTION_OK + ' { transition: none !important; } }\n';
     }
     return css;
   }
@@ -366,7 +376,7 @@ try {
         + ' 60% { transform: translate(' + off + 'px, ' + amp + 'px); }'
         + ' 80% { transform: translate(-' + off + 'px, 0); }'
         + ' }'
-        + ' .monaco-workbench.neon-glow-shaking {'
+        + ' .monaco-workbench.neon-glow-shaking' + MOTION_OK + ' {'
         + ' animation: neon-glow-shake 150ms ease-out; will-change: transform; }'
         + ' }\n';
     }
@@ -794,7 +804,7 @@ try {
             + ' 0%, 100% { filter: none; }'
             + ' 50% { filter: brightness(0.55); }'
             + ' }'
-            + ' ' + breathing.join(', ') + ' {'
+            + ' ' + breathing.map(function (b) { return b + MOTION_OK; }).join(', ') + ' {'
             + ' animation: neon-glow-breathe ' + br + 'ms ease-in-out infinite; }';
         }
         if (renameBreathes) {
@@ -804,7 +814,7 @@ try {
             + ' 50% { filter: '
             + renameFilter('oklch(from var(--vscode-focusBorder) l c h / calc(alpha * 0.55))') + '; }'
             + ' }'
-            + ' .monaco-editor .monaco-editor.rename-box {'
+            + ' .monaco-editor .monaco-editor.rename-box' + MOTION_OK + ' {'
             + ' animation: neon-glow-breathe-rename ' + br + 'ms ease-in-out infinite; }';
         }
         css += ' }\n';
@@ -1065,6 +1075,14 @@ try {
 
   var reduceMotion = null;
   try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)'); } catch (e) {}
+
+  /* Either switch, for the reason MOTION_OK gives. Asked on each move rather
+     than cached, because workbench.reduceMotion can change under a running
+     window and nothing tells the payload. */
+  function motionReduced() {
+    if (reduceMotion && reduceMotion.matches) return true;
+    try { return !!document.querySelector('.monaco-reduce-motion'); } catch (e) { return false; }
+  }
 
   /* One entry per cursors layer on screen - one editor, or one pane of a split. */
   var arcWatch = [];
@@ -1339,7 +1357,7 @@ try {
 
     var style = arcStyle();
     if (!style || !enabled) return;
-    if (reduceMotion && reduceMotion.matches) return;
+    if (motionReduced()) return;
 
     /* A scroll carries the caret across the screen without the caret having
        gone anywhere, and the style attribute alone cannot tell the two apart.
@@ -1522,7 +1540,7 @@ try {
 
   function trailDuration() {
     if (!enabled) return 0;
-    if (reduceMotion && reduceMotion.matches) return 0;
+    if (motionReduced()) return 0;
     return Math.max(0, Math.round(KNOBS.cursorTrail));
   }
 
