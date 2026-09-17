@@ -286,6 +286,31 @@ function publish(enabled) {
 
 function setGlow(enabled) { publish(enabled); }
 
+/**
+ * Set while a preset writes its knobs. Settings are written one key at a time,
+ * and each write would otherwise publish on its own - twenty-odd rewrites of
+ * state.json, and a renderer redrawing every half-applied step between the old
+ * look and the new one. The preset publishes once when it is done instead.
+ */
+let applyingPreset = false;
+
+async function applyPreset(key) {
+  const preset = PRESETS[key];
+  const config = vscode.workspace.getConfiguration('neonGlow');
+  applyingPreset = true;
+  try {
+    /* Every knob, not only the ones this preset names - what a preset does not
+       set, it clears, so the result does not depend on what was there before. */
+    for (const k of KNOBS) {
+      await config.update(k, preset.values ? preset.values[k] : undefined, vscode.ConfigurationTarget.Global);
+    }
+  } finally {
+    applyingPreset = false;
+    knobPulse = (knobPulse + 1) % 4;
+    publish(readState(stateFile).enabled);
+  }
+}
+
 /** A bundle rewrite only takes effect on a cold start, so offer to do one. */
 async function noteRestart(what) {
   const quit = vscode.l10n.t('Quit VS Code');
@@ -355,6 +380,7 @@ function activate(context) {
   publish(readState(stateFile).enabled);
 
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+    if (applyingPreset) return;
     if (KNOBS.some(k => e.affectsConfiguration('neonGlow.' + k))) {
       /* Bumped before publish, so the label the renderer sees changes only
          after the file it is about to read already carries the new value. */
@@ -392,18 +418,6 @@ function activate(context) {
   context.subscriptions.push(stateWatcher,
                              stateWatcher.onDidChange(follow),
                              stateWatcher.onDidCreate(follow));
-
-
-async function applyPreset(key) {
-  const preset = PRESETS[key];
-  const config = vscode.workspace.getConfiguration('neonGlow');
-  /* Every knob, not only the ones this preset names - what a preset does not
-     set, it clears, so the result does not depend on what was there before. */
-  for (const k of KNOBS) {
-    const v = preset.values ? preset.values[k] : undefined;
-    await config.update(k, v === undefined ? undefined : v, vscode.ConfigurationTarget.Global);
-  }
-}
 
   const cmd = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
