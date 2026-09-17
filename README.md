@@ -297,6 +297,7 @@ Protocol.
 | **macOS** | should | no | patching edits a file inside the signed `.app`, which invalidates its code signature — it keeps running in practice, but that is the trade |
 | **Linux**, `.deb` / `.rpm` / tarball | should | no | `/usr/share/code` belongs to root, so the palette command cannot do it; use `sudo node install.js` or `sudo ./install.sh` |
 | **Linux**, snap or flatpak | **no** | — | mounted read-only, so nothing can patch them. The extension says so rather than failing obscurely |
+| **Insiders**, portable | should | no | patch from the palette rather than `install.js`, which assumes the stable build's folders. After an extension update the new version shows on the second restart, not the first |
 
 macOS and Linux are written to work and have not been run by anyone — please open an
 issue if they misfire.
@@ -588,6 +589,7 @@ DevTools Protocol로 살아 있는 렌더러에서 다시 읽어내 확인함.
 | **macOS** | 할 것임 | 안 함 | 서명된 `.app` 내부 파일을 고치므로 코드 서명이 깨짐. 실제로는 계속 실행되지만 그게 치르는 값임 |
 | **Linux**, `.deb` / `.rpm` / tarball | 할 것임 | 안 함 | `/usr/share/code`가 root 소유라 팔레트 명령으로는 안 됨. `sudo node install.js`나 `sudo ./install.sh`를 쓸 것 |
 | **Linux**, snap 또는 flatpak | **안 함** | — | 읽기 전용으로 마운트돼서 무엇도 패치할 수 없음. 확장이 조용히 실패하는 대신 그렇다고 말함 |
+| **Insiders**, 포터블 | 할 것임 | 안 함 | `install.js`는 정식판 폴더를 가정하므로 팔레트에서 패치할 것. 확장을 업데이트하면 새 버전은 첫 재시작이 아니라 두 번째 재시작에 뜸 |
 
 macOS와 Linux는 동작하도록 작성했을 뿐 아무도 돌려보지 않았음. 어긋나면 이슈를 열어주면
 고맙겠음.
