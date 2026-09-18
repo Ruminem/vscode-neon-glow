@@ -751,7 +751,19 @@ try {
      one shape that could bright-pass and blur an opaque image - is dropped on
      the floor on a composited canvas while blur() on the same element still
      blurs the whole panel. The setting's own description says so, because a
-     knob that silently does nothing is worse than one that is not there. */
+     knob that silently does nothing is worse than one that is not there.
+
+     What it costs, measured on 2026-09-18 - a driven wheel scroll of 1200
+     coloured lines in a 14-row panel, paired rounds, on an RTX 3070. The glow
+     itself takes the raster from 20ms to 42ms over one scroll, which is double,
+     and four pairs agreed on it; but raster is a small part of that window, and
+     the sum of every thread's tasks moved 4%. Turning the renderer off is the
+     part that is paid for: the same scroll against gpuAcceleration on its
+     default went from 1480ms to 1817ms of thread time, +23% over three pairs,
+     nearly all of it the DOM renderer rather than the shadows. So the question
+     to ask before turning this on is whether the machine can afford the
+     renderer, not whether it can afford the bloom. Both numbers scale with the
+     glyphs on screen, and a full-height terminal has three times these rows. */
   function terminalStyles() {
     var css = '';
     var term = Math.round(KNOBS.terminalGlow);
