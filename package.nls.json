@@ -29,6 +29,7 @@
   "neonGlow.breakpointGlow.markdownDescription": "Glow on breakpoints, in px. `0` turns it off.",
   "neonGlow.snippetGlow.markdownDescription": "Glow on a snippet's tabstops, in px. `0` turns it off.",
   "neonGlow.renameGlow.markdownDescription": "Glow on the `F2` rename box, in px. `0` turns it off.",
+  "neonGlow.terminalGlow.markdownDescription": "Glow on coloured terminal text, in px. `0` turns it off. Needs `#terminal.integrated.gpuAcceleration#` set to `off`.",
   "neonGlow.breathe.markdownDescription": "Slow pulse on what is waiting for you, like the current find match. One breath in ms; `0` is off.",
   "neonGlow.caretArc.markdownDescription": "Effect drawn along the caret's path when it moves.",
   "neonGlow.caretArc.enum.off": "None",

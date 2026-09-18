@@ -1141,6 +1141,26 @@ async function main() {
       moving.join('\n          '));
   }
 
+  /* The one rule that lands outside the editor. It is worth a check of its own
+     because nothing else in the stylesheet can stand in for it: the token pass
+     reads hexes out of VS Code's own sheet, and this reads nothing - the colour
+     comes from whatever the shell already set on the span. */
+  console.log('\nTerminal glow');
+  {
+    const t = run({ knobs: { terminalGlow: 10 } });
+    await wait(120);
+    const tCss = t.styles();
+    const rule = tCss.split('\n').find((l) => l.indexOf('.xterm-rows') !== -1) || '';
+    check('coloured spans glow in the colour they are painted',
+      /xterm-fg-/.test(rule) && /style\*="color"/.test(rule)
+        && (rule.match(/currentColor/g) || []).length === 2, rule);
+    check('and the unmarked ones are left flat',
+      rule.indexOf('.xterm-rows span {') === -1 && rule.indexOf('.xterm-rows span,') === -1, rule);
+    const tOff = run({ knobs: { terminalGlow: 0 } });
+    await wait(120);
+    check('zero removes the rule', tOff.styles().indexOf('.xterm-rows') === -1);
+  }
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,

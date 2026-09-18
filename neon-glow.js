@@ -39,6 +39,7 @@ try {
     breakpointGlow: 8,   /* px of bloom on breakpoint glyphs; 0 = leave them flat */
     snippetGlow:    8,   /* px of bloom on a snippet's tabstops; 0 = leave them flat */
     renameGlow:    12,   /* px of bloom around the rename box; 0 = leave it flat  */
+    terminalGlow:   8,   /* px of bloom on coloured terminal text; 0 = leave it flat */
     breathe:        0,   /* ms for one breath on whatever is waiting for you     */
     caretArc:    'off',  /* off, or one of twelve shapes; see KNOB_ENUM below  */
     caretArcColor: 'cursor', /* the theme's caret colour, or a #hex of your own */
@@ -58,7 +59,7 @@ try {
     squiggleGlow: [0, 16],
     diffGlow: [0, 32],
     lineHighlightGlow: [0, 24], breakpointGlow: [0, 24],
-    snippetGlow: [0, 24], renameGlow: [0, 32],
+    snippetGlow: [0, 24], renameGlow: [0, 32], terminalGlow: [0, 32],
     breathe: [0, 6000],
     caretArcMinJump: [1, 400],
     caretArcDuration: [80, 1200]
@@ -267,7 +268,7 @@ try {
       + bracketStyles() + trailStyles() + shakeStyles() + findStyles() + selectionStyles()
       + occurrenceStyles() + gutterStyles() + bracketMatchStyles() + squiggleStyles()
       + lineHighlightStyles() + breakpointStyles() + snippetStyles() + renameStyles()
-      + breatheStyles() + diffStyles();
+      + terminalStyles() + breatheStyles() + diffStyles();
   }
 
   /**
@@ -725,6 +726,41 @@ try {
     if (Math.round(KNOBS.renameGlow) > 0) {
       css += '.monaco-editor .monaco-editor.rename-box { filter: '
         + renameFilter('var(--vscode-focusBorder)') + '; }\n';
+    }
+    return css;
+  }
+
+  /* The panel's text, in the colour the shell asked for.
+
+     currentColor and two passes, for the reason the brackets take them: nothing
+     here hands over a hex to read a chroma from, and every pass on currentColor
+     lands at full strength, so the falloff has to come from stopping early
+     rather than from alpha.
+
+     Only the spans carrying a colour. xterm marks an ANSI colour with an
+     .xterm-fg-N class and a true-colour escape with an inline `color`, and
+     leaves the default foreground unmarked - which is most of a build log, and
+     is the same near-grey the token pass drops on chroma. So the unmarked spans
+     stay flat and this rule needs no gate of its own.
+
+     It reaches the terminal only while terminal.integrated.gpuAcceleration is
+     `off`, which is the one setting that has xterm draw the text as spans.
+     Every other value draws it into a canvas, and there is no bloom to be had
+     there at any price: measured on 1.117, the canvas is opaque, so drop-shadow
+     casts behind a rectangle that then covers it, and a `url(#...)` filter - the
+     one shape that could bright-pass and blur an opaque image - is dropped on
+     the floor on a composited canvas while blur() on the same element still
+     blurs the whole panel. The setting's own description says so, because a
+     knob that silently does nothing is worse than one that is not there. */
+  function terminalStyles() {
+    var css = '';
+    var term = Math.round(KNOBS.terminalGlow);
+    if (term > 0) {
+      var tCore = blur(1);
+      css += '.xterm-rows span[class*="xterm-fg-"], .xterm-rows span[style*="color"]'
+        + ' { text-shadow: 0 0 ' + tCore + 'px currentColor';
+      if (layers() >= 2) css += ', 0 0 ' + blur(term) + 'px currentColor';
+      css += '; }\n';
     }
     return css;
   }

@@ -29,6 +29,7 @@
   "neonGlow.breakpointGlow.markdownDescription": "중단점이 빛나는 폭(px)입니다. `0`이면 끕니다.",
   "neonGlow.snippetGlow.markdownDescription": "스니펫의 탭 정지 자리가 빛나는 폭(px)입니다. `0`이면 끕니다.",
   "neonGlow.renameGlow.markdownDescription": "`F2` 이름 바꾸기 상자가 빛나는 폭(px)입니다. `0`이면 끕니다.",
+  "neonGlow.terminalGlow.markdownDescription": "색이 붙은 터미널 글자가 빛나는 폭(px)입니다. `0`이면 끕니다. `#terminal.integrated.gpuAcceleration#`이 `off`여야 합니다.",
   "neonGlow.breathe.markdownDescription": "현재 찾기 결과처럼 입력을 기다리는 곳이 천천히 숨쉬는 주기(ms)입니다. `0`이면 끕니다.",
   "neonGlow.caretArc.markdownDescription": "커서가 이동한 길에 그리는 효과입니다.",
   "neonGlow.caretArc.enum.off": "없음",

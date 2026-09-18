@@ -228,12 +228,21 @@
           "scope": "application",
           "markdownDescription": "%neonGlow.renameGlow.markdownDescription%"
         },
+        "neonGlow.terminalGlow": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 32,
+          "order": 20,
+          "scope": "application",
+          "markdownDescription": "%neonGlow.terminalGlow.markdownDescription%"
+        },
         "neonGlow.breathe": {
           "type": "number",
           "default": 0,
           "minimum": 0,
           "maximum": 6000,
-          "order": 20,
+          "order": 21,
           "scope": "application",
           "markdownDescription": "%neonGlow.breathe.markdownDescription%"
         },
@@ -256,7 +265,7 @@
             "%neonGlow.caretArc.enum.pulse%",
             "%neonGlow.caretArc.enum.ring%"
           ],
-          "order": 21,
+          "order": 22,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArc.markdownDescription%"
         },
@@ -266,7 +275,7 @@
           "pattern": "^(cursor|#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$",
           "patternErrorMessage": "%neonGlow.caretArcColor.patternErrorMessage%",
           "anyOf": [{ "type": "string", "pattern": "^cursor$" }, { "type": "string", "format": "color-hex" }],
-          "order": 22,
+          "order": 23,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArcColor.markdownDescription%"
         },
@@ -275,7 +284,7 @@
           "default": 5,
           "minimum": 1,
           "maximum": 400,
-          "order": 23,
+          "order": 24,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArcMinJump.markdownDescription%"
         },
@@ -284,14 +293,14 @@
           "default": 300,
           "minimum": 80,
           "maximum": 1200,
-          "order": 24,
+          "order": 25,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArcDuration.markdownDescription%"
         },
         "neonGlow.caretArcOnDrag": {
           "type": "boolean",
           "default": false,
-          "order": 25,
+          "order": 26,
           "scope": "application",
           "markdownDescription": "%neonGlow.caretArcOnDrag.markdownDescription%"
         }

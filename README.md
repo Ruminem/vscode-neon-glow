@@ -74,6 +74,7 @@ chosen.
 | **Breakpoints** (`breakpointGlow`) | in whatever colour they are painted |
 | **A snippet's tabstops** (`snippetGlow`) | the places a snippet is waiting for you to fill in |
 | **The rename box** (`renameGlow`) | the box `F2` opens |
+| **Coloured terminal text** (`terminalGlow`) | the panel's own ANSI colours, while `terminal.integrated.gpuAcceleration` is `off` |
 
 Find, selection, occurrence and diff colours are semi-transparent, because they sit behind
 text and must not hide it, so those rules take a `spread` — the weak colour is carried
@@ -221,6 +222,7 @@ reading is the preview.
 | `neonGlow.breakpointGlow` | `8` | px of bloom on breakpoint glyphs, in the colour they were painted; `0` turns it off |
 | `neonGlow.snippetGlow` | `8` | px of bloom on a snippet's tabstops while you fill them in; `0` turns it off |
 | `neonGlow.renameGlow` | `12` | px of bloom around the rename box, in the theme's `focusBorder` colour; `0` turns it off |
+| `neonGlow.terminalGlow` | `8` | px of bloom on coloured terminal text, in the colour the shell asked for; needs `terminal.integrated.gpuAcceleration` set to `off`, because every other value draws the terminal into a canvas and CSS cannot reach one; `0` turns it off |
 | `neonGlow.caretArc` | `off` | what to draw along a caret jump — twelve shapes, from a straight `beam` to a `ring` that needs no distance |
 | `neonGlow.caretArcColor` | `cursor` | the arc's colour — `cursor` follows the theme's caret, or give a hex like `#ff2f92`; settings.json offers a colour picker |
 | `neonGlow.caretArcMinJump` | `5` | px of travel before an arc is drawn — under a character, so an arrow key counts |
@@ -384,6 +386,7 @@ Abyss에서는 클래스 이름 색 `#ffeebb`가 `0.30` 문턱에 아예 못 닿
 | **중단점** (`breakpointGlow`) | 칠해진 색 그대로 |
 | **스니펫 탭 정지 자리** (`snippetGlow`) | 스니펫이 채워주길 기다리는 자리 |
 | **이름 바꾸기 상자** (`renameGlow`) | `F2`가 여는 입력 상자 |
+| **색이 붙은 터미널 글자** (`terminalGlow`) | 터미널 자신의 ANSI 색. `terminal.integrated.gpuAcceleration`이 `off`일 때만 |
 
 찾기·선택·심볼·diff 색은 글자 뒤에 깔리는 색이라 테마가 반투명으로 잡아둠. 그래서 그 넷에는
 `spread`가 붙음 — 약한 색을 원래 폭만큼 먼저 밀어낸 다음에 번지게 함. 거터 막대에도
@@ -522,6 +525,7 @@ node tools/smoke.js              # 스텁 워크벤치에 페이로드를 올려
 | `neonGlow.breakpointGlow` | `8` | 중단점 글리프가 번지는 폭(px). 칠해진 색 그대로 씀. `0`이면 꺼짐 |
 | `neonGlow.snippetGlow` | `8` | 스니펫 탭 정지 자리가 번지는 폭(px). 채우는 동안에만 보임. `0`이면 꺼짐 |
 | `neonGlow.renameGlow` | `12` | 이름 바꾸기 상자가 번지는 폭(px). 테마의 `focusBorder` 색을 씀. `0`이면 꺼짐 |
+| `neonGlow.terminalGlow` | `8` | 색이 붙은 터미널 글자가 번지는 폭(px). 셸이 요청한 색 그대로 씀. `terminal.integrated.gpuAcceleration`이 `off`여야 함 — 나머지 값에서는 터미널을 캔버스에 그려서 CSS가 못 닿음. `0`이면 꺼짐 |
 | `neonGlow.caretArc` | `off` | 커서가 뛴 길에 무엇을 그릴지. 열두 모양 — 곧은 `beam`부터 거리가 필요 없는 `ring`까지 |
 | `neonGlow.caretArcColor` | `cursor` | 아크 색. `cursor`는 테마의 커서 색을 따르고, `#ff2f92` 같은 hex도 받음. settings.json에서는 색 선택기가 뜸 |
 | `neonGlow.caretArcMinJump` | `5` | 아크를 그리기까지 필요한 이동 거리(px). 한 글자보다 작아 화살표도 걸림 |

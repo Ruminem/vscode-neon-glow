@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Three ways to have it, for someone who has just installed this and is looking
- * at twenty-three numbers.
+ * at twenty-four numbers.
  *
  * Data only, with no reference to the editor, so the checks can read the same
  * object the command applies rather than scraping it back out of the source.
@@ -31,6 +31,7 @@ const PRESETS = {
       findGlow: 12, selectionGlow: 8, occurrenceGlow: 6, gutterGlow: 6,
       bracketMatchGlow: 6, squiggleGlow: 4, diffGlow: 6,
       lineHighlightGlow: 5, breakpointGlow: 5, snippetGlow: 5, renameGlow: 8,
+      terminalGlow: 5,
       cursorTrail: 0, saveShake: 0, breathe: 0, caretArc: 'off',
     },
   },
@@ -51,6 +52,7 @@ const PRESETS = {
       findGlow: 18, selectionGlow: 12, occurrenceGlow: 10, gutterGlow: 8,
       bracketMatchGlow: 10, squiggleGlow: 5, diffGlow: 10,
       lineHighlightGlow: 8, breakpointGlow: 8, snippetGlow: 8, renameGlow: 12,
+      terminalGlow: 8,
       cursorTrail: 45, saveShake: 5, breathe: 2400,
       caretArc: 'arc', caretArcMinJump: 5, caretArcDuration: 300,
       /* Left off on purpose even here: a drag moves the caret at mouse rate and
