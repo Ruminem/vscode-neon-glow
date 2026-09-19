@@ -763,7 +763,19 @@ try {
      nearly all of it the DOM renderer rather than the shadows. So the question
      to ask before turning this on is whether the machine can afford the
      renderer, not whether it can afford the bloom. Both numbers scale with the
-     glyphs on screen, and a full-height terminal has three times these rows. */
+     glyphs on screen, and a full-height terminal has three times these rows.
+
+     A log pouring in is not the worst case, measured on 2026-09-19 - 900
+     coloured lines arriving one at a time into a maximised panel, over a 9s
+     window, paired rounds. xterm coalesces a burst into one write per frame, so
+     bytes do not each buy a repaint, and thread time moved 5% where the scroll
+     moved more. Two things came out of it that the shape of the rule does not
+     show. The radius is not the knob: 4, 8 and 12px all cost the same raster
+     (930ms in a 42-row panel against 442 off), because a shadow costs what it
+     costs once it exists. The pass count is: dropping to the 1px core alone took
+     the added raster from +431ms to +231ms, four pairs each within 3%. So
+     glowLayers 1 is the setting that buys something in a terminal, and turning
+     terminalGlow down is a look rather than a saving. */
   function terminalStyles() {
     var css = '';
     var term = Math.round(KNOBS.terminalGlow);
