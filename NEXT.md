@@ -5,5 +5,5 @@
 **직전 (2026-09-18, v0.18.0)** — `terminalGlow` 를 더해 내보냄. `gpuAcceleration: off` 인 터미널의 색 붙은 span 에만 `currentColor` 로 글로우가 감. 캔버스 렌더러에서는 아무것도 안 되는 것도 같이 확인함 — CLAUDE.md '알아둘 것' 에 적어 둠.
 
 **그 전 (2026-09-17, v0.17.5)** — 명령 이름 7개를 `package.nls`로 옮겨 한국어 화면의 팔레트에 한국어로 뜸(영어 원문은 아래에 붙음). README 한국어 절도 한국어 명령 이름으로 적음.
-**다음 할 것** — `workbench.reduceMotion: on`에서 효과가 멈추는지 실기 확인(0.17.4는 smoke만 보고 냈음). `brightness()` 숨쉬기 네 자리 측정, 이름 바꾸기 상자 숨쉬기의 컴포지터 이전 가능성.
+**다음 할 것** — reduceMotion 실기 확인. `workbench.reduceMotion: on`에서 효과가 멈추는지 봄(0.17.4는 smoke만 보고 냈음). `brightness()` 숨쉬기 네 자리 측정, 이름 바꾸기 상자 숨쉬기의 컴포지터 이전 가능성.
 **막힌 것** — macOS/Linux 실기 없음(macOS는 서명된 `.app`을 고친 뒤 Gatekeeper 반응이 미지수). 디버그 멈춘 줄·중단점 글로우는 화면으로 본 적 없음. 마켓 재시도 경로가 실제로 도는지 아직 모름.
