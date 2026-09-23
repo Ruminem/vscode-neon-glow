@@ -2,6 +2,18 @@
 
 Patch releases before 0.18 are grouped by their minor version; the tags carry the full history.
 
+## 0.19.0 — 2026-09-24
+
+- A VS Code update no longer turns the glow off until you patch and restart again. On a Windows user
+  install with background updates on, the next version is patched while it waits to be installed, so
+  the first launch after the update already glows. Other installs still get the prompt.
+
+**한국어**
+
+- VS Code 업데이트 뒤에 다시 패치하고 재시작할 때까지 글로우가 꺼지던 것이 없어짐. 윈도우 사용자
+  설치에서 백그라운드 업데이트가 켜져 있으면 설치를 기다리는 다음 버전을 미리 패치하므로, 업데이트
+  뒤 첫 실행부터 글로우가 나옴. 그 밖의 설치는 전처럼 물어봄.
+
 ## 0.18.0 — 2026-09-18
 
 - The glow reaches the terminal, in a terminal drawn by xterm's DOM renderer.
