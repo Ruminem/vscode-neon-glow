@@ -7,7 +7,7 @@ const { PRESETS, PRESET_ORDER } = require('./presets');
 const {
   applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
   loaderStamp, writePayloadCopy, payloadCopyStamp,
-  rememberTargets, forgetTargets,
+  rememberTargets, forgetTargets, patchStaged,
   payloadPath,
   ensureStateFile, writeState, readState,
 } = require('./patch');
@@ -519,8 +519,22 @@ function activate(context) {
   });
 
   offerToPatch(context);
+  stageAhead();
 }
 
-function deactivate() {}
+/**
+ * Patch an update staged beside this build before it is ever launched (see
+ * patchStaged). At startup for an update that finished before this window
+ * opened; at shutdown for one that finished while it ran - the restart that
+ * applies an update closes this host first and only then lets the installer
+ * swap folders, and a shutdown waits about five seconds for this, against the
+ * tens of milliseconds it takes.
+ */
+function stageAhead() {
+  if (!stateFile) return;
+  try { patchStaged(vscode.env.appRoot, payloadPath(), stateFile); } catch (e) { /* the prompt still comes */ }
+}
+
+function deactivate() { stageAhead(); }
 
 module.exports = { activate, deactivate };

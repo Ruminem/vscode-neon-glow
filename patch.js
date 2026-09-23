@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const { MARKER } = require('./locate');
+const { MARKER, findWorkbenchJs } = require('./locate');
 
 const backupOf = file => file + '.pre-neon.bak';
 
@@ -451,10 +451,65 @@ function removePatch(file) {
   return true;
 }
 
+/**
+ * Whether `file` is byte-for-byte the bundle this build shipped: its SHA-256
+ * against the one product.json records for it. A half-extracted file, an
+ * already patched one and a foreign edit all fail, which is the point - the
+ * backup is taken from whatever this says yes to.
+ */
+function isPristine(appRoot, file) {
+  try {
+    const product = JSON.parse(fs.readFileSync(path.join(appRoot, 'product.json'), 'utf8'));
+    const key = path.relative(path.join(appRoot, 'out'), file).split(path.sep).join('/');
+    const want = product.checksums && product.checksums[key];
+    const got = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('base64').replace(/=+$/, '');
+    return typeof want === 'string' && want === got;
+  } catch (e) { return false; }
+}
+
+/**
+ * Patch the builds a background update has staged beside the running one.
+ *
+ * A Windows user install with update.enableWindowsBackgroundUpdates extracts the
+ * next version into its own <install>/<commit> folder while this one runs, hours
+ * before anyone restarts; the restart only swaps Code.exe and deletes the old
+ * folder, leaving the new one untouched (inno-updater: "preserving commit
+ * folder"). Patching it now is what makes the first launch after an update glow,
+ * instead of that launch re-patching and asking for one more restart.
+ *
+ * Only for someone who patched before - targets.json exists until they remove
+ * the patch on purpose. Its entries are not consulted, since the update deletes
+ * the folder they point at. Only folders named like a commit, so an install
+ * without that layout never reaches out to its neighbours in Programs.
+ * Everything else - system installs, background updates off, macOS (the staged
+ * .app is signature-checked), Linux (no staging) - finds nothing here and falls
+ * back to the prompt on the next launch.
+ */
+const COMMIT_DIR = /^[0-9a-f]{10}$/;
+
+function patchStaged(appRoot, payload_path, stateFile) {
+  const done = [];
+  if (process.platform !== 'win32' || !fs.existsSync(targetsFileOf(stateFile))) return done;
+  const own = path.resolve(appRoot, '..', '..');
+  if (!COMMIT_DIR.test(path.basename(own))) return done;
+
+  let entries;
+  try { entries = fs.readdirSync(path.dirname(own), { withFileTypes: true }); } catch (e) { return done; }
+  for (const d of entries) {
+    if (!d.isDirectory() || !COMMIT_DIR.test(d.name) || d.name === path.basename(own)) continue;
+    const root = path.join(path.dirname(own), d.name, 'resources', 'app');
+    const file = findWorkbenchJs(root);
+    if (!file || !isPristine(root, file)) continue;
+    try { applyPatch(file, payload_path, stateFile); done.push(file); } catch (e) { /* read-only: the prompt still comes */ }
+  }
+  if (done.length) rememberTargets(stateFile, recallTargets(stateFile).concat(done));
+  return done;
+}
+
 const payloadPath = () => path.join(__dirname, 'neon-glow.js');
 
 module.exports = {
-  applyPatch, removePatch, isPatched, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
+  applyPatch, removePatch, isPatched, isPristine, patchStaged, patchedStamp, payloadStamp, rivalGlow, writeBlocker,
   loaderStamp, loaderSource, writePayloadCopy, payloadCopyPath, payloadCopyStamp,
   rememberTargets, recallTargets, forgetTargets,
   backupOf, payloadPath,

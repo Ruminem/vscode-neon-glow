@@ -1161,6 +1161,52 @@ async function main() {
     check('zero removes the rule', tOff.styles().indexOf('.xterm-rows') === -1);
   }
 
+  /* ---- an update staged beside the running build is patched ahead ---- */
+  /* A fake install laid out the way inno-updater leaves one: the running build,
+     a finished staged one, one still being extracted, and a neighbour that is
+     not a commit folder at all. Only the finished one may be touched - patching
+     the half-written one would take its backup from a broken file. */
+  console.log('\nStaged update');
+  if (process.platform !== 'win32') {
+    console.log('  (skipped: staging is a Windows user-install thing)');
+  } else {
+    const { patchStaged, isPristine, recallTargets } = require('../patch.js');
+    const inst = fs.mkdtempSync(path.join(require('os').tmpdir(), 'neon-staged-'));
+    const wbRel = 'out/vs/code/electron-browser/workbench/workbench.js';
+    const build = (dir, body, recorded) => {
+      const root = path.join(inst, dir, 'resources', 'app');
+      fs.mkdirSync(path.join(root, path.dirname(wbRel)), { recursive: true });
+      fs.writeFileSync(path.join(root, wbRel), body);
+      const sum = require('crypto').createHash('sha256').update(recorded).digest('base64').replace(/=+$/, '');
+      fs.writeFileSync(path.join(root, 'product.json'), JSON.stringify({ checksums: { [wbRel.slice(4)]: sum } }));
+      return path.join(root, wbRel);
+    };
+    const pristine = '/* workbench */\n';
+    const running = build('aaaaaaaaaa', pristine, pristine);
+    const staged = build('bbbbbbbbbb', pristine, pristine);
+    const partial = build('cccccccccc', pristine.slice(0, 5), pristine);
+    const neighbour = build('Other App', pristine, pristine);
+    const appRoot = path.join(inst, 'aaaaaaaaaa', 'resources', 'app');
+    const sf = path.join(inst, 'state', 'state.json');
+
+    check('a finished staged bundle reads as pristine', isPristine(path.join(inst, 'bbbbbbbbbb', 'resources', 'app'), staged));
+    check('and a half-extracted one does not', !isPristine(path.join(inst, 'cccccccccc', 'resources', 'app'), partial));
+
+    check('nothing is patched for someone who never patched',
+      patchStaged(appRoot, PAYLOAD, sf).length === 0 && !isPatched(staged));
+
+    fs.mkdirSync(path.dirname(sf), { recursive: true });
+    fs.writeFileSync(path.join(path.dirname(sf), 'targets.json'), JSON.stringify([path.join(inst, 'gone', 'workbench.js')]));
+    const done = patchStaged(appRoot, PAYLOAD, sf);
+    check('the finished staged build is patched, and only it',
+      done.length === 1 && done[0] === staged && isPatched(staged), JSON.stringify(done));
+    check('the running, half-extracted and non-commit folders are left alone',
+      !isPatched(running) && !isPatched(partial) && !isPatched(neighbour));
+    check('the staged build is recorded for the uninstall hook',
+      recallTargets(sf).indexOf(staged) !== -1);
+    check('a second pass finds nothing left to do', patchStaged(appRoot, PAYLOAD, sf).length === 0);
+  }
+
   if (PRINT) {
     console.log('\n---- stylesheet ----\n' + run({
       knobs: { cursorTrail: 45, saveShake: 6, findGlow: 18, selectionGlow: 12,

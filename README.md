@@ -270,7 +270,13 @@ extension ask, and it says so when it does.
 **VS Code updates wipe the patch.** The updater replaces `workbench.js`, which leaves
 the same state as a fresh install, so the extension offers to re-patch on next launch.
 Re-patching is safe: it always rebuilds from the pristine `.pre-neon.bak`, never from
-an already-patched file.
+an already-patched file. On a Windows user install with background updates on (the
+default), you never see this: VS Code unpacks the next version into its own folder
+hours before the restart, and the extension patches that folder when a window opens
+or closes — only once the file matches the checksum in its `product.json`, so a
+half-unpacked update is left alone. The first launch after the update already glows.
+System installs, background updates turned off, macOS and Linux have no such folder
+and still get the prompt.
 
 **Uninstalling the extension restores the bundle** through a `vscode:uninstall` hook.
 It is best effort — if the install directory is not writable the hook fails and the
@@ -568,6 +574,11 @@ SHA-256을 들고 있는데 패치하면 그 값이 안 맞음. *다시 표시 �
 **VS Code 업데이트는 패치를 지움.** 업데이터가 `workbench.js`를 갈아치움. 새로 설치한
 것과 같은 상태라 확장이 다음 실행에서 다시 패치할지 물어봄. 다시 패치하는 것은 안전함 —
 항상 손 안 댄 `.pre-neon.bak`에서 다시 만들지, 이미 패치된 파일에서 만들지 않음.
+윈도우 사용자 설치에서 백그라운드 업데이트가 켜져 있으면(기본값) 이 물음을 볼 일이 없음.
+VS Code가 재시작 몇 시간 전에 다음 버전을 따로 된 폴더에 풀어 두고, 확장이 창을 열거나 닫을
+때 그 폴더를 패치함 — 파일이 그 폴더 `product.json`의 체크섬과 맞을 때만 하므로 덜 풀린
+업데이트는 건드리지 않음. 업데이트 뒤 첫 실행부터 글로우가 나옴. 시스템 설치, 백그라운드
+업데이트를 끈 경우, macOS와 Linux는 그런 폴더가 없어 여전히 물어봄.
 
 **확장을 제거하면 번들이 복원됨.** `vscode:uninstall` 훅이 함. 최선을 다할 뿐이라, 설치
 디렉터리에 쓸 수 없으면 훅이 실패하고 번들은 패치된 채로 남음. 그때는 권한을 주고
